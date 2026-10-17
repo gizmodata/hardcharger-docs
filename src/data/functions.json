@@ -1,0 +1,152 @@
+[
+  {
+    "name": "HARDCHARGER_CURRENT_CLUSTER",
+    "type": "scalar",
+    "return_type": "VARCHAR"
+  },
+  {
+    "name": "HARDCHARGER_CURRENT_INSTANCE",
+    "type": "scalar",
+    "return_type": "VARCHAR"
+  },
+  {
+    "name": "HARDCHARGER_CURRENT_SESSION",
+    "type": "scalar",
+    "return_type": "VARCHAR"
+  },
+  {
+    "name": "HARDCHARGER_INSTRUMENTATION_CATALOG",
+    "type": "scalar",
+    "return_type": "VARCHAR"
+  },
+  {
+    "name": "HARDCHARGER_INSTRUMENTATION_ENABLED",
+    "type": "scalar",
+    "return_type": "BOOLEAN"
+  },
+  {
+    "name": "HARDCHARGER_INSTRUMENTATION_SCHEMA",
+    "type": "scalar",
+    "return_type": "VARCHAR"
+  },
+  {
+    "name": "HARDCHARGER_ROLE",
+    "type": "scalar",
+    "return_type": "VARCHAR"
+  },
+  {
+    "name": "HARDCHARGER_USER",
+    "type": "scalar",
+    "return_type": "VARCHAR"
+  },
+  {
+    "name": "HARDCHARGER_VERSION",
+    "type": "scalar",
+    "return_type": "VARCHAR"
+  },
+  {
+    "name": "hardcharger_metrics",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "value",
+        "type": "DOUBLE"
+      },
+      {
+        "name": "labels",
+        "type": "MAP(VARCHAR, VARCHAR)"
+      }
+    ]
+  },
+  {
+    "name": "hardcharger_sessions",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "session_id",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "username",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "role",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "auth_method",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "start_time",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "running",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "is_current",
+        "type": "BOOLEAN"
+      }
+    ]
+  },
+  {
+    "name": "hardcharger_settings",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "value",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "session_value",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "global_value",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "scope",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "settable",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "cli_flag",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "input_type",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "default_value",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "env_var",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "description",
+        "type": "VARCHAR"
+      }
+    ]
+  }
+]

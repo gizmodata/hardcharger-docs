@@ -1,0 +1,72 @@
+---
+title: "Raspberry Pi"
+description: "Run Hardcharger on a 64-bit Raspberry Pi 4 or 5, natively or in Docker, with settings that suit its memory and storage."
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Hardcharger runs on a Raspberry Pi 4 or 5 with a **64-bit** operating system: the release has a
+`linux-arm64` build and the image has a `linux/arm64` variant. A Pi with 8 GB or 16 GB of memory
+and an SSD makes a capable little analytics server.
+
+## Check your Pi
+
+```console test server=none
+$ uname -m
+…
+$ getconf GNU_LIBC_VERSION
+glibc …
+```
+
+| You see | Then |
+|---|---|
+| `aarch64` and glibc 2.38 or newer (Raspberry Pi OS based on Debian 13 "Trixie", Ubuntu 24.04) | Install natively, below. |
+| `aarch64` and an older glibc (Raspberry Pi OS "Bookworm": 2.36) | Use Docker, below, or upgrade the OS. Builds for glibc 2.28 are planned. |
+| `armv7l` or `armv6l` | That's a 32-bit OS. Install the 64-bit Raspberry Pi OS: Hardcharger has no 32-bit build. |
+
+The installer checks all of this before it downloads anything, and says what to do.
+
+## Install
+
+<Tabs>
+<TabItem label="Natively">
+
+```bash
+curl https://install.hardcharger.gizmodata.com | sh
+HARDCHARGER_ADMIN_PASSWORD='change-me' ~/.hardcharger/bin/hardcharger-server --config pi.yaml
+```
+
+</TabItem>
+<TabItem label="Docker">
+
+```bash
+docker run -d --name hardcharger --restart unless-stopped -p 31337:31337 -p 31338:31338 \
+  -e HARDCHARGER_ADMIN_PASSWORD='change-me' -v /mnt/ssd/hardcharger:/var/lib/hardcharger \
+  ghcr.io/gizmodata/hardcharger:latest --database /var/lib/hardcharger/analytics.duckdb \
+  --memory-limit 5GB
+```
+
+</TabItem>
+</Tabs>
+
+During the preview, the installer and the image need a GitHub token, as in the
+[quickstart](/get-started/quickstart/).
+
+## Settings for a Pi
+
+```yaml test kind=server-config name=pi.yaml server=none
+# pi.yaml: an 8 GB Pi with its database on an SSD
+database: analytics.duckdb        # on the SSD: an SD card is slow and wears out
+memory_limit: 5GB                 # leave the OS and page cache some room
+session_idle_timeout: 600
+max_concurrent_statements: 2      # four cores: queue rather than oversubscribe
+init_sql_commands: "SET threads = 4; SET temp_directory = 'tmp';"
+```
+
+- **Storage.** Put the database and DuckDB's spill directory (`temp_directory`) on a USB 3 or NVMe
+  SSD.
+- **Memory.** `memory_limit` around 60% of RAM leaves room for the OS. DuckDB spills to disk
+  beyond it rather than failing.
+- **Heat.** Sustained queries throttle a Pi without cooling: use a case with a fan or a heatsink.
+- **Network.** Bind to your LAN, turn on [TLS](/guides/tls/) before anyone else connects, and keep
+  the health port inside your network.

@@ -1,0 +1,47 @@
+---
+// The server's SQL functions: rendered from src/data/functions.json (duckdb_functions() and
+// DESCRIBE on a real server). Descriptions are the docs' own, keyed by name; a function the
+// server has and the docs don't describe fails the build.
+import functions from '../data/functions.json';
+
+interface Props {
+	describe: Record<string, string>;
+}
+const { describe } = Astro.props;
+for (const f of functions) {
+	if (!describe[f.name]) throw new Error(`no description for SQL function ${f.name}: add it to reference/sql.mdx`);
+}
+for (const name of Object.keys(describe)) {
+	if (!functions.some((f) => f.name === name)) throw new Error(`reference/sql.mdx describes ${name}, which the server doesn't have`);
+}
+---
+
+<h3 id="scalar-functions">Scalar functions</h3>
+<table>
+	<thead><tr><th>Function</th><th>Returns</th><th>Description</th></tr></thead>
+	<tbody>
+		{functions.filter((f) => f.type === 'scalar').map((f) => (
+			<tr>
+				<td id={f.name.toLowerCase()}><code>{f.name}()</code></td>
+				<td><code>{f.return_type}</code></td>
+				<td set:html={describe[f.name]} />
+			</tr>
+		))}
+	</tbody>
+</table>
+
+<h3 id="table-functions">Table functions</h3>
+{functions.filter((f) => f.type === 'table').map((f) => (
+	<>
+		<h4 id={f.name}><code>{f.name}()</code></h4>
+		<p set:html={describe[f.name]} />
+		<table>
+			<thead><tr><th>Column</th><th>Type</th></tr></thead>
+			<tbody>
+				{(f as any).columns.map((c: { name: string; type: string }) => (
+					<tr><td><code>{c.name}</code></td><td><code>{c.type}</code></td></tr>
+				))}
+			</tbody>
+		</table>
+	</>
+))}

@@ -1,0 +1,52 @@
+Usage: hardcharger [OPTIONS] [URI]
+
+Hardcharger Client Options
+
+Connection:
+  -h, --host HOST               Server host (default: localhost; env: HARDCHARGER_HOST)
+  -p, --port PORT               Server port (default: 31337; env: HARDCHARGER_PORT)
+  -u, --username USER           Username (env: HARDCHARGER_USER, falls back to HARDCHARGER_ADMIN_USERNAME for parity with the server)
+  -W, --password                Force a password prompt (else env: HARDCHARGER_PASSWORD, or a prompt)
+      --uri URI                 Connection URI: hardcharger://HOST:PORT[?params] (also the one positional argument; cannot be combined with --host, --port, --username, --tls, etc.)
+
+TLS:
+      --tls                     Use TLS (HTTPS) for the connection (env: HARDCHARGER_TLS)
+      --tls-roots FILE          Trusted root certificates (PEM; default: the system's) (env: HARDCHARGER_TLS_ROOTS)
+      --tls-skip-verify         Skip TLS server certificate verification (development only)
+      --mtls-cert FILE          mTLS client certificate (PEM)
+      --mtls-key FILE           mTLS client private key (PEM)
+
+Sign-in:
+      --auth-type TYPE          'password' (default) or 'external' (the server's browser sign-in, OAuth/SSO)
+      --oauth-port PORT         The server's browser sign-in port (default: 31339; env: HARDCHARGER_OAUTH_PORT)
+      --oauth-base-url URL      The browser sign-in server's URL (default: http(s)://HOST:OAUTH_PORT; env: HARDCHARGER_OAUTH_BASE_URL)
+
+Input and output:
+  -c, --command SQL             Execute SQL (and dot commands) and exit
+  -f, --file FILE               Execute SQL from FILE and exit
+  -o, --output FILE             Write output to FILE
+      --init FILE               Init file to execute on startup (default: ~/.hardchargerrc)
+      --no-init                 Do not execute the init file
+
+Tags:
+      --session-tag JSON        Session tag sent after connecting (env: HARDCHARGER_SESSION_TAG)
+      --query-tag JSON          Query tag sent after connecting (env: HARDCHARGER_QUERY_TAG)
+      --result-partitions N     Read large results in up to N partitions at once, over N connections (env: HARDCHARGER_RESULT_PARTITIONS; default 1)
+
+Output modes:
+      --csv                     Set output mode to CSV
+      --json                    Set output mode to JSON
+      --table                   Set output mode to table (ASCII borders)
+      --box                     Set output mode to box (Unicode borders, default)
+      --markdown                Set output mode to markdown
+      --no-header               Disable column headers
+
+Display:
+  -q, --quiet                   Suppress the welcome banner and informational messages
+  -e, --echo                    Echo executed SQL statements
+      --bail                    Stop on first error
+      --null TEXT               String to display for NULL values (default: NULL)
+
+Other:
+  -?, --help                    Show this help message
+  -v, --version                 Show version

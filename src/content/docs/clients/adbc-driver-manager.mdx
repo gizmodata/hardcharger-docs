@@ -1,0 +1,80 @@
+---
+title: "C, C++, R, Rust (ADBC)"
+description: "Load Hardcharger's ADBC driver into any ADBC driver manager by the name \"hardcharger\", through its driver manifest."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Hardcharger's ADBC driver is one C shared library, `libadbc_driver_hardcharger`, built from the
+same Go code for every platform. Any [ADBC driver manager](https://arrow.apache.org/adbc/)
+(C/C++, R's `adbcdrivermanager`, Rust's `adbc_driver_manager`, Python's, ...) loads it by name
+once its **driver manifest**, `hardcharger.toml`, is installed.
+
+## Install the manifest
+
+With the Python package installed, it writes the manifest for you, pointing at the library inside
+the wheel:
+
+```console test server=none
+$ python3 -m adbc_driver_hardcharger.manifest --print | grep -E '^(name|entrypoint) ='
+name = 'Hardcharger'
+entrypoint = 'AdbcDriverHardchargerInit'
+$ python3 -m adbc_driver_hardcharger.manifest --dir drivers > /dev/null
+$ ls drivers
+hardcharger.toml
+```
+
+Without `--dir` it goes to your user's driver directory:
+
+| Platform | Directory |
+|---|---|
+| Linux | `~/.config/adbc/drivers/` |
+| macOS | `~/Library/Application Support/ADBC/Drivers/` |
+| Windows | `%LOCALAPPDATA%\ADBC\Drivers\` |
+| Any | a directory on `ADBC_DRIVER_PATH` |
+
+Without Python, take the library from a [release](https://github.com/gizmodata/hardcharger-adbc/releases)
+and fill in the template
+[`packaging/hardcharger.toml.in`](https://github.com/gizmodata/hardcharger-adbc/blob/main/packaging/hardcharger.toml.in).
+
+## Load it by name
+
+Every driver manager then finds it as `hardcharger`, with the same options in every language.
+Through Python's driver manager:
+
+```python test
+import adbc_driver_manager.dbapi
+import subprocess
+
+subprocess.run(args=["python3", "-m", "adbc_driver_hardcharger.manifest", "--dir", "drivers"], check=True,
+               capture_output=True)
+with adbc_driver_manager.dbapi.connect(driver="drivers/hardcharger.toml", db_kwargs={
+        "uri": "hardcharger://localhost?tls=false", "username": "hardcharger", "password": "change-me",
+        "adbc.hardcharger.query_tag": '{"app": "driver-manager"}'}) as conn:
+    with conn.cursor() as cur:
+        cur.execute(operation="SELECT 42 AS answer")
+        print(cur.fetchone())
+```
+
+```text output
+(42,)
+```
+
+Here `driver` names the manifest file; with the manifest in a search directory, `driver="hardcharger"`
+is enough.
+
+In C, the same takes `AdbcDatabaseSetOption(&database, "driver", "hardcharger", &error)` after
+`AdbcDriverManagerDatabaseSetLoadFlags(&database, ADBC_LOAD_FLAG_DEFAULT, &error)`, then the
+`uri`, `username` and `password` options.
+[`examples/c/hello.c`](https://github.com/gizmodata/hardcharger-adbc/blob/main/examples/c/hello.c)
+is a complete program, and hardcharger-adbc's CI builds and runs it against a real server. R and
+Rust load it the same way, by the name `hardcharger`.
+
+The options are listed on the [Go page](/clients/go/#options): they are the same everywhere,
+since every language runs the same driver.
+
+<Aside type="note">
+Arrow arrives from the driver as Arrow's C data interface, so each language gets its own Arrow
+objects (`arrow::RecordBatchReader`, `nanoarrow`, R's `nanoarrow_array_stream`, Rust's
+`RecordBatchReader`) with no copy.
+</Aside>

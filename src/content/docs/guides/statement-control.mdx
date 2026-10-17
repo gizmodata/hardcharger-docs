@@ -1,0 +1,154 @@
+---
+title: "Statement control"
+description: "Tag queries and sessions, set timeouts, cancel and kill sessions, cap sessions, queue statements when the server is busy, and shut down gracefully."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Query and session tags
+
+Tags are JSON objects Hardcharger records with every session and statement in its
+[instrumentation](/guides/instrumentation-and-audit/) tables: who ran it, for which job,
+for which customer. Set them in SQL, from a driver, or per request (`Warp-Query-Tag`):
+
+```sql test profile=instrumentation
+SET hardcharger.session_tag = '{"app": "nightly-etl", "team": "data-eng"}';
+SET hardcharger.query_tag = '{"job": "load-orders", "run": 42}';
+CREATE TABLE orders AS SELECT range AS id FROM range(1000);
+SET hardcharger.query_tag = '';
+```
+
+```console test profile=instrumentation
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --csv --command \
+    "SELECT s.query_tag->>'job' AS job, s.sql_text FROM _hardcharger_instr.sql_statements s WHERE s.query_tag IS NOT NULL"
+job,sql_text
+load-orders,CREATE TABLE orders AS SELECT range AS id FROM range(1000)
+load-orders,SET hardcharger.query_tag = ''
+```
+
+The statement that clears the tag still carries it. From Python, `connect(session_tag=…, query_tag=…)` and `conn.set_query_tag(tag=…)`; from the
+CLI, `--session-tag` and `--query-tag`. A tag that isn't a JSON object is refused.
+
+## Timeouts
+
+Three places set a statement's time limit; the most specific wins:
+
+| Where | Scope |
+|---|---|
+| [`query_timeout_seconds`](/reference/configuration/#query_timeout_seconds) | The server's default (0: none) |
+| `SET [SESSION \| GLOBAL] hardcharger.query_timeout = <seconds>` | A session, or every session |
+| `Warp-Statement-Timeout: <ms>` (JDBC `setQueryTimeout`, ADBC `adbc.warp.statement.timeout_seconds`) | One statement |
+
+```python test profile=instrumentation
+import adbc_driver_manager
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger", password="change-me",
+                         settings={"query_timeout": 1}) as conn:
+    with conn.cursor() as cur:
+        try:
+            cur.execute(operation="SELECT count(*) FROM range(1000000000000) a")
+            cur.fetchall()
+        except adbc_driver_manager.Error as e:
+            print("statement_timeout" in str(e))
+```
+
+```text output
+True
+```
+
+A statement that times out ends `cancelled` with error code `statement_timeout`. The server
+stops it in DuckDB; it doesn't just stop waiting.
+
+## Cancel
+
+Every client cancels on the server: Ctrl-C in the CLI and in Python (`cur.adbc_cancel()` from
+another thread), `Statement.cancel()` in JDBC, a Go context ending. A client that hangs up in the
+middle of an unretained result cancels it too. A statement that changes data and has started
+writing runs to the end rather than being undone because its reader left.
+
+## Kill a session
+
+An administrator can end any other session at once. `hardcharger_sessions()` lists them (users
+see only their own):
+
+```python test profile=instrumentation
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+def connect():
+    return hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger", password="change-me")
+
+with connect() as victim, connect() as admin:
+    session = victim.current_session()
+    with admin.cursor() as cur:
+        cur.execute(operation=f"KILL SESSION '{session}'")
+        print(cur.fetchall())
+    try:
+        with victim.cursor() as cur:
+            cur.execute(operation="SELECT 1")
+    except Exception as e:
+        print("session_ended" in str(e))
+```
+
+```text output
+…
+True
+```
+
+The killed session's next request gets `401 session_ended` with reason `killed`, and its running
+statement stops. `KILL SESSION` needs the administrator; you can't kill your own session.
+
+## Limit sessions
+
+[`max_sessions`](/reference/configuration/#max_sessions) caps non-administrator sessions;
+past it, opening a session fails with `429 too_many_sessions`. Administrators are never capped,
+so you can always get in to look. [`session_idle_timeout`](/reference/configuration/#session_idle_timeout)
+(15 minutes) evicts sessions with no request and nothing running.
+
+## The statement queue
+
+DuckDB runs each statement on many threads; a hundred heavy statements at once just fight over
+the cores and memory. The queue lets a fixed number run and holds the rest:
+
+| Option | Default | Meaning |
+|---|---|---|
+| [`max_concurrent_statements`](/reference/configuration/#max_concurrent_statements) | `0` | Statements that run at once; more wait in the queue. `0`: no queue. |
+| [`max_queued_statements`](/reference/configuration/#max_queued_statements) | `-1` | Statements that may wait. `-1`: 8 × the concurrency; `0`: unbounded. |
+| [`max_queue_wait`](/reference/configuration/#max_queue_wait) | `-1` | Seconds a statement may wait. `-1`: 300; `0`: forever. |
+| [`admin_bypass_queue_default`](/reference/configuration/#admin_bypass_queue_default) | `true` | Administrators skip the queue unless they `SET hardcharger.bypass_queue = false`. |
+
+A statement that finds the queue full, or waits longer than `max_queue_wait`, fails with
+`429 rate_limited` and a message that says which, so a client can retry. Queued statements show
+`queued` in their statement document and in instrumentation, which records how long each
+waited. An administrator can change the limits live:
+
+```sql test profile=queue
+SET GLOBAL hardcharger.max_concurrent_statements = 4;
+SET GLOBAL hardcharger.max_queue_wait = 60;
+```
+
+```console test profile=queue
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --csv --command \
+    "SELECT name, value FROM hardcharger_settings() WHERE name IN ('hardcharger.max_concurrent_statements', 'hardcharger.max_queue_wait') ORDER BY name"
+name,value
+hardcharger.max_concurrent_statements,4
+hardcharger.max_queue_wait,60
+```
+
+<Aside type="note">
+`hardcharger_settings()` lists `hardcharger.max_queued_statements`'s default as `0`, but the
+server's default is `-1` (8 × the concurrency). The startup option is what applies.
+</Aside>
+
+## Graceful shutdown
+
+On the first `SIGTERM` or `SIGINT`, Hardcharger stops accepting new sessions and statements
+(`503 server_draining`, with `Retry-After`), reports `not_serving` on its health endpoint so load
+balancers move traffic away, and lets running statements finish for up to
+[`shutdown_grace_period_seconds`](/reference/configuration/#shutdown_grace_period_seconds) (300).
+Then it cancels what is left. A second signal stops it at once. With
+`graceful_shutdown=false`, the first signal stops it at once. Both can be changed live with
+`SET GLOBAL`.
+
+In Kubernetes, set `terminationGracePeriodSeconds` a little above the grace period
+([guide](/guides/docker-and-kubernetes/)).

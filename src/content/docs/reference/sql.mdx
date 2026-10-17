@@ -1,0 +1,80 @@
+---
+title: "SQL functions and settings"
+description: "Hardcharger's SQL functions (HARDCHARGER_USER(), hardcharger_sessions(), ...), its SET hardcharger.* settings with their scopes, KILL SESSION, access-control statements and the system catalogs."
+---
+
+import SqlFunctions from '../../../components/SqlFunctions.astro';
+import SqlSettings from '../../../components/SqlSettings.astro';
+
+Hardcharger runs DuckDB 2.0, so the SQL is DuckDB's: see [DuckDB's documentation](https://duckdb.org/docs/)
+for the language itself. This page lists what Hardcharger adds. The function and setting tables
+are generated from a running server (`duckdb_functions()`, `DESCRIBE`, `hardcharger_settings()`),
+and CI fails when they drift.
+
+## Functions
+
+<SqlFunctions describe={{
+  HARDCHARGER_USER: 'The user this session signed in as.',
+  HARDCHARGER_ROLE: 'The session\'s role: <code>admin</code>, <code>user</code> or <code>readonly</code> (for store users under access control, their role in the server\'s sense).',
+  HARDCHARGER_VERSION: 'The server\'s version, as <code>v0.2.0</code>.',
+  HARDCHARGER_CURRENT_SESSION: 'This session\'s id (a UUID), as <code>KILL SESSION</code> and instrumentation name it.',
+  HARDCHARGER_CURRENT_INSTANCE: 'This server process\'s id (a UUID), new at every start.',
+  HARDCHARGER_CURRENT_CLUSTER: 'The <code>cluster_id</code> the replicas share, or NULL when unset.',
+  HARDCHARGER_INSTRUMENTATION_ENABLED: 'Whether instrumentation is on.',
+  HARDCHARGER_INSTRUMENTATION_CATALOG: 'The catalog of the instrumentation tables (empty when off).',
+  HARDCHARGER_INSTRUMENTATION_SCHEMA: 'The schema of the instrumentation tables (empty when off).',
+  hardcharger_settings: 'Every <code>hardcharger.*</code> setting with its current, session and global value, scope, flag, environment variable, default and description.',
+  hardcharger_sessions: 'The open sessions. Administrators see all of them; other users only their own.',
+  hardcharger_metrics: 'The runtime metrics <code>/metrics</code> serves, one row per sample. Needs <code>--enable-metrics</code>.',
+}} />
+
+## Settings
+
+`SET [SESSION | GLOBAL] hardcharger.<name> = <value>` (or `TO`) and
+`RESET [SESSION | GLOBAL] hardcharger.<name>`. `SET GLOBAL` needs an administrator; startup
+settings can only be read, and say which option sets them.
+
+```sql test
+SET hardcharger.query_timeout = 60;
+SELECT name, value, scope FROM hardcharger_settings() WHERE name = 'hardcharger.query_timeout';
+RESET hardcharger.query_timeout;
+```
+
+<SqlSettings />
+
+## KILL SESSION
+
+```sql
+KILL SESSION '<session id>';
+```
+
+Ends another session at once (administrators only); its next request gets `401 session_ended`.
+`hardcharger_sessions()` lists the ids. See [Statement control](/guides/statement-control/#kill-a-session).
+
+## Access-control statements
+
+With [access control](/guides/access-control/) on, these run like SQL, one per statement:
+
+| Statements | Guide |
+|---|---|
+| `CREATE`/`ALTER`/`DROP USER`, `CREATE`/`DROP ROLE`, `GRANT role TO`, `REVOKE role FROM` | [Users, roles and grants](/guides/access-control/) |
+| `GRANT`/`REVOKE` privileges `ON` table, view, `SCHEMA`, `CATALOG`; system privileges | [Users, roles and grants](/guides/access-control/#privileges) |
+| `SHOW GRANTS`, `ALTER TABLE`/`VIEW … OWNER TO`, `SET ROLE` | [Users, roles and grants](/guides/access-control/#seeing-grants) |
+| `CREATE`/`DROP ROW POLICY`, `SHOW ROW POLICIES` | [Row policies](/guides/row-policies-and-masking/#row-policies) |
+| `CREATE`/`DROP MASKING POLICY`, `ALTER TABLE … MODIFY COLUMN … SET`/`UNSET MASKING POLICY`, `SHOW MASKING POLICIES` | [Masking](/guides/row-policies-and-masking/#masking-policies) |
+| `CREATE`/`DROP TENANT`, `ALTER CATALOG … SET TENANT`, `ALTER TENANT … SET DEFAULT CATALOG`, `SHOW TENANTS` | [Tenants](/guides/row-policies-and-masking/#tenants) |
+| `CREATE`/`DROP GROUP MAPPING`, `SHOW GROUP MAPPINGS` | [SSO](/guides/sso/#with-access-control-users-and-group-mappings) |
+| `CREATE`/`DROP SCOPED TOKEN`, `SHOW SCOPED TOKENS` | [Scoped tokens](/guides/row-policies-and-masking/#scoped-tokens) |
+
+Row policies may call `session_attribute('key')` (a user attribute set with
+`ALTER USER … SET ATTRIBUTE`) and `is_role_active('role')`.
+
+## System catalogs
+
+| Catalog | Contents |
+|---|---|
+| `_hardcharger_system` | Read-only views the drivers use: `hardcharger_index_info` (JDBC `getIndexInfo`) and `hardcharger_view_definition` |
+| `_hardcharger_instr` | [Instrumentation](/guides/instrumentation-and-audit/) (with `--enable-instrumentation`; administrators only) |
+| `_hardcharger_logs` | [Catalog logging](/guides/instrumentation-and-audit/#catalog-logging) (with `--enable-catalog-logging`; administrators only) |
+
+Nobody writes to, detaches or `USE`s these catalogs.

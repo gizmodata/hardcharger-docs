@@ -1,0 +1,224 @@
+---
+title: "TLS and mTLS"
+description: "Serve Hardcharger over HTTPS with your certificate, require client certificates (mutual TLS), and connect from curl, Python, Java and the CLI."
+---
+
+import { Aside, Tabs, TabItem, Steps } from '@astrojs/starlight/components';
+
+With a certificate and its key, Hardcharger serves Warp SQL over HTTPS on the same port. Add a
+CA, and it also requires every client to present a certificate that chains to it (mutual TLS).
+Clients default to TLS: `hardcharger://host` and `jdbc:hardcharger://host` are HTTPS unless you
+say otherwise.
+
+## 1. Get a certificate
+
+In production, use a certificate from your CA (or ACME) for the name clients connect to. For
+this guide, make a throwaway CA and a server certificate for `localhost`:
+
+```bash test server=none
+# A CA, then a server certificate for localhost signed by it (valid for 30 days).
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 30 \
+  -subj "/CN=Example CA" -keyout ca.key -out ca.crt
+openssl req -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -subj "/CN=localhost" \
+  -keyout server.key -out server.csr
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 30 \
+  -extfile <(printf 'subjectAltName=DNS:localhost,IP:127.0.0.1') -out server.crt
+```
+
+`server.crt` may hold the whole chain (leaf first), as most CAs deliver it.
+
+## 2. Start the server with TLS
+
+```bash test server=self background
+HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb \
+  --tls-cert server.crt --tls-key server.key --health-port 31338
+```
+
+`--tls-cert` and `--tls-key` go together (`HARDCHARGER_TLS_CERT`, `HARDCHARGER_TLS_KEY`, or
+`tls_cert`/`tls_key` in YAML). The health port stays plaintext, for probes on a private network.
+
+## 3. Connect
+
+Clients verify the certificate against the system's trust store. A private CA has to be named:
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python test server=none
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+with hardcharger.connect(uri="hardcharger://localhost", username="hardcharger", password="change-me",
+                         tls_root_certs="ca.crt") as conn:
+    with conn.cursor() as cur:
+        cur.execute(operation="SELECT 'over TLS' AS hello")
+        print(cur.fetchone())
+```
+
+```text output
+('over TLS',)
+```
+
+`tls_root_certs` takes a file path or PEM text.
+
+</TabItem>
+<TabItem label="CLI">
+
+```console test server=none
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger \
+    --tls --tls-roots ca.crt --csv --command "SELECT 'over TLS' AS hello"
+hello
+over TLS
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java test server=none
+Properties properties = new Properties();
+properties.setProperty("user", "hardcharger");
+properties.setProperty("password", "change-me");
+properties.setProperty("tlsRootCerts", "ca.crt");
+try (Connection connection = DriverManager.getConnection("jdbc:hardcharger://localhost", properties);
+     ResultSet rows = connection.createStatement().executeQuery("SELECT 'over TLS' AS hello")) {
+  rows.next();
+  System.out.println(rows.getString("hello"));
+}
+```
+
+```text output
+over TLS
+```
+
+JDBC also takes a JKS or PKCS#12 trust store (`trustStore`, `trustStorePassword`).
+
+</TabItem>
+<TabItem label="curl">
+
+```console test server=none
+$ curl -s --cacert ca.crt https://localhost:31337/warp | jq -r .server.name
+Hardcharger
+```
+
+</TabItem>
+</Tabs>
+
+<Aside type="danger" title="Skipping verification">
+`tls_skip_verify=True` (Python), `--tls-skip-verify` (CLI) and
+`disableCertificateVerification=true` (JDBC) accept any certificate. Use them only on your own
+machine: they make TLS useless against an attacker in the middle.
+</Aside>
+
+## Mutual TLS
+
+With `--mtls-ca-cert`, the server completes a TLS handshake only with clients that present a
+certificate signed by that CA. It is an extra lock, not a replacement for signing in: clients
+still authenticate with a password or token.
+
+<Steps>
+
+1. Issue a client certificate from your CA. For this guide:
+
+   ```bash test server=none
+   openssl req -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -subj "/CN=joe" \
+     -keyout client.key -out client.csr
+   openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 30 \
+     -extfile <(printf 'extendedKeyUsage=clientAuth') -out client.crt
+   ```
+
+2. Restart the server with the CA that client certificates must chain to:
+
+   ```bash test server=self background stop
+   HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb \
+     --tls-cert server.crt --tls-key server.key --mtls-ca-cert ca.crt --health-port 31338
+   ```
+
+3. Connect with the client certificate and key:
+
+   <Tabs syncKey="lang">
+   <TabItem label="Python">
+
+   ```python test server=none
+   from adbc_driver_hardcharger import dbapi as hardcharger
+
+   with hardcharger.connect(uri="hardcharger://localhost", username="hardcharger", password="change-me",
+                            tls_root_certs="ca.crt", tls_client_cert="client.crt",
+                            tls_client_key="client.key") as conn:
+       with conn.cursor() as cur:
+           cur.execute(operation="SELECT 'mutual TLS' AS hello")
+           print(cur.fetchone())
+   ```
+
+   ```text output
+   ('mutual TLS',)
+   ```
+
+   </TabItem>
+   <TabItem label="CLI">
+
+   ```console test server=none
+   $ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --tls \
+       --tls-roots ca.crt --mtls-cert client.crt --mtls-key client.key --csv --command "SELECT 'mutual TLS' AS hello"
+   hello
+   mutual TLS
+   ```
+
+   </TabItem>
+   <TabItem label="Java">
+
+   ```java test server=none
+   Properties properties = new Properties();
+   properties.setProperty("user", "hardcharger");
+   properties.setProperty("password", "change-me");
+   properties.setProperty("tlsRootCerts", "ca.crt");
+   properties.setProperty("clientCertificate", "client.crt");
+   properties.setProperty("clientKey", "client.key");
+   try (Connection connection = DriverManager.getConnection("jdbc:hardcharger://localhost", properties);
+        ResultSet rows = connection.createStatement().executeQuery("SELECT 'mutual TLS' AS hello")) {
+     rows.next();
+     System.out.println(rows.getString("hello"));
+   }
+   ```
+
+   ```text output
+   mutual TLS
+   ```
+
+   The key may be PKCS#8, PKCS#1 (RSA) or SEC1 (EC), unencrypted.
+
+   </TabItem>
+   <TabItem label="curl">
+
+   ```console test server=none
+   $ curl -s --cacert ca.crt --cert client.crt --key client.key https://localhost:31337/warp | jq -r .server.name
+   Hardcharger
+   ```
+
+   </TabItem>
+   </Tabs>
+
+</Steps>
+
+A client without a certificate doesn't get past the handshake:
+
+```console test server=none
+$ curl -s --cacert ca.crt https://localhost:31337/warp || echo "refused"
+refused
+```
+
+<Aside type="note" title="Coming in the next release: certificate identity">
+Today a client certificate proves the client holds a key your CA signed; the user still signs in
+with a password or token. Signing in **as** the certificate's identity (mapping its subject to a
+user) is being built now and arrives in the next release.
+</Aside>
+
+## Behind a TLS-terminating proxy
+
+If a load balancer terminates TLS, run Hardcharger on plain HTTP on a private network, or
+re-encrypt to Hardcharger with its own certificate. Client certificates must then be checked by
+the proxy, since Hardcharger never sees them. See [Behind a load balancer](/guides/load-balancers/).
+
+## Rotating a certificate
+
+The server reads its certificate and key at startup. To rotate, replace the files and restart
+(with several replicas behind a load balancer, one at a time; [graceful shutdown](/guides/statement-control/#graceful-shutdown)
+lets running statements finish).

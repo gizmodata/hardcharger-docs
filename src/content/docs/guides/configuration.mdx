@@ -1,0 +1,112 @@
+---
+title: "Configuration (YAML, environment, flags)"
+description: "Configure hardcharger-server with command-line flags, HARDCHARGER_* environment variables or a YAML file, and see which value won."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Every server option has three spellings, and they mean the same thing:
+
+| Spelling | Example |
+|---|---|
+| A flag | `--read-only` (a boolean flag alone means `true`), `--port 31337`, `--port=31337` |
+| An environment variable | `HARDCHARGER_READ_ONLY=true` (`HARDCHARGER_` and the name in capitals) |
+| A key in a YAML file | `read_only: true` (the flag without `--`, with `_` for `-`) |
+
+**A flag wins over an environment variable, which wins over the file**, which wins over the
+default. The file is `--config FILE` or `HARDCHARGER_CONFIG`. An unknown flag or YAML key is an
+error, and the server doesn't start: a typo never goes unnoticed. The
+[server configuration reference](/reference/configuration/) lists every option with all three
+spellings and its default.
+
+## A YAML file
+
+```yaml test file=hardcharger.yaml
+# hardcharger.yaml
+database: analytics.duckdb
+port: 31337
+health_port: 31338
+log_level: info
+print_queries: true
+memory_limit: 4GB
+session_idle_timeout: 1800
+init_sql_commands_file: init.sql
+cors_origins:            # lists are YAML sequences, or one comma-separated string
+  - https://app.example.com
+  - https://admin.example.com
+```
+
+`init_sql_commands_file` runs once at startup, after `init_sql_commands`; any failure stops the
+server. Use it to attach catalogs, create secrets and set DuckDB options:
+
+```sql test file=init.sql
+SET threads = 4;
+CREATE TABLE IF NOT EXISTS trips AS
+  SELECT * FROM (VALUES (1, 'Boston', 12.5), (2, 'Denver', 30.0)) t(id, city, miles);
+```
+
+Start the server with the file, and the password from the environment:
+
+```bash test server=self background
+HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --config hardcharger.yaml
+```
+
+## See what the server is running with
+
+`hardcharger_settings()` shows the settings you can read in SQL, with their current values:
+
+```console test server=none
+$ export HARDCHARGER_PASSWORD='change-me'
+$ hardcharger --host localhost --username hardcharger --csv --command \
+    "SELECT name, value FROM hardcharger_settings() WHERE name IN ('hardcharger.memory_limit', 'hardcharger.session_idle_timeout') ORDER BY name"
+name,value
+hardcharger.memory_limit,4GB
+hardcharger.session_idle_timeout,1800
+$ hardcharger --host localhost --username hardcharger --csv --command "SELECT count(*) AS trips FROM trips"
+trips
+2
+```
+
+At startup, the server also logs where each option it was given came from.
+
+## Override one value
+
+Flags and environment variables override the file, so one YAML file can serve several
+environments:
+
+```bash test server=self background stop
+HARDCHARGER_ADMIN_PASSWORD='change-me' HARDCHARGER_MEMORY_LIMIT=2GB hardcharger-server --config hardcharger.yaml
+```
+
+```console test server=none
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --csv --command \
+    "SELECT value FROM hardcharger_settings() WHERE name = 'hardcharger.memory_limit'"
+value
+2GB
+```
+
+## Secrets
+
+<Aside type="caution">
+Keep secrets out of flags: anyone who can list processes sees a command line. The server warns
+when `--admin-password` is given as a flag.
+</Aside>
+
+- `HARDCHARGER_ADMIN_PASSWORD` is required; the server doesn't start without it.
+- `HARDCHARGER_SECRET_KEY` signs access tokens. Without it, each start picks a random key, and
+  tokens die with the process. Set it, the same on every replica, for tokens that survive restarts.
+- In Kubernetes, put both in a Secret and reference it from the environment
+  ([guide](/guides/docker-and-kubernetes/)).
+
+## Settings you can change while running
+
+Some options are also SQL settings, which an administrator can change without a restart:
+
+```sql test server=none
+SET GLOBAL hardcharger.max_concurrent_statements = 8;   -- every session, now
+SET SESSION hardcharger.query_timeout = 60;             -- this session only
+RESET SESSION hardcharger.query_timeout;
+```
+
+The [SQL settings reference](/reference/sql/#settings) says which settings take which scope.
+Everything else is fixed at startup.

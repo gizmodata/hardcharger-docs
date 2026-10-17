@@ -1,0 +1,784 @@
+{
+  "config_file": {
+    "flag": "--config",
+    "env": "HARDCHARGER_CONFIG"
+  },
+  "precedence": [
+    "flag",
+    "env",
+    "file",
+    "default"
+  ],
+  "options": [
+    {
+      "name": "host",
+      "group": "Listener",
+      "flag": "--host",
+      "env": "HARDCHARGER_HOST",
+      "yaml_key": "host",
+      "type": "string",
+      "default": "0.0.0.0",
+      "description": "address to listen on"
+    },
+    {
+      "name": "port",
+      "group": "Listener",
+      "flag": "--port",
+      "env": "HARDCHARGER_PORT",
+      "yaml_key": "port",
+      "type": "integer",
+      "default": "31337",
+      "description": "port to listen on"
+    },
+    {
+      "name": "health_port",
+      "group": "Listener",
+      "flag": "--health-port",
+      "env": "HARDCHARGER_HEALTH_PORT",
+      "yaml_key": "health_port",
+      "type": "integer",
+      "default": "0",
+      "description": "plaintext port serving only /health (0: none)"
+    },
+    {
+      "name": "max_header_bytes",
+      "group": "Listener",
+      "flag": "--max-header-bytes",
+      "env": "HARDCHARGER_MAX_HEADER_BYTES",
+      "yaml_key": "max_header_bytes",
+      "type": "integer",
+      "default": "16384",
+      "description": "largest request header block accepted, in bytes (0: 16384)"
+    },
+    {
+      "name": "max_result_partitions",
+      "group": "Listener",
+      "flag": "--max-result-partitions",
+      "env": "HARDCHARGER_MAX_RESULT_PARTITIONS",
+      "yaml_key": "max_result_partitions",
+      "type": "integer",
+      "default": "32",
+      "description": "most partitions a result is split into for a client that reads them at once (1: never split)"
+    },
+    {
+      "name": "tls_cert",
+      "group": "TLS",
+      "flag": "--tls-cert",
+      "env": "HARDCHARGER_TLS_CERT",
+      "yaml_key": "tls_cert",
+      "type": "string",
+      "default": "",
+      "description": "TLS certificate chain (PEM)"
+    },
+    {
+      "name": "tls_key",
+      "group": "TLS",
+      "flag": "--tls-key",
+      "env": "HARDCHARGER_TLS_KEY",
+      "yaml_key": "tls_key",
+      "type": "string",
+      "default": "",
+      "description": "TLS private key (PEM)"
+    },
+    {
+      "name": "mtls_ca_cert",
+      "group": "TLS",
+      "flag": "--mtls-ca-cert",
+      "env": "HARDCHARGER_MTLS_CA_CERT",
+      "yaml_key": "mtls_ca_cert",
+      "type": "string",
+      "default": "",
+      "description": "CA (PEM) client certificates must chain to"
+    },
+    {
+      "name": "database",
+      "group": "Database",
+      "flag": "--database",
+      "env": "HARDCHARGER_DATABASE",
+      "yaml_key": "database",
+      "type": "string",
+      "default": ":memory:",
+      "description": "DuckDB database file, or :memory:"
+    },
+    {
+      "name": "read_only",
+      "group": "Database",
+      "flag": "--read-only",
+      "env": "HARDCHARGER_READ_ONLY",
+      "yaml_key": "read_only",
+      "type": "boolean",
+      "default": "false",
+      "description": "open the database read-only"
+    },
+    {
+      "name": "memory_limit",
+      "group": "Database",
+      "flag": "--memory-limit",
+      "env": "HARDCHARGER_MEMORY_LIMIT",
+      "yaml_key": "memory_limit",
+      "type": "string",
+      "default": "",
+      "description": "DuckDB memory_limit, e.g. 8GB"
+    },
+    {
+      "name": "storage_version",
+      "group": "Database",
+      "flag": "--storage-version",
+      "env": "HARDCHARGER_STORAGE_VERSION",
+      "yaml_key": "storage_version",
+      "type": "string",
+      "default": "",
+      "description": "DuckDB storage version for new databases"
+    },
+    {
+      "name": "allow_unsigned_extensions",
+      "group": "Database",
+      "flag": "--allow-unsigned-extensions",
+      "env": "HARDCHARGER_ALLOW_UNSIGNED_EXTENSIONS",
+      "yaml_key": "allow_unsigned_extensions",
+      "type": "boolean",
+      "default": "false",
+      "description": "let DuckDB load unsigned extensions"
+    },
+    {
+      "name": "init_sql_commands",
+      "group": "Database",
+      "flag": "--init-sql-commands",
+      "env": "HARDCHARGER_INIT_SQL_COMMANDS",
+      "yaml_key": "init_sql_commands",
+      "type": "string",
+      "default": "",
+      "description": "SQL run at startup (before the file)"
+    },
+    {
+      "name": "init_sql_commands_file",
+      "group": "Database",
+      "flag": "--init-sql-commands-file",
+      "env": "HARDCHARGER_INIT_SQL_COMMANDS_FILE",
+      "yaml_key": "init_sql_commands_file",
+      "type": "string",
+      "default": "",
+      "description": "SQL file run at startup"
+    },
+    {
+      "name": "result_batch_rows",
+      "group": "Database",
+      "flag": "--result-batch-rows",
+      "env": "HARDCHARGER_RESULT_BATCH_ROWS",
+      "yaml_key": "result_batch_rows",
+      "type": "integer",
+      "default": "122880",
+      "description": "most rows per Arrow batch in a result"
+    },
+    {
+      "name": "admin_username",
+      "group": "Authentication",
+      "flag": "--admin-username",
+      "env": "HARDCHARGER_ADMIN_USERNAME",
+      "yaml_key": "admin_username",
+      "type": "string",
+      "default": "hardcharger",
+      "description": "the administrator's user name"
+    },
+    {
+      "name": "admin_password",
+      "group": "Authentication",
+      "flag": "--admin-password",
+      "env": "HARDCHARGER_ADMIN_PASSWORD",
+      "yaml_key": "admin_password",
+      "type": "string",
+      "default": "",
+      "description": "the administrator's password (prefer the environment variable)"
+    },
+    {
+      "name": "secret_key",
+      "group": "Authentication",
+      "flag": "--secret-key",
+      "env": "HARDCHARGER_SECRET_KEY",
+      "yaml_key": "secret_key",
+      "type": "string",
+      "default": "",
+      "description": "key that signs access tokens; share it across replicas"
+    },
+    {
+      "name": "token_lifetime_seconds",
+      "group": "Authentication",
+      "flag": "--token-lifetime-seconds",
+      "env": "HARDCHARGER_TOKEN_LIFETIME_SECONDS",
+      "yaml_key": "token_lifetime_seconds",
+      "type": "integer",
+      "default": "86400",
+      "description": "access token lifetime"
+    },
+    {
+      "name": "allow_cross_instance_tokens",
+      "group": "Authentication",
+      "flag": "--allow-cross-instance-tokens",
+      "env": "HARDCHARGER_ALLOW_CROSS_INSTANCE_TOKENS",
+      "yaml_key": "allow_cross_instance_tokens",
+      "type": "boolean",
+      "default": "false",
+      "description": "accept tokens issued by other replicas"
+    },
+    {
+      "name": "token_signature_verify_cert_path",
+      "group": "Authentication",
+      "flag": "--token-signature-verify-cert-path",
+      "env": "HARDCHARGER_TOKEN_SIGNATURE_VERIFY_CERT_PATH",
+      "yaml_key": "token_signature_verify_cert_path",
+      "type": "string",
+      "default": "",
+      "description": "PEM key or certificate that verifies sign-in tokens"
+    },
+    {
+      "name": "token_allowed_issuer",
+      "group": "Authentication",
+      "flag": "--token-allowed-issuer",
+      "env": "HARDCHARGER_TOKEN_ALLOWED_ISSUER",
+      "yaml_key": "token_allowed_issuer",
+      "type": "string",
+      "default": "",
+      "description": "required issuer of sign-in tokens"
+    },
+    {
+      "name": "token_allowed_audience",
+      "group": "Authentication",
+      "flag": "--token-allowed-audience",
+      "env": "HARDCHARGER_TOKEN_ALLOWED_AUDIENCE",
+      "yaml_key": "token_allowed_audience",
+      "type": "string",
+      "default": "",
+      "description": "required audience of sign-in tokens"
+    },
+    {
+      "name": "token_default_role",
+      "group": "Authentication",
+      "flag": "--token-default-role",
+      "env": "HARDCHARGER_TOKEN_DEFAULT_ROLE",
+      "yaml_key": "token_default_role",
+      "type": "string",
+      "default": "",
+      "description": "role for sign-in tokens without one"
+    },
+    {
+      "name": "token_groups_claim",
+      "group": "Authentication",
+      "flag": "--token-groups-claim",
+      "env": "HARDCHARGER_TOKEN_GROUPS_CLAIM",
+      "yaml_key": "token_groups_claim",
+      "type": "string",
+      "default": "groups",
+      "description": "sign-in token claim listing the user's identity-provider groups"
+    },
+    {
+      "name": "token_authorized_emails",
+      "group": "Authentication",
+      "flag": "--token-authorized-emails",
+      "env": "HARDCHARGER_TOKEN_AUTHORIZED_EMAILS",
+      "yaml_key": "token_authorized_emails",
+      "type": "list",
+      "default": "*",
+      "description": "users a sign-in token may name (globs, case-insensitive; *: anyone)"
+    },
+    {
+      "name": "token_jwks_uri",
+      "group": "Authentication",
+      "flag": "--token-jwks-uri",
+      "env": "HARDCHARGER_TOKEN_JWKS_URI",
+      "yaml_key": "token_jwks_uri",
+      "type": "string",
+      "default": "",
+      "description": "JWKS of the identity provider whose ID tokens sign users in"
+    },
+    {
+      "name": "oauth_client_id",
+      "group": "Browser sign-in",
+      "flag": "--oauth-client-id",
+      "env": "HARDCHARGER_OAUTH_CLIENT_ID",
+      "yaml_key": "oauth_client_id",
+      "type": "string",
+      "default": "",
+      "description": "OAuth client id; set, the browser sign-in server runs"
+    },
+    {
+      "name": "oauth_client_secret",
+      "group": "Browser sign-in",
+      "flag": "--oauth-client-secret",
+      "env": "HARDCHARGER_OAUTH_CLIENT_SECRET",
+      "yaml_key": "oauth_client_secret",
+      "type": "string",
+      "default": "",
+      "description": "OAuth client secret"
+    },
+    {
+      "name": "oauth_scopes",
+      "group": "Browser sign-in",
+      "flag": "--oauth-scopes",
+      "env": "HARDCHARGER_OAUTH_SCOPES",
+      "yaml_key": "oauth_scopes",
+      "type": "string",
+      "default": "openid profile email",
+      "description": "OAuth scopes requested"
+    },
+    {
+      "name": "oauth_port",
+      "group": "Browser sign-in",
+      "flag": "--oauth-port",
+      "env": "HARDCHARGER_OAUTH_PORT",
+      "yaml_key": "oauth_port",
+      "type": "integer",
+      "default": "31339",
+      "description": "port of the browser sign-in server"
+    },
+    {
+      "name": "oauth_base_url",
+      "group": "Browser sign-in",
+      "flag": "--oauth-base-url",
+      "env": "HARDCHARGER_OAUTH_BASE_URL",
+      "yaml_key": "oauth_base_url",
+      "type": "string",
+      "default": "",
+      "description": "public URL of the browser sign-in server (default http(s)://localhost:<oauth_port>)"
+    },
+    {
+      "name": "oauth_redirect_uri",
+      "group": "Browser sign-in",
+      "flag": "--oauth-redirect-uri",
+      "env": "HARDCHARGER_OAUTH_REDIRECT_URI",
+      "yaml_key": "oauth_redirect_uri",
+      "type": "string",
+      "default": "",
+      "description": "redirect URI registered with the provider (default <base url>/oauth/callback)"
+    },
+    {
+      "name": "oauth_instance_id",
+      "group": "Browser sign-in",
+      "flag": "--oauth-instance-id",
+      "env": "HARDCHARGER_OAUTH_INSTANCE_ID",
+      "yaml_key": "oauth_instance_id",
+      "type": "string",
+      "default": "",
+      "description": "prefix of the OAuth state, for a shared callback proxy"
+    },
+    {
+      "name": "oauth_disable_tls",
+      "group": "Browser sign-in",
+      "flag": "--oauth-disable-tls",
+      "env": "HARDCHARGER_OAUTH_DISABLE_TLS",
+      "yaml_key": "oauth_disable_tls",
+      "type": "boolean",
+      "default": "false",
+      "description": "serve browser sign-in over plain HTTP even with TLS on (behind a TLS proxy)"
+    },
+    {
+      "name": "max_sessions",
+      "group": "Sessions",
+      "flag": "--max-sessions",
+      "env": "HARDCHARGER_MAX_SESSIONS",
+      "yaml_key": "max_sessions",
+      "type": "integer",
+      "default": "0",
+      "description": "most non-admin sessions at once (0: unlimited)"
+    },
+    {
+      "name": "session_idle_timeout",
+      "group": "Sessions",
+      "flag": "--session-idle-timeout",
+      "env": "HARDCHARGER_SESSION_IDLE_TIMEOUT",
+      "yaml_key": "session_idle_timeout",
+      "type": "integer",
+      "default": "900",
+      "description": "seconds an idle session lives (0: forever)"
+    },
+    {
+      "name": "query_timeout_seconds",
+      "group": "Statements",
+      "flag": "--query-timeout-seconds",
+      "env": "HARDCHARGER_QUERY_TIMEOUT_SECONDS",
+      "yaml_key": "query_timeout_seconds",
+      "type": "integer",
+      "default": "0",
+      "description": "default statement timeout (0: none)"
+    },
+    {
+      "name": "print_queries",
+      "group": "Statements",
+      "flag": "--print-queries",
+      "env": "HARDCHARGER_PRINT_QUERIES",
+      "yaml_key": "print_queries",
+      "type": "boolean",
+      "default": "true",
+      "description": "log every statement"
+    },
+    {
+      "name": "rbac_store_uri",
+      "group": "Access control",
+      "flag": "--rbac-store-uri",
+      "env": "HARDCHARGER_RBAC_STORE_URI",
+      "yaml_key": "rbac_store_uri",
+      "type": "string",
+      "default": "",
+      "description": "turn on role-based access control, with users, roles and grants kept in this PostgreSQL database (postgresql://user:password@host/db or 'host=... dbname=...'); every replica of a cluster names the same one"
+    },
+    {
+      "name": "rbac_opa_url",
+      "group": "Access control",
+      "flag": "--rbac-opa-url",
+      "env": "HARDCHARGER_RBAC_OPA_URL",
+      "yaml_key": "rbac_opa_url",
+      "type": "string",
+      "default": "",
+      "description": "also ask this Open Policy Agent decision URL about every store user's session and statement; only {\"result\": true} lets them run"
+    },
+    {
+      "name": "rbac_opa_timeout_ms",
+      "group": "Access control",
+      "flag": "--rbac-opa-timeout-ms",
+      "env": "HARDCHARGER_RBAC_OPA_TIMEOUT_MS",
+      "yaml_key": "rbac_opa_timeout_ms",
+      "type": "integer",
+      "default": "2000",
+      "description": "how long to wait for the policy service (no answer refuses)"
+    },
+    {
+      "name": "audit_chain_key",
+      "group": "Access control",
+      "flag": "--audit-chain-key",
+      "env": "HARDCHARGER_AUDIT_CHAIN_KEY",
+      "yaml_key": "audit_chain_key",
+      "type": "string",
+      "default": "",
+      "description": "key that seals access-control audit records into a tamper-evident chain (HMAC-SHA256; unset: SHA-256); --verify-audit-log FILE checks a JSON log"
+    },
+    {
+      "name": "max_concurrent_statements",
+      "group": "Statement queue",
+      "flag": "--max-concurrent-statements",
+      "env": "HARDCHARGER_MAX_CONCURRENT_STATEMENTS",
+      "yaml_key": "max_concurrent_statements",
+      "type": "integer",
+      "default": "0",
+      "description": "statements that run at once; more wait in a queue (0: no queue)"
+    },
+    {
+      "name": "max_queued_statements",
+      "group": "Statement queue",
+      "flag": "--max-queued-statements",
+      "env": "HARDCHARGER_MAX_QUEUED_STATEMENTS",
+      "yaml_key": "max_queued_statements",
+      "type": "integer",
+      "default": "-1",
+      "description": "statements that may wait (-1: 8 x concurrency; 0: unbounded)"
+    },
+    {
+      "name": "max_queue_wait",
+      "group": "Statement queue",
+      "flag": "--max-queue-wait",
+      "env": "HARDCHARGER_MAX_QUEUE_WAIT",
+      "yaml_key": "max_queue_wait",
+      "type": "integer",
+      "default": "-1",
+      "description": "seconds a statement may wait (-1: 300; 0: forever)"
+    },
+    {
+      "name": "admin_bypass_queue_default",
+      "group": "Statement queue",
+      "flag": "--admin-bypass-queue-default",
+      "env": "HARDCHARGER_ADMIN_BYPASS_QUEUE_DEFAULT",
+      "yaml_key": "admin_bypass_queue_default",
+      "type": "boolean",
+      "default": "true",
+      "description": "admin sessions skip the queue unless they SET hardcharger.bypass_queue = false"
+    },
+    {
+      "name": "block_sensitive_paths",
+      "group": "Guards",
+      "flag": "--block-sensitive-paths",
+      "env": "HARDCHARGER_BLOCK_SENSITIVE_PATHS",
+      "yaml_key": "block_sensitive_paths",
+      "type": "boolean",
+      "default": "true",
+      "description": "refuse SQL naming credential and system files"
+    },
+    {
+      "name": "sensitive_paths",
+      "group": "Guards",
+      "flag": "--sensitive-paths",
+      "env": "HARDCHARGER_SENSITIVE_PATHS",
+      "yaml_key": "sensitive_paths",
+      "type": "list",
+      "default": "",
+      "description": "more paths SQL may not name (comma-separated)"
+    },
+    {
+      "name": "block_unredacted_secrets",
+      "group": "Guards",
+      "flag": "--block-unredacted-secrets",
+      "env": "HARDCHARGER_BLOCK_UNREDACTED_SECRETS",
+      "yaml_key": "block_unredacted_secrets",
+      "type": "boolean",
+      "default": "true",
+      "description": "refuse SET allow_unredacted_secrets, even for admins"
+    },
+    {
+      "name": "cluster_id",
+      "group": "Cluster",
+      "flag": "--cluster-id",
+      "env": "HARDCHARGER_CLUSTER_ID",
+      "yaml_key": "cluster_id",
+      "type": "string",
+      "default": "",
+      "description": "UUID shared by the replicas of one cluster"
+    },
+    {
+      "name": "log_level",
+      "group": "Operations",
+      "flag": "--log-level",
+      "env": "HARDCHARGER_LOG_LEVEL",
+      "yaml_key": "log_level",
+      "type": "string",
+      "default": "info",
+      "description": "debug, info, warning or error"
+    },
+    {
+      "name": "log_format",
+      "group": "Operations",
+      "flag": "--log-format",
+      "env": "HARDCHARGER_LOG_FORMAT",
+      "yaml_key": "log_format",
+      "type": "string",
+      "default": "text",
+      "description": "text or json"
+    },
+    {
+      "name": "log_file",
+      "group": "Operations",
+      "flag": "--log-file",
+      "env": "HARDCHARGER_LOG_FILE",
+      "yaml_key": "log_file",
+      "type": "string",
+      "default": "",
+      "description": "log destination (empty: stderr; -: stdout)"
+    },
+    {
+      "name": "query_log_level",
+      "group": "Operations",
+      "flag": "--query-log-level",
+      "env": "HARDCHARGER_QUERY_LOG_LEVEL",
+      "yaml_key": "query_log_level",
+      "type": "string",
+      "default": "info",
+      "description": "level of statement log lines"
+    },
+    {
+      "name": "auth_log_level",
+      "group": "Operations",
+      "flag": "--auth-log-level",
+      "env": "HARDCHARGER_AUTH_LOG_LEVEL",
+      "yaml_key": "auth_log_level",
+      "type": "string",
+      "default": "info",
+      "description": "level of sign-in log lines"
+    },
+    {
+      "name": "session_log_level",
+      "group": "Operations",
+      "flag": "--session-log-level",
+      "env": "HARDCHARGER_SESSION_LOG_LEVEL",
+      "yaml_key": "session_log_level",
+      "type": "string",
+      "default": "info",
+      "description": "level of session log lines"
+    },
+    {
+      "name": "graceful_shutdown",
+      "group": "Operations",
+      "flag": "--graceful-shutdown",
+      "env": "HARDCHARGER_GRACEFUL_SHUTDOWN",
+      "yaml_key": "graceful_shutdown",
+      "type": "boolean",
+      "default": "true",
+      "description": "on the first stop signal, let running work finish (false: stop at once)"
+    },
+    {
+      "name": "shutdown_grace_period_seconds",
+      "group": "Operations",
+      "flag": "--shutdown-grace-period-seconds",
+      "env": "HARDCHARGER_SHUTDOWN_GRACE_PERIOD_SECONDS",
+      "yaml_key": "shutdown_grace_period_seconds",
+      "type": "integer",
+      "default": "300",
+      "description": "how long a graceful shutdown waits for running work (0: forever)"
+    },
+    {
+      "name": "health_check_query",
+      "group": "Operations",
+      "flag": "--health-check-query",
+      "env": "HARDCHARGER_HEALTH_CHECK_QUERY",
+      "yaml_key": "health_check_query",
+      "type": "string",
+      "default": "SELECT 1",
+      "description": "SQL the health check runs"
+    },
+    {
+      "name": "health_check_interval_seconds",
+      "group": "Operations",
+      "flag": "--health-check-interval-seconds",
+      "env": "HARDCHARGER_HEALTH_CHECK_INTERVAL_SECONDS",
+      "yaml_key": "health_check_interval_seconds",
+      "type": "integer",
+      "default": "5",
+      "description": "seconds between health checks"
+    },
+    {
+      "name": "health_check_staleness_seconds",
+      "group": "Operations",
+      "flag": "--health-check-staleness-seconds",
+      "env": "HARDCHARGER_HEALTH_CHECK_STALENESS_SECONDS",
+      "yaml_key": "health_check_staleness_seconds",
+      "type": "integer",
+      "default": "0",
+      "description": "age at which the last check no longer counts (0: 3 x interval)"
+    },
+    {
+      "name": "cors_origins",
+      "group": "Operations",
+      "flag": "--cors-origins",
+      "env": "HARDCHARGER_CORS_ORIGINS",
+      "yaml_key": "cors_origins",
+      "type": "list",
+      "default": "",
+      "description": "browser origins allowed to call the server"
+    },
+    {
+      "name": "enable_instrumentation",
+      "group": "Instrumentation",
+      "flag": "--enable-instrumentation",
+      "env": "HARDCHARGER_ENABLE_INSTRUMENTATION",
+      "yaml_key": "enable_instrumentation",
+      "type": "boolean",
+      "default": "false",
+      "description": "record sessions, statements and executions in SQL tables"
+    },
+    {
+      "name": "instrumentation_db_path",
+      "group": "Instrumentation",
+      "flag": "--instrumentation-db-path",
+      "env": "HARDCHARGER_INSTRUMENTATION_DB_PATH",
+      "yaml_key": "instrumentation_db_path",
+      "type": "string",
+      "default": "",
+      "description": "DuckDB file for the instrumentation tables (default: next to the database)"
+    },
+    {
+      "name": "instrumentation_catalog",
+      "group": "Instrumentation",
+      "flag": "--instrumentation-catalog",
+      "env": "HARDCHARGER_INSTRUMENTATION_CATALOG",
+      "yaml_key": "instrumentation_catalog",
+      "type": "string",
+      "default": "",
+      "description": "an attached catalog (DuckLake, PostgreSQL) for them instead"
+    },
+    {
+      "name": "instrumentation_schema",
+      "group": "Instrumentation",
+      "flag": "--instrumentation-schema",
+      "env": "HARDCHARGER_INSTRUMENTATION_SCHEMA",
+      "yaml_key": "instrumentation_schema",
+      "type": "string",
+      "default": "main",
+      "description": "schema for them in that catalog"
+    },
+    {
+      "name": "enable_catalog_logging",
+      "group": "Catalog logging",
+      "flag": "--enable-catalog-logging",
+      "env": "HARDCHARGER_ENABLE_CATALOG_LOGGING",
+      "yaml_key": "enable_catalog_logging",
+      "type": "boolean",
+      "default": "false",
+      "description": "also write every log line to a logs table"
+    },
+    {
+      "name": "log_catalog_db_path",
+      "group": "Catalog logging",
+      "flag": "--log-catalog-db-path",
+      "env": "HARDCHARGER_LOG_CATALOG_DB_PATH",
+      "yaml_key": "log_catalog_db_path",
+      "type": "string",
+      "default": "",
+      "description": "DuckDB file for the logs table (default: next to the database)"
+    },
+    {
+      "name": "log_catalog",
+      "group": "Catalog logging",
+      "flag": "--log-catalog",
+      "env": "HARDCHARGER_LOG_CATALOG",
+      "yaml_key": "log_catalog",
+      "type": "string",
+      "default": "",
+      "description": "an attached catalog (DuckLake, PostgreSQL) for it instead"
+    },
+    {
+      "name": "log_schema",
+      "group": "Catalog logging",
+      "flag": "--log-schema",
+      "env": "HARDCHARGER_LOG_SCHEMA",
+      "yaml_key": "log_schema",
+      "type": "string",
+      "default": "main",
+      "description": "schema for it in that catalog"
+    },
+    {
+      "name": "instance_tag",
+      "group": "Catalog logging",
+      "flag": "--instance-tag",
+      "env": "HARDCHARGER_INSTANCE_TAG",
+      "yaml_key": "instance_tag",
+      "type": "string",
+      "default": "",
+      "description": "JSON object recorded with this instance"
+    },
+    {
+      "name": "capture_query_profile",
+      "group": "Catalog logging",
+      "flag": "--capture-query-profile",
+      "env": "HARDCHARGER_CAPTURE_QUERY_PROFILE",
+      "yaml_key": "capture_query_profile",
+      "type": "string",
+      "default": "off",
+      "description": "record DuckDB's query profile with each execution: off, standard or detailed"
+    },
+    {
+      "name": "enable_metrics",
+      "group": "Metrics",
+      "flag": "--enable-metrics",
+      "env": "HARDCHARGER_ENABLE_METRICS",
+      "yaml_key": "enable_metrics",
+      "type": "boolean",
+      "default": "false",
+      "description": "collect runtime metrics and serve /metrics"
+    },
+    {
+      "name": "metrics_port",
+      "group": "Metrics",
+      "flag": "--metrics-port",
+      "env": "HARDCHARGER_METRICS_PORT",
+      "yaml_key": "metrics_port",
+      "type": "integer",
+      "default": "9091",
+      "description": "port serving /metrics (0: none)"
+    },
+    {
+      "name": "metrics_bind_address",
+      "group": "Metrics",
+      "flag": "--metrics-bind-address",
+      "env": "HARDCHARGER_METRICS_BIND_ADDRESS",
+      "yaml_key": "metrics_bind_address",
+      "type": "string",
+      "default": "0.0.0.0",
+      "description": "address /metrics listens on"
+    }
+  ]
+}

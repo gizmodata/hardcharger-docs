@@ -1,0 +1,131 @@
+---
+title: "Catalog access rules"
+description: "Give each sign-in token read, write or no access per catalog with a catalog_access claim, without an access-control store."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Without an access-control store, a sign-in token can carry **catalog access rules**: read,
+write or no access for each catalog, by name or glob. Hardcharger enforces them on every
+statement's plan, and also in what the user sees: `SHOW DATABASES`, `information_schema`,
+`duckdb_*()` functions and the drivers' metadata calls.
+
+This suits a platform that already decides who may use which data and mints tokens for its
+users. For users, roles and grants managed in SQL, use [access control](/guides/access-control/)
+instead: under access control the rules grant nothing.
+
+## The claim
+
+```json
+{
+  "role": "user",
+  "catalog_access": [
+    {"catalog": "sales", "access": "read"},
+    {"catalog": "scratch_*", "access": "write"},
+    {"catalog": "*", "access": "none"}
+  ]
+}
+```
+
+- `access` is `read`, `write` (which includes read) or `none`.
+- `catalog` is a name or a glob (`*`, `?`, case-sensitive).
+- **The first matching rule wins, and a catalog no rule matches gets no access.** End with a
+  catch-all rule to make that explicit.
+- `system` and `_hardcharger_system` stay readable; `temp` follows the rules like any catalog.
+- A token **without** the claim keeps full access for its role.
+- A malformed rule counts as `none`.
+
+## Try it
+
+Make a signing key, and a server that trusts it and has two catalogs:
+
+```bash test server=none
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out signing.key
+openssl pkey -in signing.key -pubout -out signing.pub
+cat > init.sql <<'SQL'
+ATTACH ':memory:' AS sales;
+ATTACH ':memory:' AS hr;
+CREATE TABLE sales.orders AS SELECT 1 AS id, 99.5 AS amount;
+CREATE TABLE hr.salaries AS SELECT 'ann' AS name, 100000 AS salary;
+SQL
+```
+
+```bash test server=self background
+HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --health-port 31338 \
+  --init-sql-commands-file init.sql \
+  --token-signature-verify-cert-path signing.pub \
+  --token-allowed-issuer https://issuer.example.com --token-allowed-audience hardcharger
+```
+
+Your platform mints the tokens. For this guide, a script that signs one with the key, for a
+role and a list of rules:
+
+```python test server=none file=mint.py
+"""python3 mint.py ROLE RULES_JSON: print a sign-in token for ann@example.com."""
+import json
+import sys
+import time
+
+import jwt
+
+now = int(time.time())
+claims = {"iss": "https://issuer.example.com", "aud": "hardcharger", "sub": "ann@example.com",
+          "role": sys.argv[1], "catalog_access": json.loads(sys.argv[2]), "iat": now, "exp": now + 3600}
+print(jwt.encode(payload=claims, key=open("signing.key").read(), algorithm="RS256"))
+```
+
+A token that may read `sales` and nothing else:
+
+```bash test server=none
+python3 mint.py user '[{"catalog": "sales", "access": "read"}, {"catalog": "*", "access": "none"}]' > token.txt
+```
+
+Sign in with it as the password of the user `token`:
+
+```console test server=none
+$ export HARDCHARGER_PASSWORD="$(cat token.txt)"
+$ hardcharger --host localhost --username token --csv --command "SELECT * FROM sales.orders"
+id,amount
+1,99.5
+$ hardcharger --host localhost --username token --csv --command "SELECT database_name FROM duckdb_databases() WHERE NOT internal ORDER BY 1"
+database_name
+_hardcharger_system
+sales
+$ hardcharger --host localhost --username token --command "INSERT INTO sales.orders VALUES (2, 10)" 2>&1 | grep -o "Access denied: You do not have write access to catalog 'sales'"
+Access denied: You do not have write access to catalog 'sales'
+$ hardcharger --host localhost --username token --command "SELECT * FROM hr.salaries" > /dev/null 2>&1 || echo "refused"
+refused
+```
+
+`hr` is invisible to this user: errors and metadata say about it what they would say about a
+catalog that doesn't exist.
+
+## Roles still apply
+
+The token's `role` limits what kind of statement runs, and the rules limit where:
+
+| Role | Can |
+|---|---|
+| `admin` | Everything. The rules don't restrict an administrator's token. |
+| `user` | Read and write data where the rules allow; no file-system or instance-level commands. |
+| `readonly` | Read where the rules allow; nothing that modifies state. |
+
+Rules don't restrict an `admin` token: an administrator's token whose rules name only `sales`
+still reads `hr`. Don't mint `admin` tokens for users you want to confine.
+
+```console test server=none
+$ python3 mint.py admin '[{"catalog": "sales", "access": "write"}]' > admin-token.txt
+$ HARDCHARGER_PASSWORD="$(cat admin-token.txt)" hardcharger --host localhost --username token \
+    --csv --command "SELECT * FROM hr.salaries"
+name,salary
+ann,100000
+```
+
+A token without `role` gets [`token_default_role`](/reference/configuration/#token_default_role);
+without that, it is refused.
+
+<Aside type="caution">
+Catalog rules are as strong as the tokens that carry them: anyone who can mint a token the
+server trusts decides the rules. Keep the signing key (or the identity provider's client
+configuration) as safe as the data.
+</Aside>

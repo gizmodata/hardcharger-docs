@@ -1,0 +1,161 @@
+---
+title: "Row policies, masking, tenants and scoped tokens"
+description: "Filter rows per user or role, mask column values, keep tenants apart, mint narrowed short-lived tokens, and ask Open Policy Agent, all with Hardcharger's access control."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+These features build on [access control](/guides/access-control/): turn it on with
+`rbac_store_uri` first. Only the administrator creates, changes and drops policies.
+
+## Row policies
+
+A row policy adds a predicate to every read of a table. Set up a table and two users with
+different attributes:
+
+```sql test profile=rbac
+CREATE TABLE emp AS SELECT * FROM (VALUES
+  (1, 'Ann', 'EU',   'ann@example.com', '111-11-1111'),
+  (2, 'Bob', 'US',   'bob@example.com', '222-22-2222'),
+  (3, 'Cho', 'APAC', 'cho@example.com', '333-33-3333')) t(id, name, region, email, ssn);
+CREATE ROLE staff;
+GRANT SELECT ON emp TO staff;
+CREATE USER ann WITH PASSWORD 'ann-secret';
+CREATE USER bob WITH PASSWORD 'bob-secret';
+GRANT staff TO ann;
+GRANT staff TO bob;
+ALTER USER ann SET ATTRIBUTE region = 'EU';
+ALTER USER bob SET ATTRIBUTE region = 'US';
+```
+
+Now each member of `staff` sees only their region's rows:
+
+```sql test profile=rbac
+CREATE ROW POLICY region_rows ON emp TO staff USING (region = session_attribute('region'));
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='ann-secret' hardcharger --host localhost --username ann --csv --command "SELECT id, name, region FROM emp"
+id,name,region
+1,Ann,EU
+$ HARDCHARGER_PASSWORD='bob-secret' hardcharger --host localhost --username bob --csv --command "SELECT id, name, region FROM emp"
+id,name,region
+2,Bob,US
+```
+
+```sql
+CREATE [OR REPLACE] ROW POLICY name ON table [AS PERMISSIVE | RESTRICTIVE] [TO role, …] USING (predicate)
+DROP ROW POLICY [IF EXISTS] name ON table
+SHOW ROW POLICIES [ON table]
+```
+
+- **Permissive** policies (the default) are combined with `OR`: a row is visible if any of them
+  lets it through. **Restrictive** ones are combined with `AND` on top. A table with only
+  restrictive policies shows nothing.
+- `TO role` limits a policy to members of those roles; without it, it applies to everyone but the
+  administrator.
+- A predicate may use the row's columns, constants, and `current_user`, `session_user`,
+  `hardcharger_user()`, `is_role_active('role')` and `session_attribute('key')`. Subqueries,
+  window functions, parameters, `getvariable`, `current_setting`, `query`, `current_role` and
+  sequence functions are refused, so a policy can't be steered by what a session sets.
+- A table with row or masking policies is read-only for users the policies apply to.
+
+```sql test profile=rbac
+CREATE ROW POLICY not_apac ON emp AS RESTRICTIVE USING (region <> 'APAC');
+```
+
+## Masking policies
+
+A masking policy is a function applied to a column's values on the way out. Roles can be
+exempt:
+
+```sql test profile=rbac
+CREATE ROLE hr;
+CREATE MASKING POLICY email_mask AS (val VARCHAR) RETURNS VARCHAR ->
+  CASE WHEN is_role_active('hr') THEN val ELSE regexp_replace(val, '.+@', '****@') END;
+ALTER TABLE emp MODIFY COLUMN email SET MASKING POLICY email_mask;
+CREATE MASKING POLICY hide AS (val VARCHAR) RETURNS VARCHAR -> '***-**-****';
+ALTER TABLE emp MODIFY COLUMN ssn SET MASKING POLICY hide EXEMPT ROLE hr;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='ann-secret' hardcharger --host localhost --username ann --csv --command "SELECT name, email, ssn FROM emp"
+name,email,ssn
+Ann,****@example.com,***-**-****
+```
+
+```sql
+CREATE [OR REPLACE] MASKING POLICY name AS (param TYPE) RETURNS TYPE -> expression
+DROP MASKING POLICY [IF EXISTS] name
+ALTER TABLE t MODIFY [COLUMN] c SET MASKING POLICY name [EXEMPT ROLE role, …]
+ALTER TABLE t MODIFY [COLUMN] c UNSET MASKING POLICY
+SHOW MASKING POLICIES
+```
+
+Masking applies wherever the column's value would leave: in results, in views built on the table,
+and in expressions (`lower(email)` is computed on the masked value).
+
+## Tenants
+
+A tenant is a group of users and roles, and the catalogs they own, kept apart from everyone
+else's. A tenant's user is told about other tenants' objects exactly what it would be told about
+missing ones: in errors, metadata, `DESCRIBE` and `SHOW`.
+
+```sql
+CREATE TENANT acme;
+ALTER CATALOG acme_db SET TENANT acme;           -- an attached catalog belongs to the tenant
+ALTER TENANT acme SET DEFAULT CATALOG acme_db;   -- where its sessions start
+CREATE USER acme/boss WITH PASSWORD '…';         -- tenant principals are tenant/name
+GRANT acme/tenant_admin TO acme/boss;            -- created with the tenant, with acme/PUBLIC
+SHOW TENANTS;
+```
+
+A tenant's `tenant_admin` manages users, roles and grants inside the tenant. Tenant roles can't
+hold system privileges.
+
+## Scoped tokens
+
+A scoped token is a bearer token for a subset of one user's rights, for a limited time: hand it
+to a job or a dashboard instead of a password.
+
+```sql test profile=rbac
+CREATE SCOPED TOKEN nightly_report FOR USER ann ALLOW SELECT VALID FOR '8 hours';
+```
+
+The statement returns the token once, in its `token` column; it isn't stored, only its hash.
+Use it as a bearer token, or as the password of the user `token`:
+
+```bash
+HARDCHARGER_PASSWORD="$SCOPED_TOKEN" hardcharger --host db.example.com --username token
+```
+
+```sql
+CREATE SCOPED TOKEN name [FOR USER u] ALLOW SELECT[, INSERT, UPDATE, DELETE] [ON CATALOG c, …] [VALID FOR '8 hours']
+DROP SCOPED TOKEN name [FOR USER u]     -- revokes it at once, on every replica
+SHOW SCOPED TOKENS
+```
+
+A token lasts an hour unless you say otherwise, and at most 30 days. The administrator must name
+the user; a user may mint tokens only for themselves.
+
+## Open Policy Agent
+
+To have an external policy decide too, set [`rbac_opa_url`](/reference/configuration/#rbac_opa_url)
+to an OPA decision URL. Hardcharger sends `POST` with `{"input": …}` for every store user's
+session (`"action": "connect"`) and statement (`"action": "statement"`, with the objects it
+reads or writes) and lets it run only on `{"result": true}`:
+
+```json
+{"input": {"action": "statement", "user": "ann", "roles": ["staff"], "active_role": "",
+           "tenant": "", "scoped_token": "", "identity_provider_groups": [],
+           "objects": [{"catalog": "my", "schema": "main", "name": "emp", "type": "table",
+                        "privilege": "SELECT", "columns": ["id"], "through_view": ""}]}}
+```
+
+Any other answer, an error, or no answer within [`rbac_opa_timeout_ms`](/reference/configuration/#rbac_opa_timeout_ms)
+(2 seconds) refuses. OPA can only take away: grants must still allow the statement. The
+administrator is never sent to OPA.
+
+<Aside type="caution">
+A slow policy service slows every statement. Run OPA next to the server, and watch its latency.
+</Aside>

@@ -1,0 +1,54 @@
+---
+// Starlight's footer (edit link, last updated, pagination), then "Built by GizmoData"
+// with the hex logo, as at the bottom of every README.
+import Default from '@astrojs/starlight/components/Footer.astro';
+import { Image } from 'astro:assets';
+import logo from '../assets/gizmodata-logo.png';
+---
+
+<Default><slot /></Default>
+<div class="hc-footer">
+	<a href="https://gizmodata.com" class="hc-footer-logo" aria-label="GizmoData">
+		<Image src={logo} alt="GizmoData" width={48} height={51} />
+	</a>
+	<p>Built by <a href="https://gizmodata.com">GizmoData</a></p>
+	<p class="hc-footer-small">
+		Hardcharger is Apache 2.0 licensed. Apache Arrow and DuckDB are trademarks of their owners.
+	</p>
+</div>
+
+<style>
+	.hc-footer {
+		margin-top: 3rem;
+		padding-top: 1.5rem;
+		text-align: center;
+		border-top: 1px solid var(--sl-color-hairline);
+		position: relative;
+	}
+	.hc-footer::before {
+		content: '';
+		position: absolute;
+		top: -1px;
+		left: 50%;
+		width: 8rem;
+		height: 2px;
+		transform: translateX(-50%);
+		background: var(--hc-gradient);
+	}
+	.hc-footer p {
+		margin: 0.35rem 0 0;
+		font-size: var(--sl-text-sm);
+		color: var(--sl-color-gray-3);
+	}
+	.hc-footer a {
+		color: var(--hc-link);
+	}
+	.hc-footer-small {
+		font-size: var(--sl-text-xs) !important;
+	}
+	.hc-footer-logo img {
+		display: inline-block;
+		height: 48px;
+		width: auto;
+	}
+</style>

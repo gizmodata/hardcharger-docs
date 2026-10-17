@@ -1,0 +1,162 @@
+---
+title: "Java (JDBC) and DBeaver"
+description: "Connect to Hardcharger from Java, DBeaver and other JDBC tools with hardcharger-jdbc - one jar for Java 17+, jdbc:hardcharger:// URLs, TLS, partitioned reads."
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+import HeroBanner from '../../../components/HeroBanner.astro';
+import banner from '../../../assets/banners/hardcharger-jdbc-banner.svg';
+
+<HeroBanner src={banner} alt="Hardcharger JDBC: the JDBC driver for Hardcharger, on Warp SQL" href="https://github.com/gizmodata/hardcharger-jdbc" />
+
+`hardcharger-jdbc` is a JDBC 4.2 driver: one jar for Java 17 and later, with no gRPC, Netty or
+protobuf, and no `--add-opens` or other JVM options. It accepts `jdbc:hardcharger://` URLs and
+is a thin layer on the Warp SQL JDBC driver, which streams results batch by batch.
+
+<Aside type="caution" title="Private preview">
+The jar isn't on Maven Central yet. Build it from
+[gizmodata/hardcharger-jdbc](https://github.com/gizmodata/hardcharger-jdbc)
+(`git clone --recurse-submodules`, then `mvn package`): `target/hardcharger-jdbc.jar` is the
+standalone jar, with every dependency inside.
+</Aside>
+
+## Connect
+
+```
+jdbc:hardcharger://host[:port][/catalog][?key=value&...]
+```
+
+The port defaults to 31337, and TLS is on unless `useEncryption=false`. Options can also follow
+semicolons or come in the `Properties`; keys are case-insensitive.
+
+```java test
+Properties properties = new Properties();
+properties.setProperty("user", "hardcharger");
+properties.setProperty("password", "change-me");
+properties.setProperty("useEncryption", "false"); // plain HTTP on localhost
+try (Connection connection = DriverManager.getConnection("jdbc:hardcharger://localhost", properties)) {
+  DatabaseMetaData meta = connection.getMetaData();
+  System.out.println(meta.getDatabaseProductName() + " / " + meta.getDriverName());
+
+  try (Statement statement = connection.createStatement()) {
+    statement.execute("CREATE TABLE trips (id INTEGER, city VARCHAR, miles DECIMAL(5, 1))");
+  }
+  try (PreparedStatement insert = connection.prepareStatement("INSERT INTO trips VALUES (?, ?, ?)")) {
+    String[] cities = {"Boston", "Denver", "Austin"};
+    double[] miles = {12.5, 30.0, 8.5};
+    for (int i = 0; i < cities.length; i++) {
+      insert.setInt(1, i + 1);
+      insert.setString(2, cities[i]);
+      insert.setBigDecimal(3, java.math.BigDecimal.valueOf(miles[i]));
+      insert.addBatch();
+    }
+    insert.executeBatch(); // one request for the whole batch
+  }
+  try (PreparedStatement query = connection.prepareStatement("SELECT city, miles FROM trips WHERE miles > ? ORDER BY miles DESC")) {
+    query.setBigDecimal(1, new java.math.BigDecimal("10"));
+    try (ResultSet rows = query.executeQuery()) {
+      while (rows.next()) {
+        System.out.println(rows.getString("city") + " " + rows.getBigDecimal("miles"));
+      }
+    }
+  }
+}
+```
+
+```text output
+Hardcharger / Hardcharger JDBC Driver
+Denver 30.0
+Boston 12.5
+```
+
+## Properties
+
+| Property | Default | Meaning |
+|---|---|---|
+| `user`, `password` | | Password sign-in; any character is allowed in the password |
+| `token` | | A Hardcharger access token to send as is |
+| `subjectToken` | | An identity provider's token for the `token_exchange` grant ([SSO](/guides/sso/)) |
+| `catalog`, `schema` | server's | The session's starting catalog (also the URL path) and schema |
+| `useEncryption` | `true` | `false` for plain HTTP |
+| `tlsRootCerts` | | PEM file of CA certificates to trust |
+| `trustStore`, `trustStorePassword` | | JKS or PKCS#12 trust store |
+| `useSystemTrustStore` | `true` | Trust the JDK's CAs (and the macOS keychain's or Windows' where the JDK reads them) |
+| `clientCertificate`, `clientKey` | | Mutual TLS: PEM certificate and unencrypted key (PKCS#8, PKCS#1 RSA or SEC1 EC) |
+| `disableCertificateVerification` | `false` | Accept any certificate. Development only. |
+| `connectTimeout` | `30000` | Milliseconds to connect |
+| `networkTimeout` | `0` | Milliseconds to wait for each response's headers |
+| `async` | `false` | Submit, long-poll, fetch: for long queries behind proxies |
+| `retainResults` | server's | `true` keeps results on the server, so a broken download resumes |
+| `ipcCompression` | `none` | `zstd` |
+| `resultPartitions` | `1` | Read a large result over up to n connections at once ([partitions](/concepts/warp-sql/#partitioned-results)) |
+| `resultOrder` | `preserve` | `any`: rows in arrival order |
+| `resultBufferSize` | `134217728` | Bytes an unread result may buffer when another statement needs its session |
+
+Per statement: `statement.unwrap(com.gizmodata.warpsql.jdbc.WarpStatement.class).setResultPartitions(8)`.
+
+## How statements run
+
+- Results stream batch by batch; nothing loads a whole result into memory.
+- `setQueryTimeout` becomes a server-side timeout, and `cancel()` cancels on the server.
+- Closing a `ResultSet` early stops the query on the server.
+- Run one statement's result to its end before the next statement on the same connection, or the
+  driver buffers the unread rest (up to `resultBufferSize`).
+- Prepared statements are prepared on the server; parameters travel as Arrow, so decimals,
+  timestamps and binaries are exact. `executeBatch()` sends the whole batch in one request.
+- If the server loses the session (idle eviction, restart), the driver opens a new one, replays
+  catalog, schema and autocommit, re-prepares prepared statements, and warns. Inside a
+  transaction the statement fails with SQLSTATE `08007` instead.
+
+Not supported: generated keys (use `INSERT ... RETURNING`), savepoints, stored procedures,
+scrollable or updatable result sets, and bulk ingest (use `executeBatch()`, or
+[Python or HTTP](/guides/bulk-ingest/)).
+
+## Errors
+
+Server errors become the `SQLException` subclass their SQLSTATE calls for, with the HTTP status as
+the vendor code. `com.gizmodata.warpsql.jdbc.WarpProblem.codeOf(e)` returns the server's stable
+code (`sql_error`, `statement_timeout`, ...).
+
+```java test
+Properties properties = new Properties();
+properties.setProperty("user", "hardcharger");
+properties.setProperty("password", "change-me");
+properties.setProperty("useEncryption", "false");
+try (Connection connection = DriverManager.getConnection("jdbc:hardcharger://localhost", properties);
+     Statement statement = connection.createStatement()) {
+  statement.executeQuery("SELECT * FROM no_such_table");
+} catch (SQLException e) {
+  System.out.println(e.getSQLState() + " " + com.gizmodata.warpsql.jdbc.WarpProblem.codeOf(e));
+}
+```
+
+```text output
+42P01 sql_error
+```
+
+## DBeaver
+
+<Steps>
+
+1. **Database > Driver Manager > New.**
+2. On **Settings**: driver name `Hardcharger`; class name
+   `com.gizmodata.hardcharger.jdbc.HardchargerDriver`; URL template
+   `jdbc:hardcharger://{host}[:{port}][/{database}]`; default port `31337`.
+3. On **Libraries**: **Add File**, pick `hardcharger-jdbc.jar`, then **Find Class**: it shows
+   `com.gizmodata.hardcharger.jdbc.HardchargerDriver`. Click **OK**.
+4. **Database > New Database Connection**, choose **Hardcharger**, and enter the host, port, user
+   and password.
+5. On **Driver properties**: `useEncryption` = `false` for a server without TLS, or
+   `tlsRootCerts` for a private CA.
+6. **Test Connection**, then **Finish**.
+
+</Steps>
+
+No JVM options are needed. Keep DBeaver's default of a separate connection for metadata reads.
+Other JDBC tools (IntelliJ, DbVisualizer, SQuirreL, BI tools) take the same jar, class name and
+URL.
+
+<Aside type="note">
+On JDK 24 and later the JVM prints a one-time warning about `sun.misc.Unsafe`, which Arrow uses;
+`--sun-misc-unsafe-memory-access=allow` silences it.
+</Aside>

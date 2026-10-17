@@ -1,0 +1,118 @@
+---
+title: "JavaScript"
+description: "Query Hardcharger from Node.js and the browser over Warp SQL with fetch and apache-arrow, while the JavaScript client library is in preview."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import HeroBanner from '../../../components/HeroBanner.astro';
+import banner from '../../../assets/banners/hardcharger-js-banner.svg';
+
+<HeroBanner src={banner} alt="Hardcharger from JavaScript, by GizmoData" />
+
+<Aside type="caution" title="Preview">
+A JavaScript client library for Warp SQL (`gizmodata/warp-sql-js`) is being built. Until it is
+released, Warp SQL's plain HTTP is enough: `fetch` and the
+[`apache-arrow`](https://www.npmjs.com/package/apache-arrow) package do everything below. This page
+will document the library when it ships.
+</Aside>
+
+## Node.js
+
+Node.js 22 or newer has `fetch`. Install Arrow:
+
+```bash
+npm install apache-arrow
+```
+
+A small helper that signs in, opens a session, and runs queries with bind parameters, turning
+Warp SQL's problem documents into exceptions:
+
+```js test file=warp.mjs server=none
+// warp.mjs: a minimal Warp SQL client for Hardcharger (fetch + apache-arrow).
+import { tableFromIPC } from 'apache-arrow';
+
+export async function connect({ url, username, password }) {
+  const base = `${url}/warp/v1`;
+  const call = async (path, init = {}) => {
+    const response = await fetch(`${base}${path}`, init);
+    const type = response.headers.get('content-type') ?? '';
+    if (!response.ok) {
+      const problem = type.includes('json') ? await response.json() : { detail: await response.text() };
+      throw Object.assign(new Error(`${problem.code ?? response.status}: ${problem.detail}`), { problem });
+    }
+    return response;
+  };
+  const json = { 'Content-Type': 'application/json' };
+  const { access_token } = await (await call('/auth/token', {
+    method: 'POST', headers: json, body: JSON.stringify({ grant_type: 'password', username, password }),
+  })).json();
+  const auth = { ...json, Authorization: `Bearer ${access_token}` };
+  const { session_id } = await (await call('/sessions', { method: 'POST', headers: auth, body: '{}' })).json();
+
+  return {
+    // Rows come back as an Arrow table; statements without rows as their statement document.
+    async query(sql, parameters = []) {
+      const response = await call(`/sessions/${session_id}/statements`, {
+        method: 'POST',
+        headers: { ...auth, Accept: 'application/vnd.apache.arrow.stream', 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify({ sql, parameters }),
+      });
+      if ((response.headers.get('content-type') ?? '').includes('arrow')) {
+        return tableFromIPC(new Uint8Array(await response.arrayBuffer()));
+      }
+      return response.json();
+    },
+    async close() {
+      await call(`/sessions/${session_id}`, { method: 'DELETE', headers: auth });
+    },
+  };
+}
+```
+
+```js test
+import { connect } from './warp.mjs';
+
+const db = await connect({ url: 'http://localhost:31337', username: 'hardcharger', password: 'change-me' });
+const created = await db.query("CREATE TABLE cities AS SELECT * FROM (VALUES ('Tokyo', 37.4::DOUBLE), ('Delhi', 28.5)) t(name, millions)");
+console.log(created.state);
+const table = await db.query('SELECT name, millions FROM cities WHERE millions > ? ORDER BY millions DESC', [30]);
+console.log(table.numRows, table.get(0).toJSON());
+try {
+  await db.query('SELECT * FROM no_such_table');
+} catch (e) {
+  console.log(e.problem.code, e.problem.sqlstate);
+}
+await db.close();
+```
+
+```text output
+succeeded
+1 { name: 'Tokyo', millions: 37.4 }
+sql_error 42P01
+```
+
+`tableFromIPC` reads the whole response; for very large results, read `response.body` with
+Arrow's `RecordBatchReader.from()` to stream batches as they arrive.
+
+## In the browser
+
+The same code runs in a browser page. The server must allow your page's origin with
+[`cors_origins`](/reference/configuration/#cors_origins): it is an explicit list, off by default,
+and never `*`:
+
+```console test profile=cors
+$ curl -s -o /dev/null -D - -X OPTIONS localhost:31337/warp/v1/auth/token \
+    -H 'Origin: https://app.example.com' -H 'Access-Control-Request-Method: POST' \
+    | grep -i '^access-control-allow-origin' | tr -d '\r'
+Access-Control-Allow-Origin: https://app.example.com
+$ curl -s -o /dev/null -D - -X OPTIONS localhost:31337/warp/v1/auth/token \
+    -H 'Origin: https://elsewhere.example.com' -H 'Access-Control-Request-Method: POST' \
+    | grep -i '^access-control-allow-origin' || echo "no CORS headers: the browser refuses"
+no CORS headers: the browser refuses
+```
+
+- Credentials are bearer tokens in a header, never cookies, so cross-site request forgery has
+  nothing to ride on. Keep the token in memory, not in `localStorage`.
+- Serve the page and Hardcharger over HTTPS: browsers block mixed content.
+- For people signing in with your identity provider, get an ID token in the page (your provider's
+  SDK) and exchange it with `grant_type: "token_exchange"` ([SSO](/guides/sso/)).

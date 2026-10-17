@@ -1,0 +1,207 @@
+---
+title: "Python (ADBC)"
+description: "Connect to Hardcharger from Python with adbc-driver-hardcharger - DB-API 2.0 with Arrow results, bind parameters, bulk ingest, partitioned and asynchronous reads, TLS, tags, settings and SSO."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import HeroBanner from '../../../components/HeroBanner.astro';
+import banner from '../../../assets/banners/hardcharger-adbc-banner.svg';
+
+<HeroBanner src={banner} alt="Hardcharger ADBC: the Python driver for Hardcharger, on Warp SQL" href="https://github.com/gizmodata/hardcharger-adbc" />
+
+`adbc-driver-hardcharger` is Hardcharger's Python driver: a [DB-API 2.0](https://peps.python.org/pep-0249/)
+module whose results are Arrow tables. It is a thin layer on the Warp SQL ADBC driver (written in
+Go), which does the work: Arrow streaming, bind parameters, bulk ingest, partitioned results,
+cancel, retries and TLS. The Hardcharger layer adds `hardcharger://` URIs, query and session
+tags, `hardcharger.*` settings and browser sign-in.
+
+## Install
+
+```bash
+pip install adbc-driver-hardcharger
+```
+
+<Aside type="caution" title="Private preview">
+The driver isn't on PyPI yet. Until it is, build it from
+[gizmodata/hardcharger-adbc](https://github.com/gizmodata/hardcharger-adbc) (Go 1.27 and, on
+Linux, zig): `git clone --recurse-submodules`, then `scripts/build_warpsql_wheel.sh` and
+`uv pip install --override build/overrides.txt ./python`. The repository's README has the details.
+</Aside>
+
+Python 3.10 or newer. It brings `pyarrow` and `adbc-driver-manager`.
+
+## Connect and query
+
+```python test
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+with hardcharger.connect(uri="hardcharger://localhost?tls=false",
+                         username="hardcharger", password="change-me") as conn:
+    with conn.cursor() as cur:
+        cur.execute(operation="CREATE TABLE trips AS SELECT * FROM (VALUES (1, 'Boston', 12.5), (2, 'Denver', 30.0)) t(id, city, miles)")
+        cur.execute(operation="SELECT city, miles FROM trips WHERE miles > ? ORDER BY miles", parameters=[10])
+        table = cur.fetch_arrow_table()          # a pyarrow.Table
+        print(table.to_pylist())
+        cur.execute(operation="SELECT count(*) FROM trips")
+        print(cur.fetchone())                    # DB-API tuples work too
+```
+
+```text output
+[{'city': 'Boston', 'miles': Decimal('12.5')}, {'city': 'Denver', 'miles': Decimal('30.0')}]
+(2,)
+```
+
+- `fetch_arrow_table()` reads the whole result as Arrow; `fetch_record_batch()` returns a
+  `RecordBatchReader` that streams it; `fetchone()`, `fetchmany()` and `fetchall()` give tuples.
+- Parameters are positional (`?`), sent as values, never spliced into the SQL.
+- `executemany()` runs a statement once per parameter row, in one request.
+- Connections are in autocommit mode by default; `connect(autocommit=False)` starts a transaction
+  that `conn.commit()` or `conn.rollback()` ends.
+
+## URIs
+
+| URI | Means |
+|---|---|
+| `hardcharger://host` | HTTPS to `host:31337` |
+| `hardcharger://host:port` | HTTPS to another port |
+| `hardcharger://host?tls=false` | Plain HTTP (your own machine) |
+| `hardcharger://host:port/custom/prefix` | The protocol is mounted under `/custom/prefix` |
+| `warp://…`, `https://…`, `http://…` | The Warp SQL driver's own spellings |
+
+Credentials never go in the URI. `connect()` also takes `catalog=` and `db_schema=` for the
+session's starting point.
+
+## TLS
+
+```python
+hardcharger.connect(uri="hardcharger://db.example.com", username="joe", password="…",
+                    tls_root_certs="ca.crt",            # a private CA (a path or PEM text)
+                    tls_client_cert="client.crt",       # mutual TLS
+                    tls_client_key="client.key")
+```
+
+The [TLS guide](/guides/tls/) runs these against a real server. `tls_skip_verify=True` is for
+your own machine only.
+
+## Tags and settings
+
+```python test
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger", password="change-me",
+                         session_tag={"app": "nightly-etl"}, query_tag={"job": "load-orders"},
+                         settings={"query_timeout": 600}) as conn:
+    print(conn.current_user(), conn.server_version())
+    print(conn.get_setting(name="query_timeout"))
+    conn.set_setting(name="query_timeout", value=60)
+    print(conn.get_setting(name="query_timeout"))
+    conn.reset_setting(name="query_timeout")
+    conn.set_query_tag(tag={"job": "refresh-rollups"})    # every later statement
+    conn.set_query_tag(tag=None)                            # no tag
+```
+
+```text output
+hardcharger …
+600
+60
+```
+
+Tags are recorded in [instrumentation](/guides/instrumentation-and-audit/); `settings()` returns
+every `hardcharger.*` setting as an Arrow table. A bad setting name or value fails `connect()`.
+
+## Large results
+
+```python test
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger", password="change-me",
+                         db_kwargs={"adbc.warp.statement.result_partitions": "8",
+                                    "adbc.warp.statement.result_order": "any"}) as conn:
+    with conn.cursor() as cur:
+        cur.execute(operation="SELECT * FROM range(20000000) t(i)")
+        total = 0
+        for batch in cur.fetch_record_batch():   # streams; nothing is held in memory
+            total += batch.num_rows
+        print(total)
+```
+
+```text output
+20000000
+```
+
+| Option (`db_kwargs`, or per statement) | Default | Does |
+|---|---|---|
+| `adbc.warp.statement.result_partitions` | `1` | Read a large result over up to n connections at once ([partitions](/concepts/warp-sql/#partitioned-results)) |
+| `adbc.warp.statement.result_order` | `preserve` | `any`: batches in arrival order (faster when order doesn't matter) |
+| `adbc.warp.ipc_compression` | `none` | `zstd` for slow links |
+| `adbc.warp.statement.async` | `false` | Submit, poll, fetch: for long queries behind proxies |
+| `adbc.warp.statement.retain_result` | server's | Keep results on the server so a broken download resumes |
+| `adbc.warp.statement.timeout_seconds` | none | The server cancels the statement after this long |
+| `adbc.warp.retry.max_attempts` | `4` | Sends of a request that is safe to repeat |
+| `adbc.warp.session.reconnect` | `true` | Replace a session the server lost, and say so |
+
+## Bulk ingest
+
+`cur.adbc_ingest(table_name=…, data=…, mode=…)` loads a `pyarrow.Table`, a `RecordBatchReader`
+or any Arrow-compatible object. See [Bulk ingest](/guides/bulk-ingest/).
+
+## Errors
+
+The driver raises `adbc_driver_manager` exceptions (`adbc_driver_manager.Error` and its
+subclasses, such as `ProgrammingError`), whose message carries the server's code, HTTP status,
+request id and SQLSTATE:
+
+```python test
+import adbc_driver_manager
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger", password="change-me") as conn:
+    with conn.cursor() as cur:
+        try:
+            cur.execute(operation="SELECT * FROM no_such_table")
+        except adbc_driver_manager.Error as e:
+            print(type(e).__name__, e.sqlstate)
+```
+
+```text output
+… 42P01
+```
+
+The [error code reference](/reference/errors/) lists the codes.
+
+## Cancel
+
+Ctrl-C while a query runs cancels it on the server. From another thread, `cur.adbc_cancel()` does
+the same.
+
+## Sign in with SSO
+
+`connect(username="token", password=<ID token>)` signs in with an identity provider's token, and
+`connect(auth_type="external")` runs the browser sign-in. See [SSO](/guides/sso/).
+
+## A server from Python
+
+`pip install hardcharger` is the **server** for Python: it downloads `hardcharger-server` for your
+platform, checks it and runs it on a free port, which makes a real server one line away in tests
+and notebooks.
+
+```python test server=none github
+import hardcharger
+
+with hardcharger.Server() as server, server.connect() as conn, conn.cursor() as cur:
+    cur.execute(operation="SELECT 42 AS answer")
+    print(cur.fetchone())
+```
+
+```text output
+(42,)
+```
+
+`Server()` uses an in-memory database and a generated password (`server.password`); pass
+`database=`, `password=`, `tls_cert=`/`tls_key=`, `extra_args=[...]` or `env={...}` for more.
+`pip install "hardcharger[adbc]"` installs it with this driver.
+
+## Other ADBC languages
+
+The same driver loads into any ADBC driver manager: see [C, C++, R, Rust](/clients/adbc-driver-manager/)
+and [Go](/clients/go/).

@@ -1,0 +1,59 @@
+# The servers the docs' examples run against (scripts/verify_examples.py).
+# Every profile listens on the documented defaults: Warp SQL on 31337, /health on 31338,
+# with administrator hardcharger / change-me, as the examples assume.
+# {dir} is the page's working directory.
+
+default:
+  args: [--database, my.duckdb, --health-port, "31338"]
+  env: {HARDCHARGER_ADMIN_PASSWORD: change-me}
+
+metrics:
+  args: [--database, my.duckdb, --health-port, "31338", --enable-metrics]
+  env: {HARDCHARGER_ADMIN_PASSWORD: change-me}
+  ports: [9091]
+
+instrumentation:
+  args: [--database, my.duckdb, --health-port, "31338", --enable-instrumentation, --instance-tag, '{"env": "docs"}']
+  env: {HARDCHARGER_ADMIN_PASSWORD: change-me}
+
+queue:
+  args: [--database, my.duckdb, --health-port, "31338", --max-concurrent-statements, "2", --max-sessions, "10"]
+  env: {HARDCHARGER_ADMIN_PASSWORD: change-me}
+
+tls:
+  setup: [bash tests_make_certs.sh]
+  args: [--database, my.duckdb, --health-port, "31338", --tls-cert, server.crt, --tls-key, server.key]
+  env: {HARDCHARGER_ADMIN_PASSWORD: change-me}
+
+mtls:
+  setup: [bash tests_make_certs.sh]
+  args: [--database, my.duckdb, --health-port, "31338", --tls-cert, server.crt, --tls-key, server.key,
+         --mtls-ca-cert, ca.crt]
+  env: {HARDCHARGER_ADMIN_PASSWORD: change-me}
+
+rbac:
+  needs: [postgres]
+  args: [--database, my.duckdb, --health-port, "31338"]
+  env: {HARDCHARGER_ADMIN_PASSWORD: change-me}
+  env_from: {HARDCHARGER_RBAC_STORE_URI: pg_uri}
+
+# Access control plus the SSO guide's stand-in identity provider (idp.py, written by the page).
+sso_rbac:
+  needs: [postgres]
+  background:
+    - {run: "python3 idp.py serve", wait: "http://127.0.0.1:8099/jwks.json"}
+  args: [--database, my.duckdb, --health-port, "31338", --token-allowed-issuer, "http://127.0.0.1:8099",
+         --token-allowed-audience, hardcharger, --token-default-role, user]
+  env: {HARDCHARGER_ADMIN_PASSWORD: change-me}
+  env_from: {HARDCHARGER_RBAC_STORE_URI: pg_uri}
+
+# Access control with JSON logs to a file and a keyed audit chain (instrumentation guide).
+rbac_audit:
+  needs: [postgres]
+  args: [--database, my.duckdb, --health-port, "31338", --log-format, json, --log-file, hardcharger.log]
+  env: {HARDCHARGER_ADMIN_PASSWORD: change-me, HARDCHARGER_AUDIT_CHAIN_KEY: audit-key-from-your-secret-store}
+  env_from: {HARDCHARGER_RBAC_STORE_URI: pg_uri}
+
+cors:
+  args: [--database, my.duckdb, --health-port, "31338", --cors-origins, "https://app.example.com"]
+  env: {HARDCHARGER_ADMIN_PASSWORD: change-me}

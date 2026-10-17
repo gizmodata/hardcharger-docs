@@ -1,0 +1,179 @@
+---
+title: "Bulk ingest"
+description: "Load Arrow data into Hardcharger tables fast, from Python, Go or plain HTTP, with create, append, replace and create_append modes, in one transaction."
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Bulk ingest streams an Arrow table from the client straight into a DuckDB table: no SQL
+`INSERT`s, no row-by-row conversion. The server reads the upload in 1 MiB pieces and inserts on
+all of DuckDB's threads, **in one transaction** that keeps the upload's row order. If anything
+fails, no rows from the upload remain.
+
+## From Python
+
+`adbc_ingest` takes a `pyarrow.Table`, a `RecordBatchReader` (which streams: the data never has
+to fit in memory), or anything with the Arrow PyCapsule interface (pandas, Polars, DuckDB
+results):
+
+```python test
+import pyarrow as pa
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+trips = pa.table({"id": [1, 2, 3], "city": ["Boston", "Denver", "Austin"], "miles": [12.5, 30.0, 8.5]})
+
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger", password="change-me") as conn:
+    with conn.cursor() as cur:
+        print(cur.adbc_ingest(table_name="trips", data=trips, mode="create"))
+        print(cur.adbc_ingest(table_name="trips", data=trips, mode="append"))
+        cur.execute(operation="SELECT count(*), sum(miles) FROM trips")
+        print(cur.fetchone())
+```
+
+```text output
+3
+3
+(6, 102.0)
+```
+
+A large Parquet file streams without being read into memory first:
+
+```python test
+import pyarrow as pa
+import pyarrow.parquet as pq
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+pq.write_table(table=pa.table({"n": pa.array(range(1_000_000), type=pa.int64())}), where="numbers.parquet")
+
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger", password="change-me") as conn:
+    with conn.cursor() as cur:
+        reader = pq.ParquetFile("numbers.parquet").iter_batches(batch_size=122_880)
+        schema = pq.read_schema("numbers.parquet")
+        stream = pa.RecordBatchReader.from_batches(schema=schema, batches=reader)
+        print(cur.adbc_ingest(table_name="numbers", data=stream, mode="replace"))
+```
+
+```text output
+1000000
+```
+
+| `mode` | The table must | Then |
+|---|---|---|
+| `create` | not exist | create it and insert |
+| `append` | exist | insert |
+| `replace` | (either) | drop it if it exists, create it, insert |
+| `create_append` | (either) | create it if it doesn't exist, then insert |
+
+`catalog_name=` and `db_schema_name=` pick where the table goes (default: the session's current
+catalog and schema), and `temporary=True` makes a temporary table. A missing or existing table
+fails with SQLSTATE `42P01` or `42P07`, which the drivers turn into "not found" and "already
+exists".
+
+## From plain HTTP
+
+The upload is an Arrow IPC stream in the body of `POST …/ingest`, and the query string says
+where it goes:
+
+```bash test
+H='Content-Type: application/json'
+TOKEN=$(curl -s localhost:31337/warp/v1/auth/token -H "$H" \
+  -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
+SESSION=$(curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $TOKEN" -H "$H" -d '{}' | jq -r .session_id)
+
+python3 -c "
+import pyarrow as pa
+table = pa.table({'id': [1, 2], 'name': ['ann', 'bob']})
+with pa.OSFile('people.arrows', 'wb') as sink, pa.ipc.new_stream(sink=sink, schema=table.schema) as writer:
+    writer.write_table(table=table)"
+
+curl -s "localhost:31337/warp/v1/sessions/$SESSION/ingest?table=people&mode=create" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/vnd.apache.arrow.stream' \
+  -H "Idempotency-Key: $(uuidgen 2>/dev/null || cat /proc/sys/kernel/random/uuid)" \
+  --data-binary @people.arrows
+```
+
+```text output
+{"rows_ingested":2}
+```
+
+The body may be sent with chunked transfer encoding and any size. An `Idempotency-Key` makes a
+retried upload safe: the server answers a repeat with the first answer instead of loading the
+rows twice.
+
+## Types
+
+Each Arrow type becomes a DuckDB type that keeps its values. One of each:
+
+```python test
+import datetime
+import decimal
+import uuid
+
+import pyarrow as pa
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+table = pa.table({
+    "i": pa.array([1], type=pa.int64()),
+    "f": pa.array([1.5], type=pa.float64()),
+    "d": pa.array([decimal.Decimal("12.34")], type=pa.decimal128(10, 2)),
+    "s": pa.array(["text"], type=pa.string()),
+    "b": pa.array([b"\x00\x01"], type=pa.binary()),
+    "day": pa.array([datetime.date(2026, 10, 17)], type=pa.date32()),
+    "ts": pa.array([datetime.datetime(2026, 10, 17, 12, 0)], type=pa.timestamp("us")),
+    "tstz": pa.array([datetime.datetime(2026, 10, 17, 12, 0, tzinfo=datetime.timezone.utc)], type=pa.timestamp("us", tz="UTC")),
+    "span": pa.array([pa.scalar((1, 2, 3_000), type=pa.month_day_nano_interval())], type=pa.month_day_nano_interval()),
+    "tags": pa.array([["a", "b"]], type=pa.list_(pa.string())),
+    "point": pa.array([{"x": 1, "y": 2}], type=pa.struct([("x", pa.int32()), ("y", pa.int32())])),
+    "id": pa.array([uuid.UUID(int=1).bytes], type=pa.uuid()),
+    "color": pa.array(["red"]).dictionary_encode(),
+})
+
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger", password="change-me") as conn:
+    with conn.cursor() as cur:
+        cur.adbc_ingest(table_name="kinds", data=table, mode="replace")
+        cur.execute(operation="SELECT column_name, column_type FROM (DESCRIBE kinds)")
+        for name, column_type in cur.fetchall():
+            print(f"{name}: {column_type}")
+```
+
+```text output
+i: BIGINT
+f: DOUBLE
+d: DECIMAL(10,2)
+s: VARCHAR
+b: BLOB
+day: DATE
+ts: TIMESTAMP
+tstz: TIMESTAMP WITH TIME ZONE
+span: INTERVAL
+tags: VARCHAR[]
+point: STRUCT(x INTEGER, y INTEGER)
+id: UUID
+color: VARCHAR
+```
+
+A type DuckDB can't store without losing values (half floats, for one) is refused with
+`415 unsupported_arrow_type`, naming the column. Nothing silently falls back to text. A column
+with no values at all (Arrow's `null` type) becomes `VARCHAR`.
+
+## Speed
+
+- One upload is one HTTP request on one connection, so it can't go faster than one network flow
+  (about 1.1 GB/s of Arrow on AWS). Run several uploads into separate tables (or in separate
+  sessions) to go wider.
+- zstd (`adbc.warp.ipc_compression=zstd`) pays off only on slow links: the client compresses on
+  one core.
+- Batches of about 100,000 rows are a good size.
+
+<Aside type="caution" title="Behind a proxy">
+Reverse proxies cap request bodies (often at 1 MB) and buffer them. Lift the limit and turn
+request buffering off for Hardcharger, or uploads fail with `413` after the whole body was sent.
+[Behind a load balancer](/guides/load-balancers/) shows the settings.
+</Aside>
+
+## Other clients
+
+- **Go and other ADBC languages:** the standard `adbc.ingest.*` statement options
+  (`adbc.ingest.target_table`, `adbc.ingest.mode`) and `BindStream`.
+- **JDBC** has no bulk-load API. Use `PreparedStatement.executeBatch()`, which the driver sends
+  as one Arrow request, or load through Python or HTTP.

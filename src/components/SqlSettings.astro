@@ -1,0 +1,52 @@
+---
+// SET hardcharger.<name>: rendered from src/data/settings.json, which scripts/gen_reference.py
+// reads from hardcharger_settings() on a real server.
+import settings from '../data/settings.json';
+const scopes: Record<string, string> = {
+	SESSION: 'SET SESSION only',
+	GLOBAL: 'SET GLOBAL only (administrators)',
+	SESSION_OR_GLOBAL: 'SET SESSION, or SET GLOBAL (administrators)',
+	STARTUP: 'Read-only: set at startup',
+};
+const order = ['SESSION', 'SESSION_OR_GLOBAL', 'GLOBAL', 'STARTUP'];
+---
+
+{
+	order.map((scope) => (
+		<>
+			<h3 id={`scope-${scope.toLowerCase()}`}>{scopes[scope]}</h3>
+			<table>
+				<thead>
+					<tr>
+						<th>Setting</th>
+						<th>Type</th>
+						<th>Default</th>
+						<th>Description</th>
+					</tr>
+				</thead>
+				<tbody>
+					{settings
+						.filter((s) => s.scope === scope)
+						.map((s) => (
+							<tr>
+								<td id={s.name}>
+									<code>{s.name}</code>
+								</td>
+								<td>{s.input_type}</td>
+								<td>{s.default_value === '' ? '' : <code>{s.default_value}</code>}</td>
+								<td>
+									{s.description}
+									{s.cli_flag && (
+										<>
+											{' '}
+											Startup option: <code>{s.cli_flag}</code>.
+										</>
+									)}
+								</td>
+							</tr>
+						))}
+				</tbody>
+			</table>
+		</>
+	))
+}

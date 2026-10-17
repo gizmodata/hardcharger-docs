@@ -1,0 +1,46 @@
+---
+title: "CLI reference"
+description: "Every option and dot command of hardcharger, the command-line client, generated from the client itself."
+---
+
+import { Code } from '@astrojs/starlight/components';
+import help from '../../../data/cli-help.txt?raw';
+import dots from '../../../data/cli-dot-commands.txt?raw';
+
+The [CLI guide](/clients/cli/) shows these in use. Both listings below are generated from the
+client built from Hardcharger's `main` branch (`hardcharger --help`, and `.help` in a session),
+and CI fails when they drift.
+
+## Options
+
+<Code code={help} lang="text" title="hardcharger --help" />
+
+## Dot commands
+
+<Code code={dots} lang="text" title=".help" />
+
+## Environment
+
+| Variable | Meaning |
+|---|---|
+| `HARDCHARGER_HOST`, `HARDCHARGER_PORT` | Server address |
+| `HARDCHARGER_USER` | User name (falls back to `HARDCHARGER_ADMIN_USERNAME`) |
+| `HARDCHARGER_PASSWORD` | The user's password (never the server's `HARDCHARGER_ADMIN_PASSWORD`) |
+| `HARDCHARGER_TLS`, `HARDCHARGER_TLS_ROOTS` | TLS on; trusted roots |
+| `HARDCHARGER_OAUTH_PORT`, `HARDCHARGER_OAUTH_BASE_URL` | The server's browser sign-in |
+| `HARDCHARGER_SESSION_TAG`, `HARDCHARGER_QUERY_TAG` | Tags |
+| `HARDCHARGER_RESULT_PARTITIONS` | Partitioned reads |
+| `HARDCHARGER_BROWSER` | The command that opens the browser for `--auth-type external` |
+
+## Files
+
+| File | |
+|---|---|
+| `~/.hardchargerrc` | Run at startup (`--init`, `--no-init`) |
+| `~/.hardcharger_history` | Shell history |
+| `~/.hardcharger_last_result.arrow` | `.export_last`'s default |
+
+## Exit status
+
+`0` when everything ran, `1` when a statement or dot command failed, `130` when Ctrl-C stopped a
+script between statements.

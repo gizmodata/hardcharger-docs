@@ -1,0 +1,120 @@
+---
+title: "Go (ADBC)"
+description: "Query Hardcharger from Go with the native ADBC driver package - hardcharger:// URIs, Arrow record readers, bind parameters, ingest, tags and settings."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import HeroBanner from '../../../components/HeroBanner.astro';
+import banner from '../../../assets/banners/hardcharger-adbc-banner.svg';
+
+<HeroBanner src={banner} alt="Hardcharger ADBC: the driver for Hardcharger, on Warp SQL" href="https://github.com/gizmodata/hardcharger-adbc" />
+
+The Hardcharger ADBC driver is written in Go, so Go programs use it directly, as a package,
+with no driver manager and no cgo:
+
+```bash
+go get github.com/gizmodata/hardcharger-adbc/go
+```
+
+<Aside type="caution" title="Private preview">
+The module and its dependency `github.com/gizmodata/warp-sql-adbc/go` are internal until launch.
+Set `GOPRIVATE=github.com/gizmodata/*` and give git access to GitHub (`gh auth setup-git`, or an
+SSH key) before `go get`.
+</Aside>
+
+## Query
+
+```go test
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/apache/arrow-go/v18/arrow/array"
+	"github.com/apache/arrow-go/v18/arrow/memory"
+	"github.com/gizmodata/hardcharger-adbc/go/hardcharger"
+)
+
+func main() {
+	ctx := context.Background()
+	db, err := hardcharger.NewDriver(memory.DefaultAllocator).NewDatabaseWithContext(ctx, map[string]string{
+		"uri":                      "hardcharger://localhost?tls=false",
+		"username":                 "hardcharger",
+		"password":                 "change-me",
+		hardcharger.OptionQueryTag: `{"app": "report.go"}`,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close(ctx)
+	cnxn, err := db.Open(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cnxn.Close(ctx)
+
+	stmt, err := cnxn.NewStatement(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer stmt.Close(ctx)
+	if err := stmt.SetSqlQuery(ctx, "SELECT i, i * i AS square FROM range(1, 4) t(i) ORDER BY i"); err != nil {
+		log.Fatal(err)
+	}
+	reader, _, err := stmt.ExecuteQuery(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer reader.Release()
+	for reader.Next() {
+		batch := reader.RecordBatch()
+		squares := batch.Column(1).(*array.Int64)
+		for row := 0; row < int(batch.NumRows()); row++ {
+			fmt.Println(squares.Value(row))
+		}
+	}
+	if err := reader.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+```
+
+```text output
+1
+4
+9
+```
+
+The reader streams record batches as they arrive; release it when you're done, which also tells
+the server it can drop the result.
+
+## Options
+
+The database and connection options are the same in every ADBC language:
+
+| Option | Meaning |
+|---|---|
+| `uri` | `hardcharger://host[:port][/prefix][?tls=false]`, or `warp://`, `https://`, `http://` |
+| `username`, `password` | Password sign-in (`token` with an ID token as the password for SSO) |
+| `adbc.hardcharger.query_tag`, `adbc.hardcharger.session_tag` | JSON tags recorded in instrumentation |
+| `adbc.hardcharger.setting.NAME` | `SET SESSION hardcharger.NAME` on every session (database) or now (connection) |
+| `adbc.hardcharger.global_setting.NAME` | `SET GLOBAL hardcharger.NAME` (administrators) |
+| `adbc.hardcharger.auth_type` | `external` for [browser sign-in](/guides/sso/#browser-sign-in) |
+| `adbc.warp.tls.root_certs`, `adbc.warp.tls.client_cert`, `adbc.warp.tls.client_key` | TLS: a private CA, mutual TLS |
+| `adbc.warp.statement.result_partitions`, `adbc.warp.statement.result_order` | [Partitioned results](/concepts/warp-sql/#partitioned-results) |
+| `adbc.warp.ipc_compression` | `zstd` |
+| `adbc.warp.statement.async`, `adbc.warp.statement.retain_result` | Submit, poll, fetch; resumable results |
+| `adbc.warp.statement.timeout_seconds` | Per-statement timeout |
+
+The Go package exports the Hardcharger names as constants (`hardcharger.OptionQueryTag`, ...).
+Bind parameters with `stmt.Bind` or `stmt.BindStream`; bulk-load with the standard
+`adbc.ingest.target_table` and `adbc.ingest.mode` options and `BindStream`.
+
+## Errors
+
+Errors are `adbc.Error` values with the SQLSTATE and the server's message.
+`warpsql.ErrorCode(err)` (from `github.com/gizmodata/warp-sql-adbc/go/warpsql`) returns the
+server's stable error code (`sql_error`, `session_not_found`, ...) behind any error the driver
+returns. Cancel a running statement by cancelling its context.

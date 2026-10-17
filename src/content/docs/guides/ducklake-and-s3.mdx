@@ -1,0 +1,124 @@
+---
+title: "DuckLake and S3"
+description: "Serve a DuckLake lakehouse from Hardcharger, with PostgreSQL for its catalog and S3 for its data, set up once at startup with init SQL so every session and replica sees it."
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+[DuckLake](https://ducklake.select) keeps a lakehouse's metadata in a SQL database and its
+data as Parquet files in object storage. Hardcharger serves it like any DuckDB catalog, and
+because the metadata lives in PostgreSQL, several Hardcharger replicas can serve the same lake.
+
+The pattern: create the secrets and `ATTACH` the lake in **init SQL**, which runs once at
+startup, before any client connects. Every session then finds the catalog, and users never
+see the credentials.
+
+## Try it locally
+
+<Steps>
+
+1. Run PostgreSQL for the catalog and an S3-compatible gateway for the data. The ports are
+   chosen to stay out of the way of anything you already run:
+
+   ```yaml test file=compose.yaml server=none run="docker compose up -d --wait" cleanup="docker compose down"
+   services:
+     catalog:
+       image: postgres:18
+       environment:
+         POSTGRES_USER: ducklake
+         POSTGRES_PASSWORD: ducklake
+         POSTGRES_DB: ducklake
+       ports: ["127.0.0.1:55460:5432"]
+       healthcheck:
+         test: ["CMD-SHELL", "pg_isready -U ducklake"]
+         interval: 2s
+         retries: 30
+     s3:
+       image: versity/versitygw:v1.8.0
+       environment:
+         ROOT_ACCESS_KEY: lake-key
+         ROOT_SECRET_KEY: lake-secret
+       ports: ["127.0.0.1:59460:9000"]
+       # Serve directories under /data as buckets, with a bucket named "lake".
+       entrypoint: ["sh", "-c", "mkdir -p /data/lake && exec versitygw --port :9000 --health /health posix /data"]
+       healthcheck:
+         test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9000/health"]
+         interval: 2s
+         retries: 30
+   ```
+
+   Save it as `compose.yaml` and start it with `docker compose up -d --wait`.
+
+2. Write the init SQL: the extensions, a secret for each service, and the lake:
+
+   ```sql test file=lake.sql server=none
+   INSTALL ducklake; INSTALL postgres; INSTALL httpfs;
+   LOAD ducklake; LOAD postgres; LOAD httpfs;
+
+   CREATE SECRET lake_s3 (TYPE s3, KEY_ID 'lake-key', SECRET 'lake-secret',
+     ENDPOINT '127.0.0.1:59460', URL_STYLE 'path', USE_SSL false, REGION 'us-east-1');
+   CREATE SECRET lake_catalog (TYPE postgres, HOST '127.0.0.1', PORT 55460,
+     DATABASE 'ducklake', USER 'ducklake', PASSWORD 'ducklake');
+   CREATE SECRET lake (TYPE ducklake, METADATA_PATH '', DATA_PATH 's3://lake/',
+     METADATA_PARAMETERS MAP {'TYPE': 'postgres', 'SECRET': 'lake_catalog'});
+
+   ATTACH 'ducklake:lake' AS lake;
+   ```
+
+3. Start Hardcharger with it:
+
+   ```bash test server=self background timeout=180
+   HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb \
+     --health-port 31338 --init-sql-commands-file lake.sql
+   ```
+
+4. Use the lake from any client:
+
+   ```console test server=none
+   $ export HARDCHARGER_PASSWORD='change-me'
+   $ hardcharger --host localhost --username hardcharger --quiet <<'SQL'
+   CREATE TABLE lake.cities (name VARCHAR, country VARCHAR, population INTEGER);
+   INSERT INTO lake.cities VALUES ('Tokyo', 'Japan', 37400068), ('Delhi', 'India', 28514000);
+   SQL
+   OK
+   OK, 2 rows affected
+   $ hardcharger --host localhost --username hardcharger --csv \
+       --command "SELECT name FROM lake.cities ORDER BY population DESC"
+   name
+   Tokyo
+   Delhi
+   ```
+
+   The rows are Parquet files in the `lake` bucket, and the table's metadata is in PostgreSQL.
+
+</Steps>
+
+When you're done: `docker compose down`.
+
+```bash test server=none
+docker compose down
+```
+
+## In production
+
+- **Credentials.** Use your cloud's credential chain rather than keys in a file:
+  `CREATE SECRET (TYPE s3, PROVIDER credential_chain)` picks up the instance role or workload
+  identity. Keep the init SQL file readable only by the server's user: Hardcharger's
+  [sensitive path guard](/concepts/security-model/#guards-that-apply-to-everyone) already keeps
+  it out of reach of SQL.
+- **Several replicas, one lake.** Give every replica the same init SQL. DuckLake's metadata
+  database coordinates their commits.
+- **Who may use it.** Without access control, only administrators may `ATTACH` or create
+  secrets, so users can't point the server at other storage. Under
+  [access control](/guides/access-control/), grant on the lake's catalog like any other:
+  `GRANT SELECT ON CATALOG lake TO analyst`.
+- **Make it the default.** End the init SQL with `USE lake;` to make it every session's
+  starting catalog, or set the session option `catalog` from the client.
+
+## Instrumentation and logs in DuckLake
+
+Hardcharger's [instrumentation](/guides/instrumentation-and-audit/) and catalog logs can go to a
+DuckLake (or PostgreSQL) catalog the init SQL attaches, so every replica writes to one place:
+`--enable-instrumentation --instrumentation-catalog lake` and
+`--enable-catalog-logging --log-catalog lake`. Writes that lose a commit race to another replica
+are retried.

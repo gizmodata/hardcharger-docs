@@ -1,0 +1,19 @@
+---
+// Every metric /metrics serves: rendered from src/data/metrics.json, which
+// scripts/gen_reference.py scrapes from a real server started with --enable-metrics.
+import metrics from '../data/metrics.json';
+---
+
+<table>
+	<thead><tr><th>Metric</th><th>Type</th><th>Labels</th><th>Meaning</th></tr></thead>
+	<tbody>
+		{metrics.map((m) => (
+			<tr>
+				<td id={m.name}><code>{m.name}</code></td>
+				<td>{m.type}</td>
+				<td>{m.labels.map((l, i) => (<>{i > 0 && ', '}<code>{l}</code></>))}</td>
+				<td>{m.help}</td>
+			</tr>
+		))}
+	</tbody>
+</table>

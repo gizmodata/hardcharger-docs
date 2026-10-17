@@ -1,0 +1,122 @@
+---
+title: "Behind a load balancer"
+description: "Put Hardcharger behind nginx, a cloud load balancer or a Kubernetes ingress - session affinity, streaming without buffering, no body-size limit for ingest, and timeouts for long queries."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Warp SQL is ordinary HTTP/1.1, so Hardcharger works behind any reverse proxy or load balancer.
+Four settings decide whether it works *well*:
+
+| Setting | Why | nginx |
+|---|---|---|
+| **Session affinity** | A session lives on the replica that created it. Another replica answers `404 session_not_found`. | `ip_hash`, or one upstream per client group |
+| **No response buffering** | Results stream as DuckDB produces them. A buffering proxy holds the whole result first. | `proxy_buffering off` |
+| **No request body limit, no request buffering** | Bulk ingest is one large request. Proxies often cap bodies at 1 MB and fail with `413` after the whole upload has been sent. | `client_max_body_size 0`, `proxy_request_buffering off` |
+| **Long timeouts, or asynchronous submits** | A streamed query keeps its request open while it runs. | `proxy_read_timeout`, `proxy_send_timeout` |
+
+A client that can't get long timeouts through a proxy can submit asynchronously instead
+(`adbc.warp.statement.async`, JDBC `async=true`): no request then stays open longer than a
+long-poll (10 seconds by default).
+
+## nginx
+
+```nginx test file=nginx.conf server=none
+events {}
+
+http {
+  upstream hardcharger {
+    ip_hash;                           # a client's requests go to one replica
+    server hardcharger-0:31337;
+    keepalive 32;
+  }
+
+  server {
+    listen 8080;                       # put TLS here, or on Hardcharger itself
+
+    location /warp/ {
+      proxy_pass http://hardcharger;
+      proxy_http_version 1.1;
+      proxy_set_header Connection "";
+      proxy_set_header Host $host;
+
+      proxy_buffering off;             # stream results as they come
+      proxy_request_buffering off;     # stream uploads as they come
+      client_max_body_size 0;          # no limit on bulk ingest
+      proxy_read_timeout 3600s;        # long queries on the streamed path
+      proxy_send_timeout 3600s;
+    }
+  }
+}
+```
+
+Try it in front of a server on your machine (`--add-host` points `hardcharger-0` at your
+machine for this test):
+
+```bash test background cleanup="docker rm -f hardcharger-proxy" wait=http://127.0.0.1:8080/warp/v1/health timeout=120
+docker run --rm --name hardcharger-proxy -p 8080:8080 --add-host hardcharger-0:host-gateway \
+  -v "$PWD/nginx.conf:/etc/nginx/nginx.conf:ro" nginx:1.29
+```
+
+Through the proxy, load 8 MiB in one upload and read a large result in eight partitions at once:
+
+```python test
+import pyarrow as pa
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+payload = pa.table({"blob": pa.array([b"x" * 1024] * 8192, type=pa.binary())})  # 8 MiB
+with hardcharger.connect(uri="hardcharger://localhost:8080?tls=false", username="hardcharger",
+                         password="change-me",
+                         db_kwargs={"adbc.warp.statement.result_partitions": "8"}) as conn:
+    with conn.cursor() as cur:
+        print(cur.adbc_ingest(table_name="uploads", data=payload, mode="replace"))
+        cur.execute(operation="SELECT i FROM range(5000000) t(i) ORDER BY i")
+        print(cur.fetch_arrow_table().num_rows)
+```
+
+```text output
+8192
+5000000
+```
+
+Without `client_max_body_size 0` the upload fails with `413` once nginx's default 1 MB is
+passed; without `proxy_buffering off` nginx holds each result before the client sees a row.
+
+## Kubernetes
+
+- **Service.** `sessionAffinity: ClientIP` on the Service gives each client one replica.
+- **ingress-nginx.** The same settings as annotations:
+  `nginx.ingress.kubernetes.io/proxy-body-size: "0"`,
+  `nginx.ingress.kubernetes.io/proxy-buffering: "off"`,
+  `nginx.ingress.kubernetes.io/proxy-request-buffering: "off"`,
+  `nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"`,
+  `nginx.ingress.kubernetes.io/affinity: "cookie"` does nothing for drivers (they don't keep
+  cookies): use `upstream-hash-by: "$remote_addr"` instead.
+- **Other ingress controllers** have their own spelling of the same four settings; check that
+  the body-size setting applies to the location Hardcharger is served from, then prove it with a
+  real upload over 1 MB, as above.
+
+## Cloud load balancers
+
+- **Layer 4 (TCP/NLB).** Nothing to configure for streaming or bodies. Use client-IP stickiness
+  (source-IP affinity) for several replicas, and keep idle timeouts above your longest query, or
+  submit asynchronously.
+- **Layer 7 (ALB, Application Gateway, HTTP(S) LB).** Check the idle timeout (often 60 seconds:
+  raise it, or submit asynchronously) and the maximum request size, and use client-IP or header
+  based stickiness: drivers don't keep cookies.
+
+## Several replicas
+
+Replicas share nothing in memory, so beyond affinity:
+
+- Give them the same `HARDCHARGER_SECRET_KEY` and set `allow_cross_instance_tokens`, so a token
+  from one is accepted by the others (a client that lands elsewhere signs in once, not again).
+- Give them the same `cluster_id` (a UUID): it labels their logs and instrumentation.
+- A session can't move. If a replica goes away, its sessions are gone: the drivers open a new
+  session and say so ([sessions that disappear](/concepts/warp-sql/#sessions-that-disappear)).
+
+<Aside type="caution">
+Every reload of a shared proxy may close idle keep-alive connections or, for HTTP/2, send GOAWAY.
+Drivers retry what is safe to retry, but a long streamed query cut by a reload fails. Batch
+proxy changes, and prefer a load balancer that holds connections through configuration changes.
+</Aside>

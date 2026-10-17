@@ -1,0 +1,152 @@
+[
+  {
+    "name": "hardcharger_build_info",
+    "type": "gauge",
+    "help": "Server build: version, edition, DuckDB version.",
+    "labels": [
+      "duckdb_version",
+      "server",
+      "version"
+    ]
+  },
+  {
+    "name": "hardcharger_concurrency_limit",
+    "type": "gauge",
+    "help": "max_concurrent_statements (0: no queue).",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_draining",
+    "type": "gauge",
+    "help": "1 while the server shuts down.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_duckdb_memory_limit_bytes",
+    "type": "gauge",
+    "help": "DuckDB memory_limit in bytes.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_duckdb_memory_usage_bytes",
+    "type": "gauge",
+    "help": "Memory DuckDB's buffer manager holds.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_health_check_status",
+    "type": "gauge",
+    "help": "1 when the health check passes.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_last_exit_unclean",
+    "type": "gauge",
+    "help": "1 if the last run on this database did not stop cleanly (NaN: unknown).",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_metrics_collection_success",
+    "type": "gauge",
+    "help": "1 when the last collection succeeded.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_metrics_last_collection_success_seconds",
+    "type": "gauge",
+    "help": "Unix time of the last successful collection.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_queue_admin_bypass_total",
+    "type": "counter",
+    "help": "Statements that skipped the queue.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_queue_depth",
+    "type": "gauge",
+    "help": "Statements holding or waiting for a queue slot.",
+    "labels": [
+      "state"
+    ]
+  },
+  {
+    "name": "hardcharger_queue_rejected_total",
+    "type": "counter",
+    "help": "Statements the queue refused or timed out.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_queue_wait_seconds",
+    "type": "histogram",
+    "help": "Time statements waited in the queue.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_session_limit",
+    "type": "gauge",
+    "help": "max_sessions (0: unlimited).",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_sessions",
+    "type": "gauge",
+    "help": "Open client sessions, by state.",
+    "labels": [
+      "state"
+    ]
+  },
+  {
+    "name": "hardcharger_sessions_opened_total",
+    "type": "counter",
+    "help": "Client sessions opened.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_sessions_reaped_total",
+    "type": "counter",
+    "help": "Client sessions ended for being idle or killed.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_statement_duration_seconds",
+    "type": "histogram",
+    "help": "Client statement run time, by kind.",
+    "labels": [
+      "kind"
+    ]
+  },
+  {
+    "name": "hardcharger_statements_active",
+    "type": "gauge",
+    "help": "Statements running now.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_statements_total",
+    "type": "counter",
+    "help": "Client statements finished, by status.",
+    "labels": [
+      "status"
+    ]
+  },
+  {
+    "name": "hardcharger_unclean_exits_total",
+    "type": "counter",
+    "help": "Runs on this database that did not stop cleanly.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_up_seconds",
+    "type": "gauge",
+    "help": "Seconds since the server started.",
+    "labels": []
+  },
+  {
+    "name": "process_resident_memory_bytes",
+    "type": "gauge",
+    "help": "Resident memory of the server process.",
+    "labels": []
+  }
+]

@@ -1,0 +1,134 @@
+---
+title: "Instrumentation and the audit log"
+description: "Record every session, statement and execution in SQL tables, write log lines to a catalog, capture query profiles, and keep a tamper-evident audit log of access-control decisions."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Hardcharger can record what it does in SQL tables you query like any others: who connected, what
+they ran, how long it queued and ran, how many rows they fetched, and what failed. With access
+control on, it also keeps an audit log whose records are chained so that a changed or missing
+record shows.
+
+## Instrumentation
+
+Turn it on with [`--enable-instrumentation`](/reference/configuration/#enable_instrumentation).
+The tables go in a catalog named `_hardcharger_instr`: by default a DuckDB file next to the
+database (`hardcharger_instrumentation.db`), or, with
+[`--instrumentation-catalog`](/reference/configuration/#instrumentation_catalog), a DuckLake or
+PostgreSQL catalog that your init SQL attaches, so that every replica writes to one place.
+
+```console test profile=instrumentation
+$ export HARDCHARGER_PASSWORD='change-me'
+$ hardcharger --host localhost --username hardcharger --quiet --command "SELECT 42 AS answer" > /dev/null
+$ hardcharger --host localhost --username hardcharger --csv --command \
+    "SELECT username, sql_text, status, rows_fetched FROM _hardcharger_instr.execution_details WHERE sql_text = 'SELECT 42 AS answer'"
+username,sql_text,status,rows_fetched
+hardcharger,SELECT 42 AS answer,success,1
+```
+
+| Table or view | One row per |
+|---|---|
+| `instances` | server process: version, start and stop time, how it stopped, `instance_tag` |
+| `sessions` | session: user, role, sign-in method, start and stop, `session_tag` |
+| `sql_statements` | statement: SQL text (credentials redacted), whether it prepared, `query_tag` |
+| `sql_executions` | execution: bind parameters, queue, run and fetch times, rows fetched, status, error, query profile |
+| `execution_details` (view) | execution, joined with its statement and session, with `queue_wait_ms` |
+| `session_activity`, `active_sessions`, `session_stats` (views) | session, with its executions summarized |
+
+- Only administrators read these tables, and nobody writes, detaches or `USE`s them: they are
+  the server's. Non-administrators don't see the catalog in metadata.
+- A server that was killed has its open rows closed at its next start.
+- [`--instance-tag`](/reference/configuration/#instance_tag) (a JSON object) labels every row of a
+  server, and [query and session tags](/guides/statement-control/#query-and-session-tags) label
+  statements and sessions.
+
+```console test profile=instrumentation
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --csv --command \
+    "SELECT instance_tag->>'env' AS env, status FROM _hardcharger_instr.instances"
+env,status
+docs,running
+```
+
+### Query profiles
+
+With `capture_query_profile` set to `standard` or `detailed` (a startup option, or
+`SET [GLOBAL] hardcharger.capture_query_profile`), each execution stores DuckDB's JSON query
+profile in `sql_executions.query_profile`:
+
+```console test profile=instrumentation
+$ export HARDCHARGER_PASSWORD='change-me'
+$ hardcharger --host localhost --username hardcharger --quiet > /dev/null <<'SQL'
+SET hardcharger.capture_query_profile = 'standard';
+SELECT count(*) FROM range(1000000);
+SQL
+$ hardcharger --host localhost --username hardcharger --csv --command \
+    "SELECT query_profile IS NOT NULL AS has_profile FROM _hardcharger_instr.execution_details WHERE sql_text = 'SELECT count(*) FROM range(1000000)'"
+has_profile
+true
+```
+
+## Catalog logging
+
+[`--enable-catalog-logging`](/reference/configuration/#enable_catalog_logging) also writes every
+log line to `_hardcharger_logs.logs`, in a background writer: its own DuckDB file by default
+(`hardcharger_logs.db`), or a catalog the init SQL attaches
+([`--log-catalog`](/reference/configuration/#log_catalog)). Its columns are `log_time, level,
+instance_id, cluster_id, session_id, username, role, peer, component, trace_id, span_id, pid,
+tid, source_file, source_line, func, message, fields`.
+
+## Log lines
+
+The server logs to stderr in text, or in JSON lines with
+[`--log-format json`](/reference/configuration/#log_format). [`--log-file`](/reference/configuration/#log_file)
+writes to a file instead (`-` for stdout). Separate levels for statements, sign-ins and sessions
+(`query_log_level`, `auth_log_level`, `session_log_level`) let you keep one kind quiet;
+[`--print-queries`](/reference/configuration/#print_queries) (on by default) logs every statement.
+JSON lines carry `instance_id` and, when set, `cluster_id`.
+
+## The audit log
+
+With [access control](/guides/access-control/) on, every access-control decision and change is
+logged: statements allowed (with the objects they touched) and refused (with the reason),
+`CREATE USER`, `GRANT` and the rest. Each record carries a sequence number and the hash of the
+record before it, so the log forms a chain: change, remove or reorder a record and the chain
+breaks. With [`audit_chain_key`](/reference/configuration/#audit_chain_key) the hashes are
+HMAC-SHA256, so only someone with the key can forge a chain; without it, SHA-256.
+
+Run the server with JSON logs to a file and a chain key, then do some access control:
+
+```bash
+HARDCHARGER_AUDIT_CHAIN_KEY='audit-key-from-your-secret-store' hardcharger-server \
+  --rbac-store-uri "$STORE_URI" --log-format json --log-file hardcharger.log
+```
+
+```sql test profile=rbac_audit
+CREATE ROLE auditor;
+CREATE USER sam WITH PASSWORD 'sam-secret';
+GRANT auditor TO sam;
+```
+
+Check the log with the same key:
+
+```console test profile=rbac_audit
+$ HARDCHARGER_AUDIT_CHAIN_KEY='audit-key-from-your-secret-store' hardcharger-server --verify-audit-log hardcharger.log
+chain …
+… audit records, intact
+```
+
+Now change one record, as someone covering their tracks would:
+
+```console test profile=rbac_audit
+$ sed 's/"user":"hardcharger"/"user":"nobody"/' hardcharger.log > tampered.log
+$ HARDCHARGER_AUDIT_CHAIN_KEY='audit-key-from-your-secret-store' hardcharger-server --verify-audit-log tampered.log | tail -1
+… audit records, NOT intact
+```
+
+`--verify-audit-log` exits 0 for an intact log and 1 otherwise, and prints each problem it found.
+For a rotated log that starts in the middle of a chain, add `--verify-audit-log-partial`.
+
+<Aside type="tip">
+Ship the JSON log to storage the server can't rewrite (your log pipeline, an object-lock
+bucket). The chain proves the records weren't changed; keeping a copy out of reach proves they
+weren't all replaced.
+</Aside>

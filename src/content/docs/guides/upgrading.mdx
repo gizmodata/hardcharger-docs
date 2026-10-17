@@ -1,0 +1,59 @@
+---
+title: "Upgrading"
+description: "Upgrade Hardcharger safely - read the release notes, switch versions with the installer or a new image tag, roll replicas one at a time, and roll back."
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Hardcharger follows [semantic versioning](https://semver.org). Before 1.0, a minor version
+(`0.2` to `0.3`) may change options or behavior; the [release notes](/reference/release-notes/)
+say what, under **Changed**. Patch versions only fix things.
+
+<Steps>
+
+1. **Read the release notes** for every version between yours and the new one. Look for renamed
+   options (an unknown option stops the server at startup, so you'll know at once) and changed
+   defaults.
+
+2. **Check the database file format.** DuckDB 2.0 reads files written by DuckDB 1.x. A file is
+   only upgraded to a newer storage format when you ask for it (`storage_version`), so you can
+   go back as long as you didn't.
+
+3. **Upgrade.**
+
+   - Installer: `curl https://install.hardcharger.gizmodata.com | HARDCHARGER_VERSION=0.3.0 sh`
+     installs the version next to the others and switches to it. Restart the server.
+   - Docker or Kubernetes: change the image tag. Pin versions (`:0.2.0`), not `:latest`, so
+     that a restart never upgrades by surprise.
+   - Python: `pip install --upgrade hardcharger` downloads the server version the package pins.
+
+4. **Restart gracefully.** On `SIGTERM` the server stops taking new work and lets running
+   statements finish ([graceful shutdown](/guides/statement-control/#graceful-shutdown)). With
+   several replicas, upgrade one at a time: drivers move to a new session when theirs goes away.
+
+5. **Check** that the new version runs: `SELECT HARDCHARGER_VERSION()`, the health endpoint, and
+   your metrics.
+
+</Steps>
+
+## Rolling back
+
+The installer keeps every version you installed: switching back doesn't download anything.
+
+```console test server=none github
+$ curl -s https://install.hardcharger.gizmodata.com | HARDCHARGER_INSTALL_TOKEN="$(gh auth token)" HARDCHARGER_VERSION=0.1.2 sh > /dev/null 2>&1
+$ curl -s https://install.hardcharger.gizmodata.com | HARDCHARGER_INSTALL_TOKEN="$(gh auth token)" HARDCHARGER_VERSION=0.2.0 sh > /dev/null 2>&1
+$ curl -s https://install.hardcharger.gizmodata.com | sh -s -- --list
+Hardcharger versions in …/.hardcharger/versions:
+    0.1.2
+  * 0.2.0 (current)
+$ ~/.hardcharger/bin/hardcharger-server --version
+Hardcharger 0.2.0
+```
+
+`sh -s -- --uninstall 0.1.2` removes one version.
+
+<Aside type="caution" title="Coming from GizmoSQL">
+Moving from GizmoSQL 1.x is a migration, not an upgrade: new names, a new protocol and new
+drivers. See [Coming from GizmoSQL](/get-started/coming-from-gizmosql/).
+</Aside>

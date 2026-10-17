@@ -1,0 +1,156 @@
+---
+title: "Quickstart"
+description: "Install Hardcharger with the one-line installer, Docker, a release tarball or pip, start the server, and run a first query."
+---
+
+import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
+
+You need about a minute. Pick one way to get the server, start it with an administrator
+password, then run a query.
+
+<Aside type="caution" title="Private preview">
+Hardcharger's releases, images and packages are internal to GizmoData until launch. The
+commands below that download them pass a GitHub token that can read
+`gizmodata/hardcharger`. If you are signed in with [`gh`](https://cli.github.com), `gh auth token`
+prints one. After launch, no token is needed.
+</Aside>
+
+## 1. Get the server
+
+<Tabs syncKey="install">
+<TabItem label="Installer">
+
+macOS on Apple silicon and Linux (x86-64 or arm64, glibc 2.38 or newer):
+
+```console test server=none github
+$ curl https://install.hardcharger.gizmodata.com | HARDCHARGER_INSTALL_TOKEN="$(gh auth token)" sh
+…
+$ ~/.hardcharger/bin/hardcharger-server --version
+Hardcharger …
+```
+
+The installer puts every version under `~/.hardcharger/versions/` and links the current one
+into `~/.hardcharger/bin`; add that directory to your `PATH`. It checks each download against
+the release's SHA-256 before switching. `HARDCHARGER_VERSION=0.2.0` installs a given version,
+and `sh -s -- --list` lists what you have.
+
+Start the server:
+
+```bash
+HARDCHARGER_ADMIN_PASSWORD='change-me' ~/.hardcharger/bin/hardcharger-server --database my.duckdb
+```
+
+</TabItem>
+<TabItem label="Docker">
+
+Images are multi-architecture (`linux/amd64`, `linux/arm64`):
+
+```bash test server=self background cleanup="docker rm -f hardcharger" timeout=180
+docker run --rm --name hardcharger -p 31337:31337 -p 31338:31338 \
+  -e HARDCHARGER_ADMIN_PASSWORD='change-me' \
+  ghcr.io/gizmodata/hardcharger:latest
+```
+
+Port 31337 speaks Warp SQL; 31338 answers `/health`. To pull the image during the preview,
+sign in first: `gh auth token | docker login ghcr.io -u <your GitHub user> --password-stdin`.
+
+</TabItem>
+<TabItem label="Binaries">
+
+Linux (x86-64, arm64) and macOS (Apple silicon) tarballs are attached to every
+[release](https://github.com/gizmodata/hardcharger/releases/latest). Each has `bin/` with the
+server:
+
+```bash test server=self github stop
+case "$(uname -sm)" in
+  "Linux x86_64")  PLATFORM=linux-amd64 ;;
+  "Linux aarch64") PLATFORM=linux-arm64 ;;
+  "Darwin arm64")  PLATFORM=macos-arm64 ;;
+esac
+gh release download --repo gizmodata/hardcharger --pattern "hardcharger-$PLATFORM.tar.gz"
+tar -xzf "hardcharger-$PLATFORM.tar.gz"
+mv "hardcharger-$PLATFORM" hardcharger
+```
+
+```bash test server=self background wait=http://127.0.0.1:31337/warp/v1/health
+HARDCHARGER_ADMIN_PASSWORD='change-me' ./hardcharger/bin/hardcharger-server --database my.duckdb
+```
+
+</TabItem>
+<TabItem label="Python">
+
+The `hardcharger` Python package runs the server for you. It downloads the release for your
+platform on first use, checks its SHA-256, caches it and starts it on a free port:
+
+```python test server=none github
+import hardcharger
+
+with hardcharger.Server(password="change-me") as server:
+    print(server.uri)
+```
+
+```text output
+hardcharger://127.0.0.1:…?tls=false
+```
+
+During the preview, install it from GitHub (PyPI has only a placeholder until launch):
+
+```bash
+pip install "hardcharger @ git+https://github.com/gizmodata/hardcharger.git#subdirectory=python"
+```
+
+See [Python (ADBC)](/clients/python/) for `server.connect()`.
+
+</TabItem>
+</Tabs>
+
+<Aside type="tip">
+Pass the password in the `HARDCHARGER_ADMIN_PASSWORD` environment variable, not as a flag:
+flags show up in process listings. The administrator's user name is `hardcharger` unless you
+set `--admin-username`.
+</Aside>
+
+## 2. Check that it is up
+
+```console test server=none
+$ curl -s localhost:31337/warp/v1/health
+{"status":"serving"}
+```
+
+The health endpoint needs no credentials. For load balancers and Kubernetes probes, also
+serve it on its own plaintext port with `--health-port 31338` (the Docker image does). Port
+31337 describes itself at `/warp`:
+
+```console test server=none
+$ curl -s localhost:31337/warp | jq -r '.server.name, .protocol'
+Hardcharger
+warp-sql
+```
+
+## 3. Run a query
+
+Warp SQL is plain HTTP, so `curl` is enough. Get a token, open a session, run SQL:
+
+```bash test server=none
+TOKEN=$(curl -s localhost:31337/warp/v1/auth/token -H 'Content-Type: application/json' \
+  -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
+SESSION=$(curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{}' | jq -r .session_id)
+curl -s localhost:31337/warp/v1/sessions/$SESSION/statements -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"sql": "SELECT 42 AS answer"}' | jq .result.kind
+```
+
+```text output
+"rows"
+```
+
+That answer is a statement document. Ask for `Accept: application/vnd.apache.arrow.stream`
+and the rows themselves arrive as an Arrow IPC stream in the same response; the
+[plain HTTP client page](/clients/http/) shows both.
+
+## Next steps
+
+- [Your first query](/get-started/first-query/) in Python, Go, Java, JavaScript or the CLI.
+- [Configure the server](/guides/configuration/) with flags, environment variables or YAML.
+- [Turn on TLS](/guides/tls/) before anyone else connects: `?tls=false` and plain HTTP are for
+  your own machine.

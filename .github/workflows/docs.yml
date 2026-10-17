@@ -1,0 +1,199 @@
+name: docs
+
+# Every check, on every push and pull request; also the gate in front of a release
+# (release.yml calls it on the tagged commit):
+#   - build: Astro builds the site; starlight-links-validator fails on any broken internal
+#     link or anchor; Pagefind indexes it.
+#   - links: lychee checks the external links in the built site.
+#   - browsers: Chromium and WebKit, light and dark, desktop and phone: no console errors and
+#     no page that scrolls sideways on a phone.
+#   - examples: every code block marked `test` runs against a real hardcharger-server from
+#     Hardcharger's main branch, with the real clients (Python, Go, Java, Node, the CLI, curl),
+#     PostgreSQL, Docker and nginx. Missing prerequisites FAIL the job; nothing is skipped.
+#   - reference: the generated reference (configuration, SQL settings and functions, metrics,
+#     CLI help, release notes, the Warp SQL spec) is regenerated from that server and those
+#     repositories and must match what is committed.
+#
+# Access while Hardcharger is internal (no personal token in this repository):
+#   - ghcr.io/gizmodata/hardcharger, pulled with this workflow's GITHUB_TOKEN: the package must
+#     grant this repository read access (package settings, Manage Actions access).
+#   - GIZMODATA_READ_TOKEN: read-only access to gizmodata/hardcharger (releases, CHANGELOG),
+#     warp-sql (the spec), hardcharger-adbc and warp-sql-adbc (the Python/Go driver),
+#     hardcharger-jdbc and warp-sql-jdbc (the JDBC driver). A GitHub App installation token or a
+#     fine-grained token with Contents: read on those repositories.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    secrets:
+      GIZMODATA_READ_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  # The server the examples and the reference run against: Hardcharger's main branch, which
+  # CI there publishes on every green push. Pin a :sha-<short> tag to reproduce an old run.
+  HARDCHARGER_IMAGE: ghcr.io/gizmodata/hardcharger:main
+  DOCS_SITE: https://curly-adventure-gke7ezg.pages.github.io
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build (fails on broken internal links)
+        run: npm run build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: site
+          path: dist
+          retention-days: 30
+
+  links:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: site
+          path: dist
+      - name: External links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --config lychee.toml --root-dir "${{ github.workspace }}/dist" "dist/**/*.html"
+          fail: true
+
+  browsers:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - uses: actions/download-artifact@v8
+        with:
+          name: site
+          path: dist
+      - name: Chromium and WebKit, light and dark, desktop and phone
+        run: |
+          npx astro preview --port 4329 > preview.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:4329/ > /dev/null && break; sleep 1; done
+          node scripts/screenshots.mjs screenshots
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: screenshots
+          path: screenshots
+
+  examples:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: hardcharger
+          POSTGRES_PASSWORD: hardcharger
+          POSTGRES_DB: hardcharger
+        ports: ["127.0.0.1:55450:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hardcharger" --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      HARDCHARGER_DOCS_PG_URI: postgresql://hardcharger:hardcharger@127.0.0.1:55450/postgres
+      HARDCHARGER_DOCS_GITHUB_TOKEN: ${{ secrets.GIZMODATA_READ_TOKEN }}
+      GOPRIVATE: github.com/gizmodata/*
+    steps:
+      - name: The read token is there
+        run: |
+          if [ -z "$HARDCHARGER_DOCS_GITHUB_TOKEN" ]; then
+            echo "::error::the GIZMODATA_READ_TOKEN secret is not set (see the comment at the top of docs.yml)"
+            exit 1
+          fi
+          git config --global url."https://x-access-token:${HARDCHARGER_DOCS_GITHUB_TOKEN}@github.com/".insteadOf https://github.com/
+
+      - uses: actions/checkout@v7
+      - name: Source repositories
+        run: |
+          for repo in hardcharger warp-sql hardcharger-adbc hardcharger-jdbc; do
+            git clone --quiet --depth 1 --recurse-submodules --shallow-submodules \
+              "https://github.com/gizmodata/$repo.git" "$RUNNER_TEMP/src/$repo"
+            echo "$repo at $(git -C "$RUNNER_TEMP/src/$repo" rev-parse --short HEAD)"
+          done
+
+      - name: hardcharger-server and hardcharger from ${{ env.HARDCHARGER_IMAGE }}
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker pull "$HARDCHARGER_IMAGE"
+          id=$(docker create "$HARDCHARGER_IMAGE")
+          docker cp "$id:/opt/hardcharger" "$RUNNER_TEMP/hardcharger"
+          docker rm "$id" > /dev/null
+          "$RUNNER_TEMP/hardcharger/bin/hardcharger-server" --version
+          test -x "$RUNNER_TEMP/hardcharger/bin/hardcharger"
+          echo "HARDCHARGER_DOCS_BIN_DIR=$RUNNER_TEMP/hardcharger/bin" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ runner.temp }}/src/hardcharger-adbc/go/go.mod
+          cache: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Tools
+        run: sudo apt-get update -q && sudo apt-get install -y -q jq postgresql-client
+
+      - name: The Python driver (adbc-driver-hardcharger) and the server package
+        run: |
+          adbc="$RUNNER_TEMP/src/hardcharger-adbc"
+          (cd "$adbc/go" && CGO_ENABLED=1 go build -tags driverlib -buildmode=c-shared \
+            -o ../python/src/adbc_driver_hardcharger/libadbc_driver_hardcharger.so ./pkg/hardcharger)
+          python -m venv .venv
+          .venv/bin/pip install -q "$adbc/python" "$RUNNER_TEMP/src/hardcharger/python" \
+            pyyaml pexpect pyjwt cryptography
+
+      - name: The JDBC driver (hardcharger-jdbc.jar)
+        run: |
+          jdbc="$RUNNER_TEMP/src/hardcharger-jdbc"
+          mvn -q -f "$jdbc/third_party/warp-sql-jdbc/pom.xml" -DskipTests -DskipITs install
+          mvn -q -f "$jdbc/pom.xml" -DskipTests package
+          echo "HARDCHARGER_DOCS_JDBC_JAR=$jdbc/target/hardcharger-jdbc.jar" >> "$GITHUB_ENV"
+
+      - name: Reference matches the server
+        env:
+          HARDCHARGER_DOCS_HARDCHARGER_SRC: ${{ runner.temp }}/src/hardcharger
+          HARDCHARGER_DOCS_WARPSQL_SRC: ${{ runner.temp }}/src/warp-sql
+        run: .venv/bin/python scripts/gen_reference.py --check
+
+      - name: Every tested example
+        run: |
+          # The examples run with their own HOME; Docker and Go keep using the runner's.
+          export DOCKER_CONFIG="$HOME/.docker" GOMODCACHE="$(go env GOMODCACHE)" GOCACHE="$(go env GOCACHE)"
+          .venv/bin/python scripts/verify_examples.py

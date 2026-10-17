@@ -1,0 +1,203 @@
+---
+title: "Users, roles and grants"
+description: "Turn on Hardcharger's role-based access control with a PostgreSQL store, then create users and roles, grant table, column, schema and system privileges, own objects, and check grants in SQL."
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Hardcharger's access control keeps users, roles and grants in a PostgreSQL database that every
+replica of a cluster shares, and you manage them in SQL. Each statement is checked inside
+DuckDB against its own plan, after binding and again before optimizing, so nested SQL, views
+and macros can't route around a grant. Anything the check can't classify is refused.
+
+## Turn it on
+
+Point [`rbac_store_uri`](/reference/configuration/#rbac_store_uri) at a PostgreSQL database.
+Hardcharger creates its tables in the schema `hardcharger_rbac` there:
+
+```bash
+HARDCHARGER_ADMIN_PASSWORD='change-me' \
+HARDCHARGER_RBAC_STORE_URI='postgresql://hardcharger:secret@db.internal:5432/hardcharger' \
+  hardcharger-server --database analytics.duckdb
+```
+
+The URI is `postgresql://user:password@host[:port]/database`, or a libpq string such as
+`'host=db.internal dbname=hardcharger user=hardcharger'`. Every replica names the same database;
+changes reach all of them within about a second.
+
+<Aside>
+The administrator (`--admin-username`, `hardcharger` by default) is a superuser and is never
+subject to grants. Everyone else should be a store user. A store user's name can't be the
+administrator's.
+</Aside>
+
+## Users and roles
+
+The rest of this page runs as the administrator. Create some data, a role, and a user in it:
+
+```sql test profile=rbac
+CREATE SCHEMA analytics;
+CREATE TABLE analytics.orders AS
+  SELECT * FROM (VALUES (1, 'EU', 120.0), (2, 'US', 80.0)) t(id, region, amount);
+CREATE TABLE main.customers AS
+  SELECT * FROM (VALUES (1, 'ann@example.com', '1990-01-02'), (2, 'bob@example.com', '1985-07-08')) t(id, email, birthday);
+```
+
+```sql test profile=rbac
+CREATE ROLE analyst;
+GRANT SELECT ON SCHEMA analytics TO analyst;               -- every table there, now and later
+GRANT SELECT (id, email) ON main.customers TO analyst;     -- two columns only
+CREATE USER joe WITH PASSWORD 'joe-secret';
+GRANT analyst TO joe;
+```
+
+Access-control statements run one at a time: send each as its own statement (the CLI and the
+drivers do, one per `;`).
+
+Now sign in as `joe`. What he may read works; what he may not is refused, with the reason:
+
+```python test profile=rbac
+import adbc_driver_manager
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="joe", password="joe-secret") as conn:
+    with conn.cursor() as cur:
+        cur.execute(operation="SELECT sum(amount) AS total FROM analytics.orders")
+        print(cur.fetchone())
+        cur.execute(operation="SELECT id, email FROM main.customers ORDER BY id")
+        print(cur.fetchall())
+        try:
+            cur.execute(operation="SELECT birthday FROM main.customers")
+        except adbc_driver_manager.Error as e:
+            print("refused:", e)
+```
+
+```text output
+(Decimal('200.0'),)
+[(1, 'ann@example.com'), (2, 'bob@example.com')]
+refused: UNAUTHORIZED: [warpsql] ExecuteQuery: Permission Error: Hardcharger blocked this statement: user joe has no SELECT on column(s) birthday of my.main.customers. Access control on this server lets user joe do only what their roles are granted (see SHOW GRANTS) (permission_denied, HTTP 403, request …). SQLSTATE: 42501
+```
+
+## Privileges
+
+| Privilege | On |
+|---|---|
+| `SELECT` (optionally on columns: `SELECT (a, b)`) | a table or view, a schema, a catalog |
+| `INSERT`, `UPDATE`, `DELETE`, `ALL [PRIVILEGES]` | a table, a schema, a catalog |
+| `CREATE TABLE`, `CREATE VIEW`, `DROP TABLE`, `DROP VIEW`, `ALTER TABLE`, `ALTER VIEW` | a schema or catalog |
+| `CREATE SCHEMA`, `DROP SCHEMA` | a catalog |
+
+```sql test profile=rbac
+CREATE ROLE loader;
+GRANT SELECT, INSERT ON TABLE analytics.orders TO loader;
+GRANT ALL PRIVILEGES ON SCHEMA analytics TO loader;
+GRANT CREATE SCHEMA, SELECT ON CATALOG my TO loader WITH GRANT OPTION;   -- the catalog of my.duckdb
+GRANT SELECT ON analytics.orders TO PUBLIC;                               -- every store user
+REVOKE GRANT OPTION FOR SELECT ON CATALOG my FROM loader;
+REVOKE INSERT ON analytics.orders FROM loader;                            -- CASCADE by default
+-- RESTRICT fails if other grants depend on this one:
+REVOKE SELECT ON analytics.orders FROM PUBLIC RESTRICT;
+```
+
+`WITH GRANT OPTION` lets the grantee pass a privilege on; `WITH ADMIN OPTION` lets a role
+member grant the role. A revoke cascades to the grants made through it unless you say
+`RESTRICT`. A grant on a schema or catalog covers objects created there later.
+
+### System privileges
+
+Reaching outside the database needs a system privilege, granted to a role with no `ON` clause:
+
+| System privilege | Opens |
+|---|---|
+| `READ FILESYSTEM` | `read_csv`, `read_parquet`, `FROM 'file'`, `COPY … FROM`, local and remote |
+| `WRITE FILESYSTEM` | `COPY … TO` a file or URL |
+| `MANAGE CATALOGS` | `ATTACH`, `DETACH` |
+| `MANAGE EXTENSIONS` | `INSTALL`, `LOAD`, extension repositories |
+| `MANAGE SECRETS` | `CREATE`/`DROP SECRET`, `duckdb_secrets()` |
+| `MANAGE CONFIG` | `SET GLOBAL`, instance-wide settings, reading settings that hold credentials |
+| `EXPORT DATABASE`, `IMPORT DATABASE` | those statements |
+| `CHECKPOINT` | `CHECKPOINT`, `FORCE CHECKPOINT` |
+
+```sql test profile=rbac
+CREATE ROLE ingest;
+GRANT READ FILESYSTEM TO ingest;
+GRANT ingest TO joe;
+```
+
+A few things no privilege opens, such as `query()` with SQL text built at run time; those stay
+with the administrator.
+
+## Ownership and views
+
+The user who creates an object owns it and can grant on it. Move ownership with:
+
+```sql test profile=rbac
+ALTER TABLE analytics.orders OWNER TO ROLE loader;
+```
+
+A view reads with its **owner's** rights, so you can publish a filtered or aggregated view of a
+table without granting the table:
+
+```sql test profile=rbac
+CREATE SCHEMA published;
+CREATE VIEW published.revenue_by_region AS
+  SELECT region, sum(amount) AS revenue FROM analytics.orders GROUP BY region;
+CREATE ROLE viewer;
+GRANT SELECT ON published.revenue_by_region TO viewer;
+CREATE USER vic WITH PASSWORD 'vic-secret';
+GRANT viewer TO vic;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --username vic --csv \
+    --command "SELECT * FROM published.revenue_by_region ORDER BY region"
+region,revenue
+EU,120.0
+US,80.0
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --username vic --csv \
+    --command "SELECT * FROM analytics.orders" > /dev/null 2>&1 || echo "refused"
+refused
+```
+
+## Seeing grants
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --csv \
+    --command "SHOW GRANTS FOR ROLE analyst"
+privilege,object_type,object,columns,granted_to,grantee_type,grant_option,granted_by
+…
+```
+
+`SHOW GRANTS` alone shows your own. Its columns are `privilege, object_type, object, columns,
+granted_to, grantee_type, grant_option, granted_by`. Store users may look at themselves and the
+roles they hold.
+
+## Managing users
+
+```sql test profile=rbac
+CREATE USER ann WITH PASSWORD 'ann-secret';
+ALTER USER joe WITH PASSWORD 'n3w-secret';   -- ends joe's tokens and sessions at once
+ALTER USER joe DISABLE;                      -- and ENABLE
+ALTER USER joe PASSWORD NULL;                -- token sign-in only (SSO, scoped tokens)
+ALTER USER ann SET ATTRIBUTE region = 'EU';  -- for row policies: session_attribute('region')
+DROP USER IF EXISTS ann;
+```
+
+Dropping or disabling a user, changing their password, or revoking a role takes effect on every
+replica within about a second, including in sessions that are open: a revoke can stop a
+statement that is running.
+
+## Active roles
+
+A user's roles are all active by default. `SET ROLE analyst` narrows a session to one role,
+`SET ROLE ALL` restores them, `SET ROLE NONE` drops to `PUBLIC`'s grants. Row policies can test
+roles with `is_role_active('hr')`.
+
+## Next
+
+- [Row policies and masking](/guides/row-policies-and-masking/): who sees which rows and values.
+- [SSO](/guides/sso/): sign store users in through your identity provider, with group mappings.
+- [Tenants and scoped tokens](/guides/row-policies-and-masking/#tenants): isolation for SaaS and
+  short-lived, narrowed tokens.
+- [The audit log](/guides/instrumentation-and-audit/#the-audit-log): every decision, in a
+  tamper-evident chain.

@@ -1,0 +1,308 @@
+[
+  {
+    "name": "hardcharger.graceful_shutdown",
+    "scope": "GLOBAL",
+    "input_type": "BOOLEAN",
+    "default_value": "true",
+    "cli_flag": "--graceful-shutdown",
+    "env_var": "HARDCHARGER_GRACEFUL_SHUTDOWN",
+    "description": "On the first stop signal, let running statements finish (false: stop at once). Takes effect at the next signal."
+  },
+  {
+    "name": "hardcharger.max_concurrent_statements",
+    "scope": "GLOBAL",
+    "input_type": "INTEGER",
+    "default_value": "0",
+    "cli_flag": "--max-concurrent-statements",
+    "env_var": "HARDCHARGER_MAX_CONCURRENT_STATEMENTS",
+    "description": "Statements that run at once; more wait in the queue (0: no queue)."
+  },
+  {
+    "name": "hardcharger.max_queued_statements",
+    "scope": "GLOBAL",
+    "input_type": "INTEGER",
+    "default_value": "0",
+    "cli_flag": "--max-queued-statements",
+    "env_var": "HARDCHARGER_MAX_QUEUED_STATEMENTS",
+    "description": "Statements that may wait for a slot (0: unbounded)."
+  },
+  {
+    "name": "hardcharger.shutdown_grace_period_seconds",
+    "scope": "GLOBAL",
+    "input_type": "INTEGER",
+    "default_value": "300",
+    "cli_flag": "--shutdown-grace-period-seconds",
+    "env_var": "HARDCHARGER_SHUTDOWN_GRACE_PERIOD_SECONDS",
+    "description": "How long a graceful shutdown waits for running statements (0: forever); also during a shutdown."
+  },
+  {
+    "name": "hardcharger.bypass_queue",
+    "scope": "SESSION",
+    "input_type": "BOOLEAN",
+    "default_value": "false",
+    "cli_flag": null,
+    "env_var": null,
+    "description": "Skip the statement queue for this session (admins only may turn it on)."
+  },
+  {
+    "name": "hardcharger.query_tag",
+    "scope": "SESSION",
+    "input_type": "VARCHAR",
+    "default_value": "",
+    "cli_flag": null,
+    "env_var": null,
+    "description": "JSON object tagging this session's statements in instrumentation."
+  },
+  {
+    "name": "hardcharger.session_tag",
+    "scope": "SESSION",
+    "input_type": "VARCHAR",
+    "default_value": "",
+    "cli_flag": null,
+    "env_var": null,
+    "description": "JSON object tagging this session in instrumentation."
+  },
+  {
+    "name": "hardcharger.capture_query_profile",
+    "scope": "SESSION_OR_GLOBAL",
+    "input_type": "VARCHAR",
+    "default_value": "off",
+    "cli_flag": "--capture-query-profile",
+    "env_var": "HARDCHARGER_CAPTURE_QUERY_PROFILE",
+    "description": "Record DuckDB's query profile with each execution in instrumentation (off, standard, detailed)."
+  },
+  {
+    "name": "hardcharger.max_queue_wait",
+    "scope": "SESSION_OR_GLOBAL",
+    "input_type": "INTEGER",
+    "default_value": "300",
+    "cli_flag": "--max-queue-wait",
+    "env_var": "HARDCHARGER_MAX_QUEUE_WAIT",
+    "description": "Seconds a statement may wait in the queue (0: forever)."
+  },
+  {
+    "name": "hardcharger.query_log_level",
+    "scope": "SESSION_OR_GLOBAL",
+    "input_type": "VARCHAR",
+    "default_value": "INFO",
+    "cli_flag": "--query-log-level",
+    "env_var": "HARDCHARGER_QUERY_LOG_LEVEL",
+    "description": "Level of statement log lines (DEBUG, INFO, WARNING, ERROR)."
+  },
+  {
+    "name": "hardcharger.query_timeout",
+    "scope": "SESSION_OR_GLOBAL",
+    "input_type": "INTEGER",
+    "default_value": "0",
+    "cli_flag": "--query-timeout-seconds",
+    "env_var": "HARDCHARGER_QUERY_TIMEOUT_SECONDS",
+    "description": "Statement timeout in seconds (0: none). A request's Warp-Statement-Timeout wins."
+  },
+  {
+    "name": "hardcharger.admin_bypass_queue_default",
+    "scope": "STARTUP",
+    "input_type": "BOOLEAN",
+    "default_value": "true",
+    "cli_flag": "--admin-bypass-queue-default",
+    "env_var": "HARDCHARGER_ADMIN_BYPASS_QUEUE_DEFAULT",
+    "description": "Admin sessions skip the statement queue by default."
+  },
+  {
+    "name": "hardcharger.allow_unsigned_extensions",
+    "scope": "STARTUP",
+    "input_type": "BOOLEAN",
+    "default_value": "false",
+    "cli_flag": "--allow-unsigned-extensions",
+    "env_var": "HARDCHARGER_ALLOW_UNSIGNED_EXTENSIONS",
+    "description": "DuckDB may load unsigned extensions."
+  },
+  {
+    "name": "hardcharger.auth_log_level",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "INFO",
+    "cli_flag": "--auth-log-level",
+    "env_var": "HARDCHARGER_AUTH_LOG_LEVEL",
+    "description": "Level of sign-in log lines."
+  },
+  {
+    "name": "hardcharger.cluster_id",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "",
+    "cli_flag": "--cluster-id",
+    "env_var": "HARDCHARGER_CLUSTER_ID",
+    "description": "UUID shared by the replicas of one cluster (empty when unset)."
+  },
+  {
+    "name": "hardcharger.enable_catalog_logging",
+    "scope": "STARTUP",
+    "input_type": "BOOLEAN",
+    "default_value": "false",
+    "cli_flag": "--enable-catalog-logging",
+    "env_var": "HARDCHARGER_ENABLE_CATALOG_LOGGING",
+    "description": "Log lines are also written to a logs table."
+  },
+  {
+    "name": "hardcharger.enable_instrumentation",
+    "scope": "STARTUP",
+    "input_type": "BOOLEAN",
+    "default_value": "false",
+    "cli_flag": "--enable-instrumentation",
+    "env_var": "HARDCHARGER_ENABLE_INSTRUMENTATION",
+    "description": "Sessions, statements and executions are recorded."
+  },
+  {
+    "name": "hardcharger.enable_metrics",
+    "scope": "STARTUP",
+    "input_type": "BOOLEAN",
+    "default_value": "false",
+    "cli_flag": "--enable-metrics",
+    "env_var": "HARDCHARGER_ENABLE_METRICS",
+    "description": "Runtime metrics are collected and served (/metrics, hardcharger_metrics())."
+  },
+  {
+    "name": "hardcharger.health_check_interval_seconds",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "5",
+    "cli_flag": "--health-check-interval-seconds",
+    "env_var": "HARDCHARGER_HEALTH_CHECK_INTERVAL_SECONDS",
+    "description": "Seconds between background health checks."
+  },
+  {
+    "name": "hardcharger.health_check_staleness_seconds",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "15",
+    "cli_flag": "--health-check-staleness-seconds",
+    "env_var": "HARDCHARGER_HEALTH_CHECK_STALENESS_SECONDS",
+    "description": "Age at which the last health check no longer counts."
+  },
+  {
+    "name": "hardcharger.instance_id",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "",
+    "cli_flag": null,
+    "env_var": null,
+    "description": "This server process's UUID (as HARDCHARGER_CURRENT_INSTANCE())."
+  },
+  {
+    "name": "hardcharger.instance_tag",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "",
+    "cli_flag": "--instance-tag",
+    "env_var": "HARDCHARGER_INSTANCE_TAG",
+    "description": "JSON object recorded with this instance."
+  },
+  {
+    "name": "hardcharger.instrumentation_catalog",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "",
+    "cli_flag": "--instrumentation-catalog",
+    "env_var": "HARDCHARGER_INSTRUMENTATION_CATALOG",
+    "description": "Catalog of the instrumentation tables (empty when instrumentation is off)."
+  },
+  {
+    "name": "hardcharger.instrumentation_schema",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "",
+    "cli_flag": "--instrumentation-schema",
+    "env_var": "HARDCHARGER_INSTRUMENTATION_SCHEMA",
+    "description": "Schema of the instrumentation tables (empty when instrumentation is off)."
+  },
+  {
+    "name": "hardcharger.log_catalog",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "",
+    "cli_flag": "--log-catalog",
+    "env_var": "HARDCHARGER_LOG_CATALOG",
+    "description": "Catalog of the logs table (empty when catalog logging is off)."
+  },
+  {
+    "name": "hardcharger.log_schema",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "",
+    "cli_flag": "--log-schema",
+    "env_var": "HARDCHARGER_LOG_SCHEMA",
+    "description": "Schema of the logs table (empty when catalog logging is off)."
+  },
+  {
+    "name": "hardcharger.max_header_bytes",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "16384",
+    "cli_flag": "--max-header-bytes",
+    "env_var": "HARDCHARGER_MAX_HEADER_BYTES",
+    "description": "Largest request header block accepted, in bytes."
+  },
+  {
+    "name": "hardcharger.max_sessions",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "0",
+    "cli_flag": "--max-sessions",
+    "env_var": "HARDCHARGER_MAX_SESSIONS",
+    "description": "Most non-admin sessions at once; more get too_many_sessions (0: unlimited)."
+  },
+  {
+    "name": "hardcharger.memory_limit",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "",
+    "cli_flag": "--memory-limit",
+    "env_var": "HARDCHARGER_MEMORY_LIMIT",
+    "description": "DuckDB memory_limit (empty: DuckDB's default)."
+  },
+  {
+    "name": "hardcharger.read_only",
+    "scope": "STARTUP",
+    "input_type": "BOOLEAN",
+    "default_value": "false",
+    "cli_flag": "--read-only",
+    "env_var": "HARDCHARGER_READ_ONLY",
+    "description": "Database opened read-only: every write is refused."
+  },
+  {
+    "name": "hardcharger.session_idle_timeout",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "900",
+    "cli_flag": "--session-idle-timeout",
+    "env_var": "HARDCHARGER_SESSION_IDLE_TIMEOUT",
+    "description": "Seconds an idle session lives (0: forever)."
+  },
+  {
+    "name": "hardcharger.session_log_level",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "INFO",
+    "cli_flag": "--session-log-level",
+    "env_var": "HARDCHARGER_SESSION_LOG_LEVEL",
+    "description": "Level of session log lines."
+  },
+  {
+    "name": "hardcharger.storage_version",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "",
+    "cli_flag": "--storage-version",
+    "env_var": "HARDCHARGER_STORAGE_VERSION",
+    "description": "DuckDB storage version for new databases (empty: DuckDB's default)."
+  },
+  {
+    "name": "hardcharger.version",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "",
+    "cli_flag": null,
+    "env_var": null,
+    "description": "Server version (as HARDCHARGER_VERSION())."
+  }
+]

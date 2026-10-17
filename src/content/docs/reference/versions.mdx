@@ -1,0 +1,28 @@
+---
+title: "Versions"
+description: "Which Hardcharger version these docs describe, what differs in 0.2.0, and how older versions' docs will be kept."
+---
+
+These docs describe **`main`**: Hardcharger as it is on its main branch, which becomes the next
+release. Every example runs against a server built from `main`.
+
+## Hardcharger 0.2.0
+
+0.2.0 is the latest release. Nearly everything here applies to it. What `main` has and 0.2.0
+doesn't:
+
+- **The `hardcharger` CLI.** 0.2.0's tarballs and image have only `hardcharger-server`; build the
+  client from source, or use a [driver](/clients/python/) or [curl](/clients/http/).
+- **Partitioned results** (`max_result_partitions`, `Warp-Result-Partitions`, the drivers'
+  `result_partitions` and `--result-partitions`).
+- **Results in 122,880-row batches** by default (0.2.0: 2,048), and the transfer work behind the
+  [network benchmarks](/benchmarks/#over-a-real-network-aws-2026-10-17): the pipelined TLS stream
+  and parallel ingest. 0.2.0's TLS streams and ingest are several times slower.
+- **`--print-options-json`.**
+
+The [release notes](/reference/release-notes/) list every change.
+
+## Older and newer versions
+
+From 0.3.0 on, each release's docs will be kept at their own path, next to `latest`, with a
+version picker in the header.

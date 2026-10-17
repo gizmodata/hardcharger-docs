@@ -1,0 +1,22 @@
+# External link check for the built site (docs.yml, job "links"). Internal links and anchors
+# are checked at build time by starlight-links-validator.
+
+max_retries = 3
+retry_wait_time = 5
+timeout = 30
+accept = ["200..=299", "403", "429"]   # some sites refuse bots (403) or rate-limit (429)
+
+exclude = [
+  # gizmodata's repositories, packages and releases are internal until launch: an anonymous
+  # check gets 404. Remove this line at launch (README: launch checklist).
+  '^https://github\.com/gizmodata/',
+  # The docs' own future address, and the private preview's.
+  '^https://docs\.hardcharger\.gizmodata\.com',
+  '^https://curly-adventure-gke7ezg\.pages\.github\.io',
+  # Example hosts in prose.
+  '^https?://(localhost|127\.0\.0\.1)',
+  '\.example\.(com|org)',
+  # Badge images.
+  '^https://img\.shields\.io/',
+]
+exclude_path = ["dist/pagefind", "dist/_astro"]

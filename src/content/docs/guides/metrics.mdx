@@ -1,0 +1,65 @@
+---
+title: "Prometheus metrics"
+description: "Turn on Hardcharger's Prometheus /metrics endpoint, scrape it, read the same numbers in SQL with hardcharger_metrics(), and alert on what matters."
+---
+
+import MetricsTable from '../../../components/MetricsTable.astro';
+
+With [`--enable-metrics`](/reference/configuration/#enable_metrics), Hardcharger collects runtime
+metrics and serves them in the Prometheus text format at `GET /metrics` on
+[`--metrics-port`](/reference/configuration/#metrics_port) (9091), a separate plaintext port.
+
+```console test profile=metrics
+$ curl -s localhost:9091/metrics | grep -E '^hardcharger_(build_info|up_seconds|sessions\{)' | head -3
+hardcharger_build_info{…} 1
+hardcharger_up_seconds …
+hardcharger_sessions{state="…"} …
+```
+
+Keep the port on a private network: [`--metrics-bind-address`](/reference/configuration/#metrics_bind_address)
+(default `0.0.0.0`) picks the interface, and `--metrics-port 0` turns the HTTP endpoint off while
+keeping the SQL view.
+
+## In SQL
+
+The same numbers are in `hardcharger_metrics()`, for administrators and dashboards that speak SQL:
+
+```console test profile=metrics
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --csv --command \
+    "SELECT name, labels['state'] AS state FROM hardcharger_metrics() WHERE name = 'hardcharger_queue_depth' ORDER BY state"
+name,state
+hardcharger_queue_depth,active
+hardcharger_queue_depth,queued
+```
+
+## Scrape it
+
+```yaml test file=prometheus.yml server=none run="python3 -c 'import sys, yaml; yaml.safe_load(sys.stdin)' < prometheus.yml"
+scrape_configs:
+  - job_name: hardcharger
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["hardcharger-0.hardcharger:9091", "hardcharger-1.hardcharger:9091"]
+```
+
+In Kubernetes with the Prometheus Operator, a `PodMonitor` on the `metrics` port does the same
+([Docker and Kubernetes](/guides/docker-and-kubernetes/)).
+
+## What to alert on
+
+| Alert when | Metric |
+|---|---|
+| The server restarted uncleanly | `hardcharger_last_exit_unclean == 1`, or `increase(hardcharger_unclean_exits_total[1h]) > 0` |
+| Health checks fail | `hardcharger_health_check_status == 0` |
+| Statements are being turned away | `rate(hardcharger_queue_rejected_total[5m]) > 0` |
+| Statements wait long for a slot | `histogram_quantile(0.95, rate(hardcharger_queue_wait_seconds_bucket[5m]))` |
+| Errors climb | `rate(hardcharger_statements_total{status="error"}[5m])` |
+| Memory nears DuckDB's limit | `hardcharger_duckdb_memory_usage_bytes / hardcharger_duckdb_memory_limit_bytes > 0.9` |
+| Sessions near the cap | `sum(hardcharger_sessions) / hardcharger_session_limit > 0.9` (when `max_sessions` is set) |
+| Metrics themselves stopped | `hardcharger_metrics_collection_success == 0`, or the scrape is missing (`up == 0`) |
+
+## Every metric
+
+Generated from a running server's `/metrics`:
+
+<MetricsTable />

@@ -1,0 +1,283 @@
+---
+title: "SSO, OIDC and browser sign-in"
+description: "Sign users in to Hardcharger with your identity provider's OpenID Connect ID tokens (JWKS or a static key), restrict who may sign in, map identity-provider groups to roles, and run the browser sign-in flow."
+---
+
+import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Hardcharger accepts ID tokens from an OpenID Connect provider (Okta, Entra ID, Google, Auth0,
+Keycloak, ...). A client exchanges the provider's token for a Hardcharger token, and the user
+is whoever the token names. Nobody's password reaches Hardcharger.
+
+## How it fits together
+
+```mermaid
+sequenceDiagram
+  participant U as User / client
+  participant I as Identity provider
+  participant H as Hardcharger
+  U->>I: sign in (browser, device code, workload identity, ...)
+  I-->>U: ID token (JWT, signed by the provider)
+  U->>H: POST /warp/v1/auth/token  {grant_type: token_exchange, subject_token}
+  H->>I: (once, cached) OpenID configuration and JWKS
+  H-->>U: Hardcharger access token
+```
+
+Hardcharger checks the token's signature (RS256/384/512 or ES256/384/512, by the key its `kid`
+names), its issuer (`iss`) and audience (`aud`), and its expiry. The user name is the `email`
+claim, or `sub` without one.
+
+## Configure the server
+
+| Option | Meaning |
+|---|---|
+| [`token_allowed_issuer`](/reference/configuration/#token_allowed_issuer) | The provider's issuer URL. With an audience and no static key, the server reads `<issuer>/.well-known/openid-configuration` at startup to find the JWKS. |
+| [`token_allowed_audience`](/reference/configuration/#token_allowed_audience) | The audience the tokens must carry: usually your OAuth client id. |
+| [`token_jwks_uri`](/reference/configuration/#token_jwks_uri) | The JWKS URL, if you'd rather name it than discover it. |
+| [`token_signature_verify_cert_path`](/reference/configuration/#token_signature_verify_cert_path) | Or a PEM public key or certificate, for a provider without a JWKS. |
+| [`token_default_role`](/reference/configuration/#token_default_role) | Without access control: the role (`admin`, `user`, `readonly`) for tokens that carry no `role` claim. |
+| [`token_authorized_emails`](/reference/configuration/#token_authorized_emails) | Who may sign in: case-insensitive globs, such as `*@example.com`. Default `*`. |
+| [`token_groups_claim`](/reference/configuration/#token_groups_claim) | With access control: the claim listing the user's groups (default `groups`). |
+
+## Try it with a stand-in provider
+
+To see the whole flow on your machine, this script plays an identity provider: it serves the
+OpenID configuration and a JWKS on `127.0.0.1:8099`, and prints ID tokens it signed.
+
+```python test file=idp.py server=none
+"""A stand-in OpenID Connect provider for trying Hardcharger's SSO locally.
+
+    python3 idp.py serve                      # discovery and JWKS on http://127.0.0.1:8099
+    python3 idp.py token ann@example.com      # print an ID token for that user
+"""
+import json
+import pathlib
+import sys
+import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+import jwt
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+
+ISSUER = "http://127.0.0.1:8099"
+KEY = pathlib.Path("idp-key.pem")
+if not KEY.exists():
+    KEY.write_bytes(rsa.generate_private_key(public_exponent=65537, key_size=2048).private_bytes(
+        encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption()))
+private_key = serialization.load_pem_private_key(data=KEY.read_bytes(), password=None)
+
+
+class Provider(BaseHTTPRequestHandler):
+    def do_GET(self):
+        documents = {
+            "/.well-known/openid-configuration": {
+                "issuer": ISSUER, "jwks_uri": f"{ISSUER}/jwks.json",
+                "authorization_endpoint": f"{ISSUER}/authorize", "token_endpoint": f"{ISSUER}/token"},
+            "/jwks.json": {"keys": [dict(json.loads(jwt.algorithms.RSAAlgorithm.to_jwk(private_key.public_key())),
+                                         kid="docs-key", use="sig", alg="RS256")]},
+        }
+        body = json.dumps(documents.get(self.path, {})).encode()
+        self.send_response(200 if self.path in documents else 404)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(body)
+
+
+if sys.argv[1] == "serve":
+    HTTPServer(("127.0.0.1", 8099), Provider).serve_forever()
+else:
+    now = int(time.time())
+    claims = {"iss": ISSUER, "aud": "hardcharger", "sub": sys.argv[2], "email": sys.argv[2],
+              "groups": sys.argv[3:], "iat": now, "exp": now + 3600}
+    print(jwt.encode(payload=claims, key=private_key, algorithm="RS256", headers={"kid": "docs-key"}))
+```
+
+It needs `pip install pyjwt cryptography`. Start it, then start Hardcharger trusting it:
+
+```bash test server=self background wait=http://127.0.0.1:8099/jwks.json
+python3 idp.py serve
+```
+
+```bash test server=self background
+HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb --health-port 31338 \
+  --token-allowed-issuer http://127.0.0.1:8099 --token-allowed-audience hardcharger \
+  --token-default-role user
+```
+
+## Sign in with an ID token
+
+<Tabs syncKey="lang">
+<TabItem label="CLI">
+
+The ID token is the password of the user `token`:
+
+```console test server=none
+$ HARDCHARGER_PASSWORD="$(python3 idp.py token ann@example.com)" hardcharger --host localhost \
+    --username token --csv --command "SELECT HARDCHARGER_USER() AS who, HARDCHARGER_ROLE() AS role"
+who,role
+ann@example.com,user
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```python test server=none
+import subprocess
+
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+id_token = subprocess.run(args=["python3", "idp.py", "token", "ann@example.com"],
+                          capture_output=True, text=True, check=True).stdout.strip()
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="token", password=id_token) as conn:
+    print(conn.current_user())
+```
+
+```text output
+ann@example.com
+```
+
+</TabItem>
+<TabItem label="HTTP">
+
+`token_exchange` swaps the ID token for a Hardcharger token:
+
+```console test server=none
+$ ID_TOKEN=$(python3 idp.py token ann@example.com)
+$ curl -s localhost:31337/warp/v1/auth/token -H 'Content-Type: application/json' \
+    -d "{\"grant_type\": \"token_exchange\", \"subject_token\": \"$ID_TOKEN\"}" | jq -r .token_type
+Bearer
+```
+
+The Warp SQL ADBC driver takes the ID token as `adbc.warp.auth.subject_token`, and JDBC as
+`subjectToken`.
+
+</TabItem>
+</Tabs>
+
+## Limit who may sign in
+
+```bash test server=self background stop
+python3 idp.py serve & HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb \
+  --health-port 31338 --token-allowed-issuer http://127.0.0.1:8099 --token-allowed-audience hardcharger \
+  --token-default-role user --token-authorized-emails '*@example.com'
+```
+
+```console test server=none
+$ ID_TOKEN=$(python3 idp.py token eve@elsewhere.org)
+$ curl -s localhost:31337/warp/v1/auth/token -H 'Content-Type: application/json' \
+    -d "{\"grant_type\": \"token_exchange\", \"subject_token\": \"$ID_TOKEN\"}" | jq -r .detail
+User 'eve@elsewhere.org' is not authorized. Contact your administrator.
+```
+
+The CLI and the drivers report it as a failed sign-in.
+
+## With access control: users and group mappings
+
+Under [access control](/guides/access-control/), an identity-provider user must exist in the
+store (it can have no password: it signs in only through the provider), and its grants decide
+what it may do. Roles can also come from the provider's groups. Start the server with the
+store and the provider (the docs' tests run exactly this, with their own PostgreSQL):
+
+```bash
+HARDCHARGER_ADMIN_PASSWORD='change-me' \
+HARDCHARGER_RBAC_STORE_URI='postgresql://hardcharger:secret@localhost:5432/hardcharger' \
+  hardcharger-server --database my.duckdb --token-allowed-issuer http://127.0.0.1:8099 \
+  --token-allowed-audience hardcharger --token-default-role user
+```
+
+<Aside type="caution" title="Tokens still need a role">
+Under access control a token's `role` claim no longer grants anything (except `admin`), but a
+token without one is still refused ("the sign-in token is not accepted") unless
+`--token-default-role` is set. Set it to `user` when your provider's tokens carry no `role`.
+</Aside>
+
+Then, as the administrator:
+
+```sql test profile=sso_rbac stop
+CREATE ROLE analyst;
+GRANT SELECT ON SCHEMA main TO analyst;
+CREATE USER "ann@example.com";
+CREATE GROUP MAPPING 'okta-analysts' ISSUER 'http://127.0.0.1:8099' TO ROLE analyst;
+CREATE TABLE sales AS SELECT 42 AS amount;
+```
+
+```console test profile=sso_rbac
+$ HARDCHARGER_PASSWORD="$(python3 idp.py token ann@example.com okta-analysts)" hardcharger --host localhost \
+    --username token --csv --command "SELECT amount FROM sales"
+amount
+42
+```
+
+Ann's token lists the group `okta-analysts`, which maps to `analyst`. A group never creates a
+user: a token naming a user the store doesn't have is refused. `SHOW GROUP MAPPINGS` lists the
+mappings; `DROP GROUP MAPPING 'okta-analysts' ISSUER '…'` removes one.
+
+## Browser sign-in
+
+For people at a desktop (the CLI, DBeaver, a notebook), Hardcharger can run the OAuth
+authorization-code flow itself on a separate port, 31339 by default. Register Hardcharger as a
+confidential web client with your provider, with the redirect URI
+`https://<your server>:31339/oauth/callback`, then start the server with:
+
+```bash
+hardcharger-server --token-allowed-issuer https://login.example.com \
+  --token-allowed-audience <client id> \
+  --oauth-client-id <client id> --oauth-client-secret "$OAUTH_CLIENT_SECRET"
+```
+
+The client asks the server to start a sign-in (`GET /oauth/initiate`), opens the returned URL in
+the user's browser, polls `GET /oauth/token/<id>` until the sign-in completes, and signs in with
+the ID token it receives:
+
+<Tabs syncKey="lang">
+<TabItem label="CLI">
+
+```bash
+hardcharger --host db.example.com --auth-type external
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+with hardcharger.connect(uri="hardcharger://db.example.com", auth_type="external") as conn:
+    print(conn.current_user())  # the e-mail address you signed in with
+```
+
+`open_browser=False` prints the URL instead, for a remote shell.
+
+</TabItem>
+</Tabs>
+
+With the stand-in provider, the server's side of the flow can be checked (the stand-in has no
+login page, so the browser part stops there):
+
+```bash test server=self background stop
+python3 idp.py serve & HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb \
+  --health-port 31338 --token-allowed-issuer http://127.0.0.1:8099 --token-allowed-audience hardcharger \
+  --oauth-client-id hardcharger --oauth-client-secret not-a-real-secret --oauth-disable-tls
+```
+
+```console test server=none
+$ curl -s localhost:31339/oauth/initiate | jq -r '.auth_url | split("?")[0]'
+http://127.0.0.1:8099/authorize
+```
+
+| Option | Meaning |
+|---|---|
+| `oauth_client_id`, `oauth_client_secret` | The client registered with the provider. Setting the id turns the sign-in server on. |
+| `oauth_port` | Its port (31339). |
+| `oauth_base_url` | Its public URL, if clients reach it through a proxy (default `http(s)://localhost:<port>`). |
+| `oauth_redirect_uri` | The redirect URI registered with the provider (default `<base URL>/oauth/callback`). |
+| `oauth_scopes` | Scopes requested (default `openid profile email`). |
+| `oauth_disable_tls` | Serve the sign-in port over plain HTTP even with TLS on: only behind a TLS-terminating proxy. |
+| `oauth_instance_id` | A prefix for the OAuth state, when several servers share one callback proxy. |
+
+<Aside type="note">
+Warp SQL also defines a browser sign-in flow in the protocol itself (`oauth_browser`); Hardcharger
+offers the routes above on `oauth_port` until the Warp SQL server SDK provides it.
+</Aside>

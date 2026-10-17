@@ -1,0 +1,208 @@
+---
+title: "Your first query"
+description: "Connect to Hardcharger and run a query with a bind parameter from Python, Go, Java, JavaScript, the hardcharger CLI or curl."
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Each tab connects to a server on `localhost:31337` as the administrator `hardcharger` with
+password `change-me` (as in the [quickstart](/get-started/quickstart/)), runs one query with a
+bind parameter, and prints the result.
+
+<Aside>
+Every example on this site runs in CI against a real `hardcharger-server` built from `main`.
+If one doesn't work for you, that is a bug: please
+[open an issue](https://github.com/gizmodata/hardcharger-docs/issues).
+</Aside>
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python test
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+with hardcharger.connect(uri="hardcharger://localhost?tls=false",
+                         username="hardcharger", password="change-me") as conn:
+    with conn.cursor() as cur:
+        cur.execute(operation="SELECT 42 AS answer, ? AS greeting", parameters=["hello"])
+        print(cur.fetch_arrow_table().to_pylist())
+```
+
+```text output
+[{'answer': 42, 'greeting': 'hello'}]
+```
+
+`hardcharger://localhost` means HTTPS on port 31337; `?tls=false` is plain HTTP for your own
+machine. [Install the driver](/clients/python/#install).
+
+</TabItem>
+<TabItem label="Go">
+
+```go test
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/apache/arrow-go/v18/arrow/memory"
+	"github.com/gizmodata/hardcharger-adbc/go/hardcharger"
+)
+
+func main() {
+	ctx := context.Background()
+	db, err := hardcharger.NewDriver(memory.DefaultAllocator).NewDatabaseWithContext(ctx, map[string]string{
+		"uri":      "hardcharger://localhost?tls=false",
+		"username": "hardcharger",
+		"password": "change-me",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close(ctx)
+	cnxn, err := db.Open(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cnxn.Close(ctx)
+	stmt, err := cnxn.NewStatement(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer stmt.Close(ctx)
+	if err := stmt.SetSqlQuery(ctx, "SELECT 42 AS answer, 'hello' AS greeting"); err != nil {
+		log.Fatal(err)
+	}
+	reader, _, err := stmt.ExecuteQuery(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer reader.Release()
+	for reader.Next() {
+		batch := reader.RecordBatch()
+		fmt.Println(batch.Column(0), batch.Column(1))
+	}
+	if err := reader.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+```
+
+```text output
+[42] ["hello"]
+```
+
+`go get github.com/gizmodata/hardcharger-adbc/go`: the [Go driver](/clients/go/).
+
+</TabItem>
+<TabItem label="Java">
+
+```java test
+Properties properties = new Properties();
+properties.setProperty("user", "hardcharger");
+properties.setProperty("password", "change-me");
+properties.setProperty("useEncryption", "false"); // plain HTTP on localhost
+try (Connection connection = DriverManager.getConnection("jdbc:hardcharger://localhost", properties);
+     PreparedStatement statement = connection.prepareStatement("SELECT 42 AS answer, ? AS greeting")) {
+  statement.setString(1, "hello");
+  try (ResultSet rows = statement.executeQuery()) {
+    rows.next();
+    System.out.println(rows.getInt("answer") + " " + rows.getString("greeting"));
+  }
+}
+```
+
+```text output
+42 hello
+```
+
+`jdbc:hardcharger://host` uses port 31337 and TLS unless `useEncryption=false`. See
+[Java (JDBC)](/clients/jdbc/) for the jar and DBeaver.
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```js test
+import { tableFromIPC } from 'apache-arrow';
+
+const base = 'http://localhost:31337/warp/v1';
+const json = { 'Content-Type': 'application/json' };
+
+const { access_token } = await (await fetch(`${base}/auth/token`, {
+  method: 'POST',
+  headers: json,
+  body: JSON.stringify({ grant_type: 'password', username: 'hardcharger', password: 'change-me' }),
+})).json();
+const auth = { ...json, Authorization: `Bearer ${access_token}` };
+const { session_id } = await (await fetch(`${base}/sessions`, { method: 'POST', headers: auth, body: '{}' })).json();
+
+const response = await fetch(`${base}/sessions/${session_id}/statements`, {
+  method: 'POST',
+  headers: { ...auth, Accept: 'application/vnd.apache.arrow.stream' },
+  body: JSON.stringify({ sql: 'SELECT 42 AS answer, ? AS greeting', parameters: ['hello'] }),
+});
+const table = tableFromIPC(new Uint8Array(await response.arrayBuffer()));
+console.log(table.toArray().map((row) => row.toJSON()));
+```
+
+```text output
+[ { answer: 42, greeting: 'hello' } ]
+```
+
+Node.js 22 or newer and [`apache-arrow`](https://www.npmjs.com/package/apache-arrow) from npm.
+A JavaScript client library is [in preview](/clients/javascript/); until then, Warp SQL's plain
+HTTP is all you need.
+
+</TabItem>
+<TabItem label="CLI">
+
+```console test
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger \
+    --command "SELECT 42 AS answer, 'hello' AS greeting"
+┌─────────┬──────────┐
+│ answer  │ greeting │
+│ integer │ varchar  │
+├─────────┼──────────┤
+│      42 │ hello    │
+├─────────┴──────────┤
+│ 1 row  2 columns   │
+└────────────────────┘
+```
+
+`hardcharger` ships next to `hardcharger-server`. Without `--command` it opens an
+[interactive shell](/clients/cli/).
+
+</TabItem>
+<TabItem label="curl">
+
+```bash test
+TOKEN=$(curl -s localhost:31337/warp/v1/auth/token -H 'Content-Type: application/json' \
+  -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
+SESSION=$(curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{}' | jq -r .session_id)
+curl -s localhost:31337/warp/v1/sessions/$SESSION/statements -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -H 'Accept: application/vnd.apache.arrow.stream' \
+  -d '{"sql": "SELECT 42 AS answer, ? AS greeting", "parameters": ["hello"]}' -o result.arrows
+python3 -c "import pyarrow.ipc as ipc; print(ipc.open_stream('result.arrows').read_all().to_pylist())"
+```
+
+```text output
+[{'answer': 42, 'greeting': 'hello'}]
+```
+
+The response body is an Arrow IPC stream: any Arrow library reads it.
+[Plain HTTP](/clients/http/) covers the rest of the protocol.
+
+</TabItem>
+</Tabs>
+
+## What just happened
+
+1. The client exchanged the password for a **bearer token** (`POST /warp/v1/auth/token`).
+2. It opened a **session**, the server-side state of one connection (`POST /warp/v1/sessions`).
+3. It **submitted the statement** with its bind parameter. The value travelled as a value,
+   never spliced into the SQL, and the result streamed back as Arrow in the same response.
+
+The drivers do all of this for you, and more: retries, resumable downloads, cancel and
+partitioned reads. [Warp SQL in one page](/concepts/warp-sql/) explains the model.

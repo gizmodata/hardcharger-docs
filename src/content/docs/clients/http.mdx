@@ -1,0 +1,135 @@
+---
+title: "Plain HTTP"
+description: "Talk to Hardcharger with curl or any HTTP library - sign in, open a session, stream Arrow results, submit asynchronously, prepare statements, read metadata, cancel and close."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import HeroBanner from '../../../components/HeroBanner.astro';
+import banner from '../../../assets/banners/warp-sql-http-banner.svg';
+
+<HeroBanner src={banner} alt="Plain HTTP: Warp SQL with curl, fetch or any HTTP library" />
+
+Warp SQL is plain HTTP with JSON control messages and Arrow IPC data, so any HTTP client can
+use Hardcharger. This page walks through the protocol with `curl`, `jq` and a line of Python to
+read Arrow; the [specification](/reference/warp-sql-protocol/) has every detail.
+
+## Discover
+
+```console test
+$ curl -s localhost:31337/warp | jq -c '{server: .server.name, protocol_versions, capabilities}'
+{"server":"Hardcharger","protocol_versions":["1"],"capabilities":["prepared_statements","transactions","ingest","result_retention","long_poll","ipc_compression_zstd","result_partitions"]}
+```
+
+A client uses only the optional features listed in `capabilities`.
+
+## Sign in and open a session
+
+```console test
+$ H='Content-Type: application/json'
+$ TOKEN=$(curl -s localhost:31337/warp/v1/auth/token -H "$H" \
+    -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
+$ AUTH="Authorization: Bearer $TOKEN"
+$ curl -s localhost:31337/warp/v1/sessions -H "$AUTH" -H "$H" -d '{"options": {"schema": "main"}}' | tee session.json | jq -c '{options, idle_timeout_s}'
+{"options":{"catalog":"my","schema":"main","autocommit":true,"arrow_lossless_conversion":false},"idle_timeout_s":900}
+$ URL=localhost:31337/warp/v1/sessions/$(jq -r .session_id session.json)
+$ echo "export H='$H' AUTH='$AUTH' URL='$URL'" > env.sh
+```
+
+The token goes in `Authorization: Bearer` on every other request. Tokens last a day by default;
+sign in again (or let a driver renew) when one expires.
+
+## Run a query
+
+With `Accept: application/vnd.apache.arrow.stream`, the result streams back in the response as an
+Arrow IPC stream:
+
+```console test
+$ . ./env.sh
+$ curl -s $URL/statements -H "$AUTH" -H "$H" -H 'Accept: application/vnd.apache.arrow.stream' \
+    -d '{"sql": "SELECT i, i * 2 AS twice FROM range(3) t(i) WHERE i >= ?", "parameters": [1]}' -o rows.arrows
+$ python3 -c "import pyarrow.ipc as ipc; print(ipc.open_stream('rows.arrows').read_all().to_pylist())"
+[{'i': 1, 'twice': 2}, {'i': 2, 'twice': 4}]
+```
+
+Statements without rows answer with a JSON statement document instead, so check `Content-Type`:
+
+```console test
+$ . ./env.sh
+$ curl -s $URL/statements -H "$AUTH" -H "$H" -H 'Accept: application/vnd.apache.arrow.stream' \
+    -d '{"sql": "CREATE TABLE notes AS SELECT 1 AS id, '"'"'hello'"'"' AS body"}' | jq -c '{state, result}'
+{"state":"succeeded","result":{"kind":"update","rows_affected":1}}
+```
+
+Parameters are positional (`?`, as an array) or named (`$name`, as an object), and always values.
+For exact types (decimals, timestamps, binary), use a prepared statement with Arrow parameters.
+
+## Submit, poll, fetch
+
+For long queries, or behind a proxy that cuts long requests:
+
+```console test
+$ . ./env.sh
+$ ID=$(curl -s $URL/statements -H "$AUTH" -H "$H" -H 'Prefer: respond-async' \
+    -d '{"sql": "SELECT count(*) AS n FROM range(100000000)"}' | jq -r .statement_id)
+$ curl -s $URL/statements/$ID -H "$AUTH" -H 'Prefer: wait=10' | jq -r .state
+succeeded
+$ curl -s $URL/statements/$ID/result -H "$AUTH" -o count.arrows
+$ python3 -c "import pyarrow.ipc as ipc; print(ipc.open_stream('count.arrows').read_all()['n'][0])"
+100000000
+$ curl -s -o /dev/null -w '%{http_code}\n' -X DELETE $URL/statements/$ID -H "$AUTH"
+204
+```
+
+`Prefer: wait=N` long-polls: the server answers as soon as the state changes, or after N seconds.
+Add `Warp-Retain-Result: true` when submitting to make the result re-readable and resumable
+(`?from_batch=N`); see [Warp SQL in one page](/concepts/warp-sql/#retained-resumable-results).
+
+## Prepared statements
+
+```console test
+$ . ./env.sh
+$ PREPARED=$(curl -s $URL/prepared -H "$AUTH" -H "$H" -d '{"sql": "SELECT ? + 1 AS next"}' | jq -r .prepared_id)
+$ curl -s $URL/prepared/$PREPARED/execute -H "$AUTH" -H "$H" -H 'Accept: application/vnd.apache.arrow.stream' \
+    -d '{"parameters": [41]}' -o next.arrows
+$ python3 -c "import pyarrow.ipc as ipc; print(ipc.open_stream('next.arrows').read_all().to_pylist())"
+[{'next': 42}]
+$ curl -s -o /dev/null -w '%{http_code}\n' -X DELETE $URL/prepared/$PREPARED -H "$AUTH"
+204
+```
+
+Executing with an Arrow body (`Content-Type: application/vnd.apache.arrow.stream`) runs the
+statement once per row: a batch of inserts in one request.
+
+## Metadata
+
+The metadata endpoints answer with Arrow streams in Arrow Flight SQL's result schemas, so driver
+code written for Flight SQL metadata carries over:
+
+```console test
+$ . ./env.sh
+$ curl -s "$URL/metadata/tables?db_schema_filter_pattern=main&table_name_filter_pattern=notes" -H "$AUTH" -o tables.arrows
+$ python3 -c "import pyarrow.ipc as ipc; print(ipc.open_stream('tables.arrows').read_all().select(['catalog_name', 'table_name', 'table_type']).to_pylist())"
+[{'catalog_name': 'my', 'table_name': 'notes', 'table_type': 'BASE TABLE'}]
+```
+
+`catalogs`, `db-schemas`, `tables`, `table-types`, `primary-keys`, `imported-keys`,
+`exported-keys`, `cross-reference` and `type-info` are Arrow; `server-info` is JSON.
+
+## Close
+
+```console test
+$ . ./env.sh
+$ curl -s -o /dev/null -w '%{http_code}\n' -X DELETE $URL -H "$AUTH"
+204
+$ curl -s $URL -H "$AUTH" | jq -r .code
+session_not_found
+```
+
+Closing a session cancels its running statements and frees its results. A server never recreates
+a session implicitly.
+
+<Aside type="tip">
+Send an `Idempotency-Key` (a fresh UUID) with every request that creates a statement or writes
+data. If the response is lost, send the same request again with the same key: the server answers
+with what it already did instead of doing it twice.
+</Aside>

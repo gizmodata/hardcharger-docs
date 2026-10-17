@@ -1,0 +1,148 @@
+---
+title: "Docker and Kubernetes"
+description: "Run Hardcharger's container image with persistent data, init SQL and secrets, and deploy it to Kubernetes with probes, graceful shutdown and metrics."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## The image
+
+`ghcr.io/gizmodata/hardcharger` (also `docker.io/gizmodata/hardcharger`) is built for
+`linux/amd64` and `linux/arm64`. Tags: each release's version (`0.2.0`) and `latest`.
+
+| | |
+|---|---|
+| Entrypoint | `hardcharger-server`: arguments after the image name are server flags |
+| User | `hardcharger` (uid 999), home and working directory `/var/lib/hardcharger` |
+| Ports | 31337 (Warp SQL), 31338 (`/health`, plaintext) |
+| Preset | `HARDCHARGER_HOST=0.0.0.0`, `HARDCHARGER_PORT=31337`, `HARDCHARGER_HEALTH_PORT=31338` |
+| Also inside | the `hardcharger` CLI, on `PATH` (images after 0.2.0) |
+| Required | `HARDCHARGER_ADMIN_PASSWORD` |
+
+## Keep the data
+
+Without `--database`, the server runs an in-memory database that disappears with the container.
+Put the database on a volume:
+
+```bash test server=self background cleanup="docker rm -f hardcharger; docker volume rm hardcharger-data" timeout=180
+docker run --rm --name hardcharger -p 31337:31337 -p 31338:31338 \
+  -e HARDCHARGER_ADMIN_PASSWORD='change-me' \
+  -v hardcharger-data:/var/lib/hardcharger \
+  ghcr.io/gizmodata/hardcharger:latest --database /var/lib/hardcharger/analytics.duckdb
+```
+
+Check it from the host:
+
+```console test server=none
+$ curl -s localhost:31338/health
+{"status":"serving"}
+```
+
+From the release after 0.2.0 the image also carries the `hardcharger` CLI, so
+`docker exec -it hardcharger hardcharger --username hardcharger` opens a shell inside it.
+
+Mount init SQL and other files read-only, and pass options as `HARDCHARGER_*` variables or a
+mounted YAML file (`--config /etc/hardcharger/hardcharger.yaml`). Keep passwords in a secret
+store or an env file with tight permissions, not on the command line.
+
+## Kubernetes
+
+A single-replica StatefulSet with its database on a persistent volume, the password and token
+key from a Secret, probes on the health port, and metrics for Prometheus:
+
+```yaml test file=hardcharger.yaml server=none run="docker run --rm -v $PWD:/w ghcr.io/yannh/kubeconform:v0.7.0 -strict -summary /w/hardcharger.yaml"
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hardcharger
+type: Opaque
+stringData:
+  admin-password: change-me            # use your secret manager in real life
+  secret-key: replace-with-a-long-random-string
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hardcharger
+spec:
+  selector:
+    app: hardcharger
+  ports:
+    - {name: warp, port: 31337, targetPort: warp}
+    - {name: metrics, port: 9091, targetPort: metrics}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hardcharger
+spec:
+  serviceName: hardcharger
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hardcharger
+  template:
+    metadata:
+      labels:
+        app: hardcharger
+    spec:
+      terminationGracePeriodSeconds: 330          # a little over the 300 s grace period
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+      containers:
+        - name: hardcharger
+          image: ghcr.io/gizmodata/hardcharger:0.2.0
+          args: ["--database", "/var/lib/hardcharger/data/analytics.duckdb", "--enable-metrics"]
+          env:
+            - name: HARDCHARGER_ADMIN_PASSWORD
+              valueFrom: {secretKeyRef: {name: hardcharger, key: admin-password}}
+            - name: HARDCHARGER_SECRET_KEY
+              valueFrom: {secretKeyRef: {name: hardcharger, key: secret-key}}
+            - name: HARDCHARGER_MEMORY_LIMIT
+              value: "6GB"                         # below the container's memory limit
+          ports:
+            - {name: warp, containerPort: 31337}
+            - {name: health, containerPort: 31338}
+            - {name: metrics, containerPort: 9091}
+          readinessProbe:
+            httpGet: {path: /health, port: health}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /health, port: health}
+            periodSeconds: 10
+            failureThreshold: 6
+          resources:
+            requests: {cpu: "2", memory: 8Gi}
+            limits: {memory: 8Gi}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/hardcharger/data}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 100Gi
+```
+
+- **One writer per database file.** DuckDB opens a file for one process, so a database file means
+  one replica. To serve more users, run several replicas on shared storage that's built for it
+  (a [DuckLake](/guides/ducklake-and-s3/) catalog, read-only files), with the same
+  `HARDCHARGER_SECRET_KEY` and `--allow-cross-instance-tokens`, behind
+  [session affinity](/guides/load-balancers/).
+- **Memory.** Set `HARDCHARGER_MEMORY_LIMIT` below the container's limit, so DuckDB spills to
+  disk instead of being OOM-killed.
+- **Shutdown.** On `SIGTERM` the server drains: health turns `not_serving` (so the readiness probe
+  takes the pod out of the Service), running statements get up to 300 seconds, then the rest is
+  cancelled. `terminationGracePeriodSeconds` just above that lets it finish.
+- **Exposure.** Put TLS on the Warp SQL port ([guide](/guides/tls/)) or terminate it at your
+  ingress, and keep the health and metrics ports inside the cluster.
+
+<Aside type="caution" title="Autoscaled nodes">
+On clusters whose nodes come and go (Karpenter, node auto-provisioning), mark the pod
+`karpenter.sh/do-not-disrupt: "true"` or give it a PodDisruptionBudget, or consolidation can
+evict a busy server mid-query.
+</Aside>

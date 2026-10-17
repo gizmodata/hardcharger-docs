@@ -1,0 +1,18 @@
+---
+// A README-style banner image at the top of a page.
+import { Image } from 'astro:assets';
+interface Props {
+	src: ImageMetadata;
+	alt: string;
+	href?: string;
+}
+const { src, alt, href } = Astro.props;
+---
+
+<div class="not-content">
+	{href ? (
+		<a href={href}><Image src={src} alt={alt} class="hc-banner" loading="eager" /></a>
+	) : (
+		<Image src={src} alt={alt} class="hc-banner" loading="eager" />
+	)}
+</div>

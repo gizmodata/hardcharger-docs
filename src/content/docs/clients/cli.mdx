@@ -1,0 +1,227 @@
+---
+title: "The hardcharger CLI"
+description: "Use hardcharger, the command-line SQL client - an interactive shell with history, completion and a pager, and a scripting tool with -c, -f, heredocs, pipes, output modes and exit codes."
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import HeroBanner from '../../../components/HeroBanner.astro';
+import banner from '../../../assets/banners/hardcharger-cli-banner.svg';
+
+<HeroBanner src={banner} alt="hardcharger: the command-line SQL client for Hardcharger" />
+
+`hardcharger` is Hardcharger's command-line client. Run it with no statement for an interactive
+shell, or give it SQL to run and print. It ships beside `hardcharger-server` (in the tarballs'
+`bin/` and in the image) from the release after 0.2.0; until then, build it from source with the
+server. The [CLI reference](/reference/cli/) lists every option and dot command.
+
+## Connect
+
+```console test
+$ export HARDCHARGER_PASSWORD='change-me'
+$ hardcharger --host localhost --username hardcharger --command "SELECT HARDCHARGER_USER() AS me"
+┌─────────────┐
+│     me      │
+│   varchar   │
+├─────────────┤
+│ hardcharger │
+├─────────────┤
+│ 1 row       │
+└─────────────┘
+```
+
+| What | Option | Environment |
+|---|---|---|
+| Server | `--host`, `-h` (default `localhost`), `--port`, `-p` (default 31337) | `HARDCHARGER_HOST`, `HARDCHARGER_PORT` |
+| User | `--username`, `-u` | `HARDCHARGER_USER` |
+| Password | asked for, or `--password`/`-W` to force the prompt | `HARDCHARGER_PASSWORD` |
+| TLS | `--tls`, `--tls-roots FILE`, `--tls-skip-verify` | `HARDCHARGER_TLS`, `HARDCHARGER_TLS_ROOTS` |
+| Mutual TLS | `--mtls-cert FILE`, `--mtls-key FILE` | |
+| SSO | `--auth-type external` ([browser sign-in](/guides/sso/#browser-sign-in)) | |
+| All of it in one URI | `hardcharger://HOST:PORT?username=…&useEncryption=…&tlsRoots=…&authType=…` (or `--uri`) | |
+
+`HARDCHARGER_PASSWORD` is the user's own password; the client never falls back to the server's
+`HARDCHARGER_ADMIN_PASSWORD`.
+
+## The interactive shell
+
+```console test kind=repl
+$ hardcharger --host localhost --username hardcharger
+Password:
+Hardcharger Client …
+Connected to localhost:31337
+Type '.help' for help, '.quit' to exit.
+
+my.main> CREATE TABLE trips AS SELECT * FROM (VALUES (1, 'Boston', 12.5), (2, 'Denver', 30.0)) t(id, city, miles);
+OK, 2 rows affected
+my.main> SELECT city, miles FROM trips ORDER BY miles DESC;
+┌─────────┬──────────────┐
+│  city   │    miles     │
+│ varchar │ decimal(3,1) │
+├─────────┼──────────────┤
+│ Denver  │         30.0 │
+│ Boston  │         12.5 │
+├─────────┴──────────────┤
+│ 2 rows  2 columns      │
+└────────────────────────┘
+my.main> .quit
+```
+
+- **Line editing** with history (`~/.hardcharger_history`), tab completion of SQL keywords,
+  catalogs, schemas, tables and columns, and syntax highlighting.
+- **A pager** for results longer than the screen (`.pager on|off|N`).
+- **Ctrl-C** cancels the running statement on the server, and the shell goes on.
+- **A lost session is reopened.** If the server forgot the session (idle too long, restarted) or
+  an administrator killed it, the client opens a new one and says so; temporary tables and
+  session settings don't survive that.
+- **`~/.hardchargerrc`** runs at startup (`--init FILE` for another, `--no-init` for none):
+  `.mode`, `.timer on`, `SET hardcharger.query_tag = …`.
+
+The prompt is the current `catalog.schema`.
+
+## Scripts
+
+One statement with `--command` (`-c`), a file with `--file` (`-f`), or SQL on standard input from
+a heredoc or a pipe:
+
+```console test
+$ export HARDCHARGER_PASSWORD='change-me'
+$ hardcharger --host localhost --username hardcharger --quiet <<'SQL'
+CREATE OR REPLACE TABLE trips AS SELECT * FROM (VALUES (1, 'Boston', 12.5), (2, 'Denver', 30.0)) t(id, city, miles);
+INSERT INTO trips VALUES (3, 'Austin', 8.5);
+SELECT count(*) AS trips, sum(miles) AS miles FROM trips;
+SQL
+OK, 2 rows affected
+OK, 1 rows affected
+┌────────┬───────────────┐
+│ trips  │     miles     │
+│ bigint │ decimal(38,1) │
+├────────┼───────────────┤
+│      3 │          51.0 │
+├────────┴───────────────┤
+│ 1 row  2 columns       │
+└────────────────────────┘
+$ echo "SELECT city FROM trips WHERE miles > 10 ORDER BY city" | hardcharger --host localhost --username hardcharger --csv
+city
+Boston
+Denver
+```
+
+- The exit status is **1 when a statement fails** (or a dot command does), so scripts and CI jobs
+  notice. `--bail` stops at the first failure; without it the script goes on and still exits 1.
+- `--quiet` drops the banner and informational messages; `--echo` prints each statement first.
+- `--output FILE` (or `.output FILE`) writes results to a file.
+
+```console test
+$ export HARDCHARGER_PASSWORD='change-me'
+$ hardcharger --host localhost --username hardcharger --quiet --command "SELECT * FROM missing_table" 2> error.txt; echo "exit status $?"
+exit status 1
+$ grep -o "Table with name missing_table does not exist" error.txt
+Table with name missing_table does not exist
+```
+
+<Aside type="caution" title="Known issue">
+A script whose **last** statement is followed by a `-- comment` fails with
+`no SQL statement given` (exit status 1). Put the comment on its own line before the statement.
+</Aside>
+
+## Output modes
+
+`--csv`, `--json`, `--markdown`, `--table` and `--box` (the default) pick a mode at the start;
+`.mode` picks any of them in a session or script:
+
+```console test
+$ export HARDCHARGER_PASSWORD='change-me'
+$ hardcharger --host localhost --username hardcharger --quiet --command "CREATE TABLE IF NOT EXISTS trips AS SELECT * FROM (VALUES (1, 'Boston', 12.5), (2, 'Denver', 30.0)) t(id, city, miles)" > /dev/null
+$ printf '.mode json\nSELECT * FROM trips WHERE id < 3 ORDER BY id;\n' | hardcharger --host localhost --username hardcharger --quiet
+[
+  {"id": 1, "city": "Boston", "miles": 12.5},
+  {"id": 2, "city": "Denver", "miles": 30.0}
+]
+$ printf '.mode markdown\nSELECT * FROM trips WHERE id < 3 ORDER BY id;\n' | hardcharger --host localhost --username hardcharger --quiet
+| id | city   | miles |
+| -- | ------ | ----- |
+| 1  | Boston | 12.5  |
+| 2  | Denver | 30.0  |
+$ printf '.mode line\nSELECT * FROM trips WHERE id = 1;\n' | hardcharger --host localhost --username hardcharger --quiet
+   id = 1
+ city = Boston
+miles = 12.5
+```
+
+| Mode | Prints |
+|---|---|
+| `box` | Unicode table with column types and a row count (the default) |
+| `table` | the same with ASCII borders |
+| `csv`, `tabs`, `list` | comma-, tab- or `\|`-separated values (`.separator` changes them) |
+| `json`, `jsonlines` | a JSON array, or one object per line |
+| `markdown` | a Markdown table |
+| `line` | one `column = value` line per column, rows separated by a blank line |
+| `html`, `latex` | an HTML or LaTeX table |
+| `insert` | `INSERT` statements |
+| `quote` | values as SQL literals |
+| `ascii` | values separated by the ASCII unit and record separators |
+| `trash` | nothing (run for the side effects or the timing) |
+
+Machine-readable modes print no row-count line into files and pipes, so `--json | jq` works.
+`--no-header` drops headers, `--null TEXT` sets how NULL prints.
+
+## Dot commands
+
+| Command | Does |
+|---|---|
+| `.tables [PATTERN] [--flat]` | List tables, as a tree or flat |
+| `.schema [PATTERN]`, `.describe TABLE`, `.catalogs` | Show schemas, a table's columns, the catalogs |
+| `.mode MODE`, `.headers on\|off`, `.nullvalue TEXT`, `.separator COL [ROW]` | Output format |
+| `.maxrows [N]`, `.maxwidth [N]`, `.pager on\|off\|N` | Long and wide results |
+| `.output [FILE]`, `.once FILE` | Write results to a file (`.once`: only the next one) |
+| `.export_last [FILE]` | Save the last result as an Arrow IPC file (default `~/.hardcharger_last_result.arrow`) |
+| `.last` | Show the last result again |
+| `.read FILE` | Run a SQL file |
+| `.timer on\|off`, `.echo on\|off`, `.bail on\|off` | Timing, echo, stop on error |
+| `.connect URI` or `.connect HOST PORT USER` | Connect elsewhere |
+| `.show`, `.about` | Current settings; version and server info |
+| `.refresh` | Reload the completion cache |
+| `.cd DIR`, `.shell CMD` | Change directory; run a shell command |
+| `.prompt MAIN [CONT]` | Set the prompts |
+| `.help [PATTERN]`, `.quit`, `.exit` | Help; leave |
+
+```console test
+$ export HARDCHARGER_PASSWORD='change-me'
+$ printf '.tables --flat\n.describe trips\n' | hardcharger --host localhost --username hardcharger --quiet
+┌─────────────────────┬────────────────┬─────────────────────────────┬────────────┐
+│    catalog_name     │ db_schema_name │         table_name          │ table_type │
+│       varchar       │    varchar     │           varchar           │  varchar   │
+├─────────────────────┼────────────────┼─────────────────────────────┼────────────┤
+│ _hardcharger_system │ main           │ hardcharger_index_info      │ VIEW       │
+│ _hardcharger_system │ main           │ hardcharger_view_definition │ VIEW       │
+│ my                  │ main           │ trips                       │ BASE TABLE │
+├─────────────────────┴────────────────┴─────────────────────────────┴────────────┤
+│ 3 rows  4 columns                                                               │
+└─────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────┬──────────────┬─────────┬─────────┬─────────┬─────────┐
+│ column_name │ column_type  │  null   │   key   │ default │  extra  │
+│   varchar   │   varchar    │ varchar │ varchar │ varchar │ varchar │
+├─────────────┼──────────────┼─────────┼─────────┼─────────┼─────────┤
+│ id          │ INTEGER      │ YES     │ NULL    │ NULL    │ NULL    │
+│ city        │ VARCHAR      │ YES     │ NULL    │ NULL    │ NULL    │
+│ miles       │ DECIMAL(3,1) │ YES     │ NULL    │ NULL    │ NULL    │
+├─────────────┴──────────────┴─────────┴─────────┴─────────┴─────────┤
+│ 3 rows  6 columns                                                  │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+## Large results
+
+`--result-partitions N` (or `HARDCHARGER_RESULT_PARTITIONS`) reads a large result over up to N
+connections at once, in the same order ([partitions](/concepts/warp-sql/#partitioned-results)).
+
+## Tags
+
+`--session-tag JSON` and `--query-tag JSON` (or `HARDCHARGER_SESSION_TAG`,
+`HARDCHARGER_QUERY_TAG`) tag what the client runs, for [instrumentation](/guides/instrumentation-and-audit/).
+
+## Coming from gizmosql_client
+
+`hardcharger` is GizmoSQL 1.x's `gizmosql_client`, on Warp SQL, with the same options under
+Hardcharger's names. [Coming from GizmoSQL](/get-started/coming-from-gizmosql/#the-command-line-client)
+maps them and lists what behaves differently.

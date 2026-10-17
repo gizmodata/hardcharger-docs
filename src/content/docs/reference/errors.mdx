@@ -1,0 +1,58 @@
+---
+title: "Error codes"
+description: "Every Warp SQL error code Hardcharger returns, with its HTTP status, what it means and what to do, plus the problem document format."
+---
+
+Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem document:
+
+```json
+{
+  "type": "urn:warp-sql:error:permission_denied",
+  "title": "Permission denied",
+  "status": 403,
+  "code": "permission_denied",
+  "detail": "Hardcharger blocked this statement: user joe has no SELECT on column(s) birthday of my.main.customers. …",
+  "sqlstate": "42501",
+  "request_id": "r_5d2…"
+}
+```
+
+**`code` is stable**: program against it. `detail` is for people and may change. `sqlstate` is the
+SQL standard's code when there is one. `request_id` is also in the server's logs (and the
+`Warp-Request-Id` header), so quote it when you report a problem. The drivers carry all of it:
+Python's exception message, JDBC's `SQLException` (`getSQLState()`, `WarpProblem.codeOf(e)`), Go's
+`warpsql.ErrorCode(err)`.
+
+| Code | Status | Means | What to do |
+|---|---|---|---|
+| `bad_request` | 400 | A malformed request | Fix the client |
+| `unknown_option`, `invalid_option_value` | 400 | A session option the server doesn't have, or a bad value | Check the option's name and value |
+| `sql_error` | 400 | DuckDB rejected the SQL: syntax, binding, a missing object (SQLSTATE `42P01`), an existing one (`42P07`), ... | Fix the SQL; `detail` says what |
+| `invalid_credentials` | 401 | Sign-in failed. It never says which part was wrong. | Check the user, password or token; an identity-provider token may be expired, for the wrong audience, or for a user [not authorized](/guides/sso/#limit-who-may-sign-in) |
+| `invalid_token` | 401 | A missing, malformed, expired or foreign access token (another replica's, without `allow_cross_instance_tokens`) | Sign in again |
+| `session_ended` | 401 | An administrator killed the session, or the user's password changed, or the user was dropped or disabled; `reason` says which | Sign in again, then open a new session |
+| `permission_denied` | 403 | The user lacks a privilege; also the guards (files, secrets, admin-only commands) | Ask for the grant; `detail` names it |
+| `read_only` | 403 | The server or session is read-only | Write elsewhere |
+| `session_not_found`, `statement_not_found`, `prepared_not_found` | 404 | No such handle, or not yours: evicted after `session_idle_timeout`, closed, server restarted | Open a new session (drivers do, and tell you) |
+| `not_found` | 404 | No such endpoint, partition, or a forgotten statement | Check the URL |
+| `method_not_allowed` | 405 | The endpoint exists, but not for this method | |
+| `result_not_ready` | 409 | The statement has no result schema yet | Retry |
+| `result_not_resumable` | 409 | Re-reading a result that wasn't retained | Submit with `Warp-Retain-Result: true` |
+| `result_expired` | 410 | The retained result expired | Run the statement again |
+| `payload_too_large` | 413 | A JSON body over the server's limit | Use Arrow parameters or ingest |
+| `unsupported_arrow_type` | 415 | An Arrow type DuckDB can't store without losing values | Cast the column before uploading |
+| `session_elsewhere` | 421 | The session lives on another replica | Route by session ([load balancers](/guides/load-balancers/)) |
+| `idempotency_key_reused` | 422 | The same `Idempotency-Key` with a different request | Use a new key for a new request |
+| `headers_too_large` | 431 | Request headers over [`max_header_bytes`](/reference/configuration/#max_header_bytes) | Raise the limit (large identity tokens) |
+| `too_many_sessions` | 429 | Past [`max_sessions`](/reference/configuration/#max_sessions) | Close sessions, or retry later |
+| `rate_limited` | 429 | The [statement queue](/guides/statement-control/#the-statement-queue) is full, or a statement waited longer than `max_queue_wait` | Retry after `Retry-After` |
+| `result_quota_exceeded` | 429 | Too many retained results | Read and delete results |
+| `statement_timeout` | — | Inside a statement document: the statement ran past its timeout | Raise the timeout, or speed the query up |
+| `statement_cancelled` | — | Inside a statement document: cancelled (`cancel_reason`: `client`, `killed`, `privilege_revoked`, `server_shutdown`, ...) | |
+| `execution_error` | 500 | The statement failed while running | `detail` says why |
+| `server_draining` | 503 | The server is shutting down | Retry after `Retry-After`, elsewhere |
+| `not_implemented` | 501 | The server doesn't implement this operation | |
+
+A failed streamed result ends **without** Arrow's end-of-stream marker: the HTTP status was
+already `200`, so the cut stream is the error. Clients must treat it as failed and fetch the
+statement document for the reason. The drivers do.

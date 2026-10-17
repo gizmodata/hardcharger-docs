@@ -116,7 +116,7 @@ and fails when anything committed differs from what the server says.
 It needs two things while Hardcharger is internal:
 
 1. **`GIZMODATA_READ_TOKEN`**, a repository secret: read access to gizmodata/hardcharger,
-   warp-sql, hardcharger-adbc, warp-sql-adbc, hardcharger-jdbc and warp-sql-jdbc (contents and
+   warp-sql, hardcharger-adbc, warp-sql-adbc, hardcharger-jdbc, warp-sql-jdbc and warp-sql-js (contents and
    releases). A GitHub App installation token is best; a fine-grained token with Contents: read
    works, with its expiry on someone's calendar.
 2. **Read access to the `ghcr.io/gizmodata/hardcharger` package** for this repository (package

@@ -37,11 +37,6 @@ own changelog in `python/CHANGELOG.md`.
   1 never splits) caps the split. With Warp SQL's drivers' `result_partitions` option,
   one large result uses several network flows and client cores.
 
-- `hardcharger-server --print-options-json`: every option with its group, flag,
-  `HARDCHARGER_*` variable, YAML key, type, default and description, as JSON. The
-  documentation's configuration reference is generated from it, so it can't drift from the
-  server (`test_server_cli.py` checks it lists exactly what `--help` lists).
-
 - `hardcharger --result-partitions N` (`HARDCHARGER_RESULT_PARTITIONS`): the command-line
   client reads a large result over up to N connections at once, in the same order.
 
@@ -56,8 +51,17 @@ own changelog in `python/CHANGELOG.md`.
   ingest was slower than TLS); bulk ingest inserts on many DuckDB threads in one
   transaction, keeping the upload's row order. See docs/benchmarks.md.
 
+### Fixed
+
+- The server's table functions (`hardcharger_settings()`, `hardcharger_sessions()`, ...) in a
+  prepared statement returned no rows from the second execution on, and every execution showed
+  the rows of the moment it was prepared: the rows were built when the statement was bound.
+  They are now read again for each execution.
+
 ### Documentation
 
+- README: hardcharger-adbc is a native Go driver whose library every ADBC driver manager loads
+  as `driver = "hardcharger"` with `hardcharger://` URIs.
 - README: the client examples use the Hardcharger drivers, `adbc-driver-hardcharger`
   (`from adbc_driver_hardcharger import dbapi as hardcharger`, `hardcharger://` URIs) and
   `hardcharger-jdbc` (`jdbc:hardcharger://`); a Python quick start with `pip install hardcharger`

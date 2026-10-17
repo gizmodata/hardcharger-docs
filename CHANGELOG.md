@@ -17,7 +17,7 @@ The first private preview of the Hardcharger documentation.
   pages, the reference and the benchmarks.
 - GizmoData branding: the README banners' dark card, the hex logo, the orange-to-blue gradient,
   a "Built by GizmoData" footer, and a private-preview banner with `noindex`.
-- 135 runnable examples, each run in CI against a real hardcharger-server from Hardcharger's main
+- 134 runnable examples, each run in CI against a real hardcharger-server from Hardcharger's main
   branch with the real clients (`scripts/verify_examples.py`); missing prerequisites fail the run.
 - A reference generated from the server and its repositories (`scripts/gen_reference.py`): server
   options, SQL settings and functions, metrics, CLI help, release notes, the Warp SQL spec. CI

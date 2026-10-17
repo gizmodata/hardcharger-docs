@@ -1,104 +1,94 @@
 ---
 title: "JavaScript"
-description: "Query Hardcharger from Node.js and the browser over Warp SQL with fetch and apache-arrow, while the JavaScript client library is in preview."
+description: "Query Hardcharger from Node.js, browsers, Deno, Bun and Workers with @gizmodata/warp-sql (preview): Arrow tables and streams, parameters, ingest, prepared statements, cancel."
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 import HeroBanner from '../../../components/HeroBanner.astro';
 import banner from '../../../assets/banners/hardcharger-js-banner.svg';
 
-<HeroBanner src={banner} alt="Hardcharger from JavaScript, by GizmoData" />
+<HeroBanner src={banner} alt="Hardcharger from JavaScript, by GizmoData" href="https://github.com/gizmodata/warp-sql-js" />
+
+[`@gizmodata/warp-sql`](https://github.com/gizmodata/warp-sql-js) is a TypeScript client for Warp
+SQL. It runs wherever `fetch` does (Node, browsers, Deno, Bun, Cloudflare Workers) with no native
+code, and returns [`apache-arrow`](https://arrow.apache.org/docs/js/) Tables or streams of record
+batches.
 
 <Aside type="caution" title="Preview">
-A JavaScript client library for Warp SQL (`gizmodata/warp-sql-js`) is being built. Until it is
-released, Warp SQL's plain HTTP is enough: `fetch` and the
-[`apache-arrow`](https://www.npmjs.com/package/apache-arrow) package do everything below. This page
-will document the library when it ships.
+The client is internal and unreleased (0.1.0), and not on npm yet. Until it is, build it from
+[gizmodata/warp-sql-js](https://github.com/gizmodata/warp-sql-js): `npm ci && npm run build && npm pack`,
+then `npm install ./gizmodata-warp-sql-0.1.0.tgz apache-arrow`. A `hardcharger://` URL scheme is
+planned; until then use `warp://host:31337`.
 </Aside>
 
-## Node.js
-
-Node.js 22 or newer has `fetch`. Install Arrow:
-
-```bash
-npm install apache-arrow
-```
-
-A small helper that signs in, opens a session, and runs queries with bind parameters, turning
-Warp SQL's problem documents into exceptions:
-
-```js test file=warp.mjs server=none
-// warp.mjs: a minimal Warp SQL client for Hardcharger (fetch + apache-arrow).
-import { tableFromIPC } from 'apache-arrow';
-
-export async function connect({ url, username, password }) {
-  const base = `${url}/warp/v1`;
-  const call = async (path, init = {}) => {
-    const response = await fetch(`${base}${path}`, init);
-    const type = response.headers.get('content-type') ?? '';
-    if (!response.ok) {
-      const problem = type.includes('json') ? await response.json() : { detail: await response.text() };
-      throw Object.assign(new Error(`${problem.code ?? response.status}: ${problem.detail}`), { problem });
-    }
-    return response;
-  };
-  const json = { 'Content-Type': 'application/json' };
-  const { access_token } = await (await call('/auth/token', {
-    method: 'POST', headers: json, body: JSON.stringify({ grant_type: 'password', username, password }),
-  })).json();
-  const auth = { ...json, Authorization: `Bearer ${access_token}` };
-  const { session_id } = await (await call('/sessions', { method: 'POST', headers: auth, body: '{}' })).json();
-
-  return {
-    // Rows come back as an Arrow table; statements without rows as their statement document.
-    async query(sql, parameters = []) {
-      const response = await call(`/sessions/${session_id}/statements`, {
-        method: 'POST',
-        headers: { ...auth, Accept: 'application/vnd.apache.arrow.stream', 'Idempotency-Key': crypto.randomUUID() },
-        body: JSON.stringify({ sql, parameters }),
-      });
-      if ((response.headers.get('content-type') ?? '').includes('arrow')) {
-        return tableFromIPC(new Uint8Array(await response.arrayBuffer()));
-      }
-      return response.json();
-    },
-    async close() {
-      await call(`/sessions/${session_id}`, { method: 'DELETE', headers: auth });
-    },
-  };
-}
-```
+## Query, stream, ingest
 
 ```js test
-import { connect } from './warp.mjs';
+import { tableFromArrays } from 'apache-arrow';
+import { WarpSqlError, connect } from '@gizmodata/warp-sql';
 
-const db = await connect({ url: 'http://localhost:31337', username: 'hardcharger', password: 'change-me' });
-const created = await db.query("CREATE TABLE cities AS SELECT * FROM (VALUES ('Tokyo', 37.4::DOUBLE), ('Delhi', 28.5)) t(name, millions)");
-console.log(created.state);
-const table = await db.query('SELECT name, millions FROM cities WHERE millions > ? ORDER BY millions DESC', [30]);
-console.log(table.numRows, table.get(0).toJSON());
+const conn = await connect({ url: 'warp://localhost:31337?tls=false', username: 'hardcharger', password: 'change-me' });
+
+// A query with a bind parameter: an Arrow Table back.
+const table = await conn.query('SELECT 42 AS answer, ?::VARCHAR AS greeting', ['hello']);
+console.log(table.toArray().map((row) => row.toJSON()));
+
+// A big result, streamed batch by batch (and read over several connections at once).
+let rows = 0;
+for await (const batch of conn.stream('SELECT * FROM range(10000000)')) rows += batch.numRows;
+console.log(`streamed ${rows} rows`);
+
+// Bulk ingest from Arrow, then a prepared statement run once per row.
+await conn.ingest('events', tableFromArrays({ id: Int32Array.from([1, 2, 3]) }), { mode: 'replace' });
+const insert = await conn.prepare('INSERT INTO events VALUES (?)');
+console.log(`inserted ${await insert.executeBatch([[4], [5]])} rows`);
+
+// Errors carry the server's code; an AbortSignal cancels the statement on the server.
 try {
-  await db.query('SELECT * FROM no_such_table');
-} catch (e) {
-  console.log(e.problem.code, e.problem.sqlstate);
+  await conn.query('SELECT sum(a.range * b.range) FROM range(100000000) a, range(100000) b', undefined, {
+    signal: AbortSignal.timeout(1000),
+  });
+} catch (err) {
+  if (!(err instanceof WarpSqlError)) throw err;
+  console.log(`${err.code}: ${err.message}`);
 }
-await db.close();
+
+await conn.close();
 ```
 
 ```text output
-succeeded
-1 { name: 'Tokyo', millions: 37.4 }
-sql_error 42P01
+[ { answer: 42, greeting: 'hello' } ]
+streamed 10000000 rows
+inserted 2 rows
+statement_timeout: the operation timed out (its AbortSignal fired)
 ```
 
-`tableFromIPC` reads the whole response; for very large results, read `response.body` with
-Arrow's `RecordBatchReader.from()` to stream batches as they arrive.
+| Call | Returns |
+|---|---|
+| `connect({ url, username, password })` (or `token`, `tokenProvider`, `subjectToken` for SSO) | a `Connection` |
+| `conn.query(sql, params?, options?)` | an Arrow `Table` (empty for DDL and DML) |
+| `conn.stream(sql, params?, options?)` | a stream to `for await` over: `schema()`, `rowsAffected()`, `toTable()`, `close()` |
+| `conn.execute(sql, params?)` | the rows changed |
+| `conn.prepare(sql)` | a prepared statement: `query`, `stream`, `execute`, `executeBatch(rows)`, `close()` |
+| `conn.ingest(table, data, { mode, catalog, schema, temporary })` | the rows written |
+| `conn.metadata.catalogs()`, `tables()`, `columns()`, ... | Arrow tables in Flight SQL's schemas |
+| `conn.transaction(async (tx) => …)` | commits, or rolls back on a throw |
+
+Statement options (per call, or as defaults in `connect`): `signal`, `async`, `retainResult`,
+`statementTimeoutMs`, `queryTag`, `resultPartitions` (8 in Node, 4 in browsers), `resultOrder`,
+`ipcCompression: 'zstd'`. Every error is a `WarpSqlError` with the server's stable `code`,
+`status`, `sqlstate` and `requestId`. A result stream that ends without Arrow's end-of-stream
+marker throws: a short table is never taken for a complete one.
+
+## TLS
+
+In Node, Deno and Bun, `connect({ url: 'warp://db.example.com:31337', tls: { ca, cert, key } })`
+takes PEM text for a private CA and mutual TLS. Browsers use the system's trust store.
 
 ## In the browser
 
-The same code runs in a browser page. The server must allow your page's origin with
-[`cors_origins`](/reference/configuration/#cors_origins): it is an explicit list, off by default,
-and never `*`:
+The same code runs in a page. The server must allow the page's origin with
+[`cors_origins`](/reference/configuration/#cors_origins): an explicit list, off by default, never `*`:
 
 ```console test profile=cors
 $ curl -s -o /dev/null -D - -X OPTIONS localhost:31337/warp/v1/auth/token \
@@ -112,7 +102,12 @@ no CORS headers: the browser refuses
 ```
 
 - Credentials are bearer tokens in a header, never cookies, so cross-site request forgery has
-  nothing to ride on. Keep the token in memory, not in `localStorage`.
+  nothing to ride on. Keep tokens in memory, not in `localStorage`.
 - Serve the page and Hardcharger over HTTPS: browsers block mixed content.
-- For people signing in with your identity provider, get an ID token in the page (your provider's
-  SDK) and exchange it with `grant_type: "token_exchange"` ([SSO](/guides/sso/)).
+- For people who sign in with your identity provider, pass its ID token as `subjectToken`
+  ([SSO](/guides/sso/)).
+
+## Without the client
+
+Warp SQL is plain HTTP, so `fetch` and `apache-arrow` alone work too, as in
+[your first query](/get-started/first-query/) and the [plain HTTP page](/clients/http/).

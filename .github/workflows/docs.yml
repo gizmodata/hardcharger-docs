@@ -19,7 +19,8 @@ name: docs
 #     grant this repository read access (package settings, Manage Actions access).
 #   - GIZMODATA_READ_TOKEN: read-only access to gizmodata/hardcharger (releases, CHANGELOG),
 #     warp-sql (the spec), hardcharger-adbc and warp-sql-adbc (the Python/Go driver),
-#     hardcharger-jdbc and warp-sql-jdbc (the JDBC driver). A GitHub App installation token or a
+#     hardcharger-jdbc and warp-sql-jdbc (the JDBC driver), warp-sql-js (the JavaScript client).
+#     A GitHub App installation token or a
 #     fine-grained token with Contents: read on those repositories.
 
 on:
@@ -133,7 +134,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Source repositories
         run: |
-          for repo in hardcharger warp-sql hardcharger-adbc hardcharger-jdbc; do
+          for repo in hardcharger warp-sql hardcharger-adbc hardcharger-jdbc warp-sql-js; do
             git clone --quiet --depth 1 --recurse-submodules --shallow-submodules \
               "https://github.com/gizmodata/$repo.git" "$RUNNER_TEMP/src/$repo"
             echo "$repo at $(git -C "$RUNNER_TEMP/src/$repo" rev-parse --short HEAD)"
@@ -178,6 +179,12 @@ jobs:
           python -m venv .venv
           .venv/bin/pip install -q "$adbc/python" "$RUNNER_TEMP/src/hardcharger/python" \
             pyyaml pexpect pyjwt cryptography
+
+      - name: The JavaScript client (@gizmodata/warp-sql, not on npm yet)
+        run: |
+          js="$RUNNER_TEMP/src/warp-sql-js"
+          (cd "$js" && npm ci --silent && npm run build --silent && npm pack --silent --pack-destination "$RUNNER_TEMP")
+          npm install --no-save "$RUNNER_TEMP"/gizmodata-warp-sql-*.tgz
 
       - name: The JDBC driver (hardcharger-jdbc.jar)
         run: |

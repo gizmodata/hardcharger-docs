@@ -37,6 +37,9 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Changed
 
+- The CLI page's URI row follows the client's new URIs (Hardcharger fix/cli-uri-tls): the ADBC
+  driver's `hardcharger://HOST[:PORT][/PREFIX][?tls=false]`, HTTPS unless `?tls=false`, with the
+  user and the other settings as flags; `.connect URI [USER [PASSWORD]]`.
 - The JavaScript page (and the landing page's client card) use `@gizmodata/hardcharger`
   (gizmodata/hardcharger-js): `import { connect } from '@gizmodata/hardcharger'` with
   `hardcharger://` URLs, a URL table, and `authType: 'client_certificate'` (or `'mtls'`);

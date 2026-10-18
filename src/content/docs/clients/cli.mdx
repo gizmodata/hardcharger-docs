@@ -37,7 +37,7 @@ $ hardcharger --host localhost --username hardcharger --command "SELECT HARDCHAR
 | TLS | `--tls`, `--tls-roots FILE`, `--tls-skip-verify` | `HARDCHARGER_TLS`, `HARDCHARGER_TLS_ROOTS` |
 | Mutual TLS | `--mtls-cert FILE`, `--mtls-key FILE` | |
 | SSO | `--auth-type external` ([browser sign-in](/guides/sso/#browser-sign-in)) | |
-| All of it in one URI | `hardcharger://HOST:PORT?username=…&useEncryption=…&tlsRoots=…&authType=…` (or `--uri`) | |
+| Host, port and TLS in one URI | `hardcharger://HOST[:PORT][/PREFIX][?tls=false]` (or `--uri`): HTTPS unless `?tls=false`, port 31337, as in the [Python](/clients/python/) and [Go](/clients/go/) drivers. `tls` is its only parameter; the user and the other settings are the flags above | |
 
 `HARDCHARGER_PASSWORD` is the user's own password; the client never falls back to the server's
 `HARDCHARGER_ADMIN_PASSWORD`.
@@ -177,7 +177,7 @@ Machine-readable modes print no row-count line into files and pipes, so `--json 
 | `.last` | Show the last result again |
 | `.read FILE` | Run a SQL file |
 | `.timer on\|off`, `.echo on\|off`, `.bail on\|off` | Timing, echo, stop on error |
-| `.connect URI` or `.connect HOST PORT USER` | Connect elsewhere |
+| `.connect URI [USER [PASSWORD]]` or `.connect HOST PORT USER` | Connect elsewhere |
 | `.show`, `.about` | Current settings; version and server info |
 | `.refresh` | Reload the completion cache |
 | `.cd DIR`, `.shell CMD` | Change directory; run a shell command |

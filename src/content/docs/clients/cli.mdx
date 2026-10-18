@@ -18,7 +18,7 @@ server. The [CLI reference](/reference/cli/) lists every option and dot command.
 
 ```console test
 $ export HARDCHARGER_PASSWORD='change-me'
-$ hardcharger --host localhost --username hardcharger --command "SELECT HARDCHARGER_USER() AS me"
+$ hardcharger --host localhost --tls=false --username hardcharger --command "SELECT HARDCHARGER_USER() AS me"
 ┌─────────────┐
 │     me      │
 │   varchar   │
@@ -34,7 +34,7 @@ $ hardcharger --host localhost --username hardcharger --command "SELECT HARDCHAR
 | Server | `--host`, `-h` (default `localhost`), `--port`, `-p` (default 31337) | `HARDCHARGER_HOST`, `HARDCHARGER_PORT` |
 | User | `--username`, `-u` | `HARDCHARGER_USER` |
 | Password | asked for, or `--password`/`-W` to force the prompt | `HARDCHARGER_PASSWORD` |
-| TLS | `--tls`, `--tls-roots FILE`, `--tls-skip-verify` | `HARDCHARGER_TLS`, `HARDCHARGER_TLS_ROOTS` |
+| TLS | on by default; `--tls=false` for plain HTTP (a server without `--tls-cert`, like the ones on these pages); `--tls-roots FILE`, `--tls-skip-verify` | `HARDCHARGER_TLS` (`true` or `false`), `HARDCHARGER_TLS_ROOTS` |
 | Mutual TLS | `--mtls-cert FILE`, `--mtls-key FILE` | |
 | SSO | `--auth-type external` ([browser sign-in](/guides/sso/#browser-sign-in)) | |
 | Host, port and TLS in one URI | `hardcharger://HOST[:PORT][/PREFIX][?tls=false]` (or `--uri`): HTTPS unless `?tls=false`, port 31337, as in the [Python](/clients/python/) and [Go](/clients/go/) drivers. `tls` is its only parameter; the user and the other settings are the flags above | |
@@ -42,10 +42,18 @@ $ hardcharger --host localhost --username hardcharger --command "SELECT HARDCHAR
 `HARDCHARGER_PASSWORD` is the user's own password; the client never falls back to the server's
 `HARDCHARGER_ADMIN_PASSWORD`.
 
+The client uses TLS unless told otherwise, as the drivers do. Against a server without TLS it
+stops, sends nothing in plaintext, and says what to add:
+
+```console test exit=1
+$ hardcharger --host localhost --username hardcharger --command "SELECT 1"
+Error: The server at localhost:31337 speaks plain HTTP, not TLS. Add --tls=false (or ?tls=false in a hardcharger:// URI) to connect without encryption.
+```
+
 ## The interactive shell
 
 ```console test kind=repl
-$ hardcharger --host localhost --username hardcharger
+$ hardcharger --host localhost --tls=false --username hardcharger
 Password:
 Hardcharger Client …
 Connected to localhost:31337
@@ -87,13 +95,13 @@ a heredoc or a pipe:
 
 ```console test
 $ export HARDCHARGER_PASSWORD='change-me'
-$ hardcharger --host localhost --username hardcharger --quiet <<'SQL'
+$ hardcharger --host localhost --tls=false --username hardcharger --quiet <<'SQL'
 CREATE OR REPLACE TABLE trips AS SELECT * FROM (VALUES (1, 'Boston', 12.5), (2, 'Denver', 30.0)) t(id, city, miles);
 INSERT INTO trips VALUES (3, 'Austin', 8.5);
 SELECT count(*) AS trips, sum(miles) AS miles FROM trips;
 SQL
 OK, 2 rows affected
-OK, 1 rows affected
+OK, 1 row affected
 ┌────────┬───────────────┐
 │ trips  │     miles     │
 │ bigint │ decimal(38,1) │
@@ -102,7 +110,7 @@ OK, 1 rows affected
 ├────────┴───────────────┤
 │ 1 row  2 columns       │
 └────────────────────────┘
-$ echo "SELECT city FROM trips WHERE miles > 10 ORDER BY city" | hardcharger --host localhost --username hardcharger --csv
+$ echo "SELECT city FROM trips WHERE miles > 10 ORDER BY city" | hardcharger --host localhost --tls=false --username hardcharger --csv
 city
 Boston
 Denver
@@ -115,7 +123,7 @@ Denver
 
 ```console test
 $ export HARDCHARGER_PASSWORD='change-me'
-$ hardcharger --host localhost --username hardcharger --quiet --command "SELECT * FROM missing_table" 2> error.txt; echo "exit status $?"
+$ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "SELECT * FROM missing_table" 2> error.txt; echo "exit status $?"
 exit status 1
 $ grep -o "Table with name missing_table does not exist" error.txt
 Table with name missing_table does not exist
@@ -130,18 +138,18 @@ Comments (`--` and `/* */`) anywhere in a script are fine, including after the l
 
 ```console test
 $ export HARDCHARGER_PASSWORD='change-me'
-$ hardcharger --host localhost --username hardcharger --quiet --command "CREATE TABLE IF NOT EXISTS trips AS SELECT * FROM (VALUES (1, 'Boston', 12.5), (2, 'Denver', 30.0)) t(id, city, miles)" > /dev/null
-$ printf '.mode json\nSELECT * FROM trips WHERE id < 3 ORDER BY id;\n' | hardcharger --host localhost --username hardcharger --quiet
+$ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "CREATE TABLE IF NOT EXISTS trips AS SELECT * FROM (VALUES (1, 'Boston', 12.5), (2, 'Denver', 30.0)) t(id, city, miles)" > /dev/null
+$ printf '.mode json\nSELECT * FROM trips WHERE id < 3 ORDER BY id;\n' | hardcharger --host localhost --tls=false --username hardcharger --quiet
 [
   {"id": 1, "city": "Boston", "miles": 12.5},
   {"id": 2, "city": "Denver", "miles": 30.0}
 ]
-$ printf '.mode markdown\nSELECT * FROM trips WHERE id < 3 ORDER BY id;\n' | hardcharger --host localhost --username hardcharger --quiet
+$ printf '.mode markdown\nSELECT * FROM trips WHERE id < 3 ORDER BY id;\n' | hardcharger --host localhost --tls=false --username hardcharger --quiet
 | id | city   | miles |
 | -- | ------ | ----- |
 | 1  | Boston | 12.5  |
 | 2  | Denver | 30.0  |
-$ printf '.mode line\nSELECT * FROM trips WHERE id = 1;\n' | hardcharger --host localhost --username hardcharger --quiet
+$ printf '.mode line\nSELECT * FROM trips WHERE id = 1;\n' | hardcharger --host localhost --tls=false --username hardcharger --quiet
    id = 1
  city = Boston
 miles = 12.5
@@ -186,7 +194,7 @@ Machine-readable modes print no row-count line into files and pipes, so `--json 
 
 ```console test
 $ export HARDCHARGER_PASSWORD='change-me'
-$ printf '.tables --flat\n.describe trips\n' | hardcharger --host localhost --username hardcharger --quiet
+$ printf '.tables --flat\n.describe trips\n' | hardcharger --host localhost --tls=false --username hardcharger --quiet
 ┌─────────────────────┬────────────────┬─────────────────────────────┬────────────┐
 │    catalog_name     │ db_schema_name │         table_name          │ table_type │
 │       varchar       │    varchar     │           varchar           │  varchar   │

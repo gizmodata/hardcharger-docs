@@ -158,7 +158,7 @@ HTTP is all you need.
 <TabItem label="CLI">
 
 ```console test
-$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger \
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger \
     --command "SELECT 42 AS answer, 'hello' AS greeting"
 ┌─────────┬──────────┐
 │ answer  │ greeting │

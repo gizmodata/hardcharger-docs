@@ -35,10 +35,10 @@ CREATE ROW POLICY region_rows ON emp TO staff USING (region = session_attribute(
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='ann-secret' hardcharger --host localhost --username ann --csv --command "SELECT id, name, region FROM emp"
+$ HARDCHARGER_PASSWORD='ann-secret' hardcharger --host localhost --tls=false --username ann --csv --command "SELECT id, name, region FROM emp"
 id,name,region
 1,Ann,EU
-$ HARDCHARGER_PASSWORD='bob-secret' hardcharger --host localhost --username bob --csv --command "SELECT id, name, region FROM emp"
+$ HARDCHARGER_PASSWORD='bob-secret' hardcharger --host localhost --tls=false --username bob --csv --command "SELECT id, name, region FROM emp"
 id,name,region
 2,Bob,US
 ```
@@ -79,7 +79,7 @@ ALTER TABLE emp MODIFY COLUMN ssn SET MASKING POLICY hide EXEMPT ROLE hr;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='ann-secret' hardcharger --host localhost --username ann --csv --command "SELECT name, email, ssn FROM emp"
+$ HARDCHARGER_PASSWORD='ann-secret' hardcharger --host localhost --tls=false --username ann --csv --command "SELECT name, email, ssn FROM emp"
 name,email,ssn
 Ann,****@example.com,***-**-****
 ```

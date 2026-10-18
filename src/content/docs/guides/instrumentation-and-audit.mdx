@@ -20,8 +20,8 @@ PostgreSQL catalog that your init SQL attaches, so that every replica writes to 
 
 ```console test profile=instrumentation
 $ export HARDCHARGER_PASSWORD='change-me'
-$ hardcharger --host localhost --username hardcharger --quiet --command "SELECT 42 AS answer" > /dev/null
-$ hardcharger --host localhost --username hardcharger --csv --command \
+$ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "SELECT 42 AS answer" > /dev/null
+$ hardcharger --host localhost --tls=false --username hardcharger --csv --command \
     "SELECT username, sql_text, status, rows_fetched FROM _hardcharger_instr.execution_details WHERE sql_text = 'SELECT 42 AS answer'"
 username,sql_text,status,rows_fetched
 hardcharger,SELECT 42 AS answer,success,1
@@ -44,7 +44,7 @@ hardcharger,SELECT 42 AS answer,success,1
   statements and sessions.
 
 ```console test profile=instrumentation
-$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --csv --command \
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv --command \
     "SELECT instance_tag->>'env' AS env, status FROM _hardcharger_instr.instances"
 env,status
 docs,running
@@ -58,11 +58,11 @@ profile in `sql_executions.query_profile`:
 
 ```console test profile=instrumentation
 $ export HARDCHARGER_PASSWORD='change-me'
-$ hardcharger --host localhost --username hardcharger --quiet > /dev/null <<'SQL'
+$ hardcharger --host localhost --tls=false --username hardcharger --quiet > /dev/null <<'SQL'
 SET hardcharger.capture_query_profile = 'standard';
 SELECT count(*) FROM range(1000000);
 SQL
-$ hardcharger --host localhost --username hardcharger --csv --command \
+$ hardcharger --host localhost --tls=false --username hardcharger --csv --command \
     "SELECT query_profile IS NOT NULL AS has_profile FROM _hardcharger_instr.execution_details WHERE sql_text = 'SELECT count(*) FROM range(1000000)'"
 has_profile
 true

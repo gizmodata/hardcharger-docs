@@ -78,13 +78,13 @@ see the credentials.
 
    ```console test server=none
    $ export HARDCHARGER_PASSWORD='change-me'
-   $ hardcharger --host localhost --username hardcharger --quiet <<'SQL'
+   $ hardcharger --host localhost --tls=false --username hardcharger --quiet <<'SQL'
    CREATE TABLE lake.cities (name VARCHAR, country VARCHAR, population INTEGER);
    INSERT INTO lake.cities VALUES ('Tokyo', 'Japan', 37400068), ('Delhi', 'India', 28514000);
    SQL
    OK
    OK, 2 rows affected
-   $ hardcharger --host localhost --username hardcharger --csv \
+   $ hardcharger --host localhost --tls=false --username hardcharger --csv \
        --command "SELECT name FROM lake.cities ORDER BY population DESC"
    name
    Tokyo

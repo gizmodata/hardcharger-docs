@@ -25,7 +25,7 @@ keeping the SQL view.
 The same numbers are in `hardcharger_metrics()`, for administrators and dashboards that speak SQL:
 
 ```console test profile=metrics
-$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --csv --command \
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv --command \
     "SELECT name, labels['state'] AS state FROM hardcharger_metrics() WHERE name = 'hardcharger_queue_depth' ORDER BY state"
 name,state
 hardcharger_queue_depth,active

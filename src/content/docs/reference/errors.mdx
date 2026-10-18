@@ -81,13 +81,13 @@ one. The drivers do both steps for you.
 
 ```console test profile=rbac
 $ export HARDCHARGER_PASSWORD='change-me'
-$ hardcharger --host localhost --username hardcharger --quiet --command "CREATE USER joe WITH PASSWORD 'old-secret'" < /dev/null > /dev/null
+$ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "CREATE USER joe WITH PASSWORD 'old-secret'" < /dev/null > /dev/null
 $ token() { curl -s localhost:31337/warp/v1/auth/token -H 'Content-Type: application/json' \
     -d "{\"grant_type\": \"password\", \"username\": \"joe\", \"password\": \"$1\"}" | jq -r .access_token; }
 $ TOKEN=$(token old-secret)
 $ SESSION=$(curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $TOKEN" \
     -H 'Content-Type: application/json' -d '{}' | jq -r .session_id)
-$ hardcharger --host localhost --username hardcharger --quiet --command "ALTER USER joe WITH PASSWORD 'new-secret'" > /dev/null; sleep 2
+$ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "ALTER USER joe WITH PASSWORD 'new-secret'" > /dev/null; sleep 2
 $ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $TOKEN" | jq -c '{code}'
 {"code":"invalid_token"}
 $ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $(token new-secret)" | jq -c '{code, reason}'

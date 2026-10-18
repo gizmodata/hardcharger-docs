@@ -19,7 +19,7 @@ SET hardcharger.query_tag = '';
 ```
 
 ```console test profile=instrumentation
-$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --csv --command \
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv --command \
     "SELECT s.query_tag->>'job' AS job, s.sql_text FROM _hardcharger_instr.sql_statements s WHERE s.query_tag IS NOT NULL"
 job,sql_text
 load-orders,CREATE TABLE orders AS SELECT range AS id FROM range(1000)
@@ -127,7 +127,7 @@ SET GLOBAL hardcharger.max_queue_wait = 60;
 ```
 
 ```console test profile=queue
-$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --csv --command \
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv --command \
     "SELECT name, value FROM hardcharger_settings() WHERE name IN ('hardcharger.max_concurrent_statements', 'hardcharger.max_queue_wait') ORDER BY name"
 name,value
 hardcharger.max_concurrent_statements,4

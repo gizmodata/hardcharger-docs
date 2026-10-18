@@ -152,7 +152,7 @@ files and URI scheme change. It reads no `GIZMOSQL_*` variable.
 | `--port`, `-p` | `--port`, `-p` (default 31337) | `GIZMOSQL_PORT` → `HARDCHARGER_PORT` |
 | `--username`, `-u` | `--username`, `-u` | `GIZMOSQL_USER` → `HARDCHARGER_USER`; the fallback `GIZMOSQL_USERNAME` (the server's) → `HARDCHARGER_ADMIN_USERNAME` |
 | `--password`, `-W` (forces the prompt) | `--password`, `-W` | `GIZMOSQL_PASSWORD` → `HARDCHARGER_PASSWORD` (the user's own password; never falls back to the server's `HARDCHARGER_ADMIN_PASSWORD`) |
-| `--tls` | `--tls` (HTTPS) | `GIZMOSQL_TLS` → `HARDCHARGER_TLS` |
+| `--tls` (1.x: plaintext unless given) | `--tls[=true\|false]`, **on by default**: `--tls=false` for plain HTTP | `GIZMOSQL_TLS` → `HARDCHARGER_TLS` (`true` or `false`) |
 | `--tls-roots` | `--tls-roots` | `GIZMOSQL_TLS_ROOTS` → `HARDCHARGER_TLS_ROOTS` |
 | `--tls-skip-verify` | `--tls-skip-verify` | |
 | `--mtls-cert`, `--mtls-key` | `--mtls-cert`, `--mtls-key` (also with `--tls-skip-verify`, which 1.x refused: Arrow Flight dropped the certificate then) | |

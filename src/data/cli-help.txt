@@ -7,10 +7,10 @@ Connection:
   -p, --port PORT               Server port (default: 31337; env: HARDCHARGER_PORT)
   -u, --username USER           Username (env: HARDCHARGER_USER, falls back to HARDCHARGER_ADMIN_USERNAME for parity with the server)
   -W, --password                Force a password prompt (else env: HARDCHARGER_PASSWORD, or a prompt)
-      --uri URI                 Connection URI: hardcharger://HOST:PORT[?params] (also the one positional argument; cannot be combined with --host, --port, --username, --tls, etc.)
+      --uri URI                 Connection URI: hardcharger://HOST[:PORT][/PREFIX][?tls=false], HTTPS unless it says ?tls=false, port 31337 by default; also warp://, https:// and http:// (also the one positional argument; not with --host, --port or --tls)
 
 TLS:
-      --tls                     Use TLS (HTTPS) for the connection (env: HARDCHARGER_TLS)
+      --tls[=BOOL]              TLS (HTTPS), on by default; --tls=false for plain HTTP to a server without TLS (env: HARDCHARGER_TLS=false; in a URI, ?tls=false)
       --tls-roots FILE          Trusted root certificates (PEM; default: the system's) (env: HARDCHARGER_TLS_ROOTS)
       --tls-skip-verify         Skip TLS server certificate verification (development only)
       --mtls-cert FILE          mTLS client certificate (PEM)

@@ -391,7 +391,8 @@ class Page:
             script = self.dir / f"example_{block.line}.sql"
             script.write_text(block.code)
             user = block.meta.get("user", "hardcharger")
-            self.execute(block, ["hardcharger", "--host", "localhost", "--username", user, "--quiet", "--bail",
+            # --tls=false: the profiles that run SQL blocks serve plain HTTP, and TLS is the CLI's default.
+            self.execute(block, ["hardcharger", "--host", "localhost", "--tls=false", "--username", user, "--quiet", "--bail",
                                  "--file", script.name],
                          extra={"HARDCHARGER_PASSWORD": block.meta.get("password", "change-me")})
         elif lang == "java":

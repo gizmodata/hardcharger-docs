@@ -12,7 +12,8 @@ statement's plan, and also in what the user sees: `SHOW DATABASES`, `information
 
 This suits a platform that already decides who may use which data and mints tokens for its
 users. For users, roles and grants managed in SQL, use [access control](/guides/access-control/)
-instead: under access control the rules grant nothing.
+instead: under access control the rules grant a store user nothing (its grants decide), and
+they still restrict an administrator's token.
 
 ## The claim
 
@@ -33,7 +34,8 @@ instead: under access control the rules grant nothing.
   catch-all rule to make that explicit.
 - `system` and `_hardcharger_system` stay readable; `temp` follows the rules like any catalog.
 - A token **without** the claim keeps full access for its role.
-- A malformed rule counts as `none`.
+- A malformed rule counts as `none`, and a claim that isn't a list of rules (`[]`, a string,
+  an object, `null`) grants nothing.
 
 ## Try it
 
@@ -106,20 +108,27 @@ The token's `role` limits what kind of statement runs, and the rules limit where
 
 | Role | Can |
 |---|---|
-| `admin` | Everything. The rules don't restrict an administrator's token. |
+| `admin` | Read and write data where the rules allow; read (never write) the server's own catalogs; instance administration that reaches no data (SET GLOBAL, CHECKPOINT, KILL SESSION, every session in `hardcharger_sessions()`). |
 | `user` | Read and write data where the rules allow; no file-system or instance-level commands. |
 | `readonly` | Read where the rules allow; nothing that modifies state. |
 
-Rules don't restrict an `admin` token: an administrator's token whose rules name only `sales`
-still reads `hr`. Don't mint `admin` tokens for users you want to confine.
+Rules restrict an `admin` token too, as in GizmoSQL 1.x: an administrator's token whose rules
+name only `sales` can't read `hr`. An administrator without rules (the password
+administrator, or a token without the claim) is unrestricted.
 
 ```console test server=none
-$ python3 mint.py admin '[{"catalog": "sales", "access": "write"}]' > admin-token.txt
+$ python3 mint.py admin '[{"catalog": "sales", "access": "write"}, {"catalog": "*", "access": "none"}]' > admin-token.txt
 $ HARDCHARGER_PASSWORD="$(cat admin-token.txt)" hardcharger --host localhost --username token \
-    --csv --command "SELECT * FROM hr.salaries"
-name,salary
-ann,100000
+    --command "SELECT * FROM hr.salaries" 2>&1 | grep -o "Access denied: You do not have read access to catalog 'hr'"
+Access denied: You do not have read access to catalog 'hr'
 ```
+
+A restricted administrator holds none of the rights that reach data around its rules:
+ATTACH and DETACH (it could detach a denied catalog and attach its file under a name the rules
+allow), files (`read_csv()`, `COPY ... TO`), extensions, secrets and EXPORT/IMPORT DATABASE are
+refused, as are macros, and under access control it runs no access-control statements. GizmoSQL
+1.x let an administrator's token keep those; see
+[Coming from GizmoSQL](/get-started/coming-from-gizmosql/).
 
 A token without `role` gets [`token_default_role`](/reference/configuration/#token_default_role);
 without that, it is refused.

@@ -197,7 +197,8 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: maven
+          # No `cache: maven`: setup-java looks for a pom.xml in this repository, finds none (the
+          # JDBC driver is built from a clone under $RUNNER_TEMP), and fails the job.
       - name: Tools
         run: sudo apt-get update -q && sudo apt-get install -y -q jq postgresql-client
 

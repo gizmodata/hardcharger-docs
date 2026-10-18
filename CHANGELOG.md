@@ -15,6 +15,8 @@ All notable changes to the Hardcharger documentation are recorded here. The form
   hardcharger-js on the warp-sql-js tarball it already builds (new secret
   `DEPLOY_KEY_HARDCHARGER_JS`, a read-only deploy key of gizmodata/hardcharger-js) and runs the
   page's examples with it.
+- CI: the examples job no longer asks setup-java for a Maven cache, which failed the job (there
+  is no pom.xml in this repository) before any example ran.
 - CI uses no personal token: the server and the CLI come from `ghcr.io/gizmodata/hardcharger:main`
   (pulled with `GITHUB_TOKEN`), and the internal repositories are read with one read-only deploy
   key each (`DEPLOY_KEY_*` secrets). Examples that download a release run against a release

@@ -195,10 +195,20 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: maven
-          # The JDBC sources are cloned outside the workspace, where the cache's default
-          # pom.xml search doesn't look.
-          cache-dependency-path: ${{ runner.temp }}/src/hardcharger-jdbc/**/pom.xml
+      # setup-java's own Maven cache looks for pom.xml only inside the workspace, and the
+      # JDBC sources are cloned under $RUNNER_TEMP, so the cache is keyed here instead.
+      - name: Maven cache key
+        id: maven-key
+        run: |
+          key=$(find "$RUNNER_TEMP/src/hardcharger-jdbc" -name pom.xml -not -path '*/target/*' \
+            -print0 | sort -z | xargs -0 cat | sha256sum | cut -c1-16)
+          [ -n "$key" ] || exit 1
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ runner.os }}-${{ steps.maven-key.outputs.key }}
+          restore-keys: maven-${{ runner.os }}-
       - name: Tools
         run: sudo apt-get update -q && sudo apt-get install -y -q jq postgresql-client
 

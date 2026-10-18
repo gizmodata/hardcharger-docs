@@ -37,6 +37,11 @@ rbac:
   env: {HARDCHARGER_ADMIN_PASSWORD: change-me}
   env_from: {HARDCHARGER_RBAC_STORE_URI: pg_uri}
 
+# Access control with its store in a DuckDB file (the access-control guide's single-server store).
+rbac_duckdb:
+  args: [--database, my.duckdb, --health-port, "31338"]
+  env: {HARDCHARGER_ADMIN_PASSWORD: change-me, HARDCHARGER_RBAC_STORE_URI: "duckdb:rbac.duckdb"}
+
 # Access control with certificate sign-in (the access-control guide's certificate users).
 rbac_mtls:
   needs: [postgres]

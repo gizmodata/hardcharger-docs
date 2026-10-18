@@ -28,6 +28,14 @@ All notable changes to the Hardcharger documentation are recorded here. The form
   `session_ended`.
 - Statement control: a stop during an upload aborts it and rolls it back.
 - `rbac_mtls` example profile, and a certificate with an e-mail SAN in the test certificates.
+- Users, roles and grants: a DuckDB file as the access-control store, for development or a server
+  that will only ever run one replica (PostgreSQL for production and for several replicas), with
+  tested examples (the administrator refused reading it, a second server on the file stopped) and
+  the `rbac_duckdb` example profile. Security model: the server's own files (the store, the
+  database, instrumentation and log files) out of reach of SQL for everyone, and the one limit: an
+  extension with file I/O of its own, such as `sqlite_scanner`, is refused only a path written out
+  in the statement (a computed one finds no SQLite database). Configuration reference regenerated
+  (`rbac_store_uri`).
 
 ### Changed
 

@@ -57,12 +57,12 @@ HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --config hardcharger.y
 
 ```console test server=none
 $ export HARDCHARGER_PASSWORD='change-me'
-$ hardcharger --host localhost --username hardcharger --csv --command \
+$ hardcharger --host localhost --tls=false --username hardcharger --csv --command \
     "SELECT name, value FROM hardcharger_settings() WHERE name IN ('hardcharger.memory_limit', 'hardcharger.session_idle_timeout') ORDER BY name"
 name,value
 hardcharger.memory_limit,4GB
 hardcharger.session_idle_timeout,1800
-$ hardcharger --host localhost --username hardcharger --csv --command "SELECT count(*) AS trips FROM trips"
+$ hardcharger --host localhost --tls=false --username hardcharger --csv --command "SELECT count(*) AS trips FROM trips"
 trips
 2
 ```
@@ -79,7 +79,7 @@ HARDCHARGER_ADMIN_PASSWORD='change-me' HARDCHARGER_MEMORY_LIMIT=2GB hardcharger-
 ```
 
 ```console test server=none
-$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --csv --command \
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv --command \
     "SELECT value FROM hardcharger_settings() WHERE name = 'hardcharger.memory_limit'"
 value
 2GB

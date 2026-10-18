@@ -31,6 +31,11 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Changed
 
+- The CLI uses TLS by default (Hardcharger feat/cli-tls-default): every CLI example against a
+  plain-HTTP server says `--tls=false`; the CLI page shows the hint a TLS connection to a
+  plain-HTTP server prints, and its option table, the GizmoSQL mapping and the Docker guide say
+  what changed. Merge after that branch reaches Hardcharger's main (the examples run against
+  `:main`, whose client doesn't take `--tls=false` yet).
 - The CLI page's URI row follows the client's new URIs (Hardcharger fix/cli-uri-tls): the ADBC
   driver's `hardcharger://HOST[:PORT][/PREFIX][?tls=false]`, HTTPS unless `?tls=false`, with the
   user and the other settings as flags; `.connect URI [USER [PASSWORD]]`.

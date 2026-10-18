@@ -148,12 +148,12 @@ GRANT viewer TO vic;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT * FROM published.revenue_by_region ORDER BY region"
 region,revenue
 EU,120.0
 US,80.0
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT * FROM analytics.orders" > /dev/null 2>&1 || echo "refused"
 refused
 ```
@@ -170,7 +170,7 @@ or in it or own something there. That covers the drivers' metadata calls (ADBC `
 stay listed. `vic` sees the one view he may read:
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT table_schema, table_name FROM information_schema.tables WHERE table_catalog = 'my'"
 table_schema,table_name
 published,revenue_by_region
@@ -181,16 +181,16 @@ published,revenue_by_region
 `pragma_table_info()` lists the columns they may read:
 
 ```console test profile=rbac exit=1
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
     --command "DESCRIBE analytics.orders"
 Error: Hardcharger blocked this statement: user vic holds no privilege on table my.analytics.orders, so it cannot describe it
-$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --username joe --csv \
+$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe --csv \
     --command "DESCRIBE main.customers"
 Error: Hardcharger blocked this statement: user joe may read only some columns of table my.main.customers, and DESCRIBE shows them all; pragma_table_info('my.main.customers') lists the ones it may read
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --username joe --csv \
+$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe --csv \
     --command "SELECT name FROM pragma_table_info('main.customers')"
 name
 id
@@ -204,7 +204,7 @@ way they narrow what can be read.
 ## Seeing grants
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --csv \
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv \
     --command "SHOW GRANTS FOR ROLE analyst"
 privilege,object_type,object,columns,granted_to,grantee_type,grant_option,granted_by
 …
@@ -249,7 +249,7 @@ $ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardc
       GRANT sales_reader TO "joe@example.com"'
 result
 Role sales_reader created
-OK, 1 rows affected
+OK, 1 row affected
 result
 Granted SELECT on my.main.sales to sales_reader
 result

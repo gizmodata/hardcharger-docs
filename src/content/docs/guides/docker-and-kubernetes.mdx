@@ -39,7 +39,8 @@ $ curl -s localhost:31338/health
 ```
 
 From the release after 0.2.0 the image also carries the `hardcharger` CLI, so
-`docker exec -it hardcharger hardcharger --username hardcharger` opens a shell inside it.
+`docker exec -it hardcharger hardcharger --tls=false --username hardcharger` opens a shell inside it
+(`--tls=false`: the server in the image serves plain HTTP unless given a certificate).
 
 Mount init SQL and other files read-only, and pass options as `HARDCHARGER_*` variables or a
 mounted YAML file (`--config /etc/hardcharger/hardcharger.yaml`). Keep passwords in a secret

@@ -86,16 +86,16 @@ Sign in with it as the password of the user `token`:
 
 ```console test server=none
 $ export HARDCHARGER_PASSWORD="$(cat token.txt)"
-$ hardcharger --host localhost --username token --csv --command "SELECT * FROM sales.orders"
+$ hardcharger --host localhost --tls=false --username token --csv --command "SELECT * FROM sales.orders"
 id,amount
 1,99.5
-$ hardcharger --host localhost --username token --csv --command "SELECT database_name FROM duckdb_databases() WHERE NOT internal ORDER BY 1"
+$ hardcharger --host localhost --tls=false --username token --csv --command "SELECT database_name FROM duckdb_databases() WHERE NOT internal ORDER BY 1"
 database_name
 _hardcharger_system
 sales
-$ hardcharger --host localhost --username token --command "INSERT INTO sales.orders VALUES (2, 10)" 2>&1 | grep -o "Access denied: You do not have write access to catalog 'sales'"
+$ hardcharger --host localhost --tls=false --username token --command "INSERT INTO sales.orders VALUES (2, 10)" 2>&1 | grep -o "Access denied: You do not have write access to catalog 'sales'"
 Access denied: You do not have write access to catalog 'sales'
-$ hardcharger --host localhost --username token --command "SELECT * FROM hr.salaries" > /dev/null 2>&1 || echo "refused"
+$ hardcharger --host localhost --tls=false --username token --command "SELECT * FROM hr.salaries" > /dev/null 2>&1 || echo "refused"
 refused
 ```
 
@@ -118,7 +118,7 @@ administrator, or a token without the claim) is unrestricted.
 
 ```console test server=none
 $ python3 mint.py admin '[{"catalog": "sales", "access": "write"}, {"catalog": "*", "access": "none"}]' > admin-token.txt
-$ HARDCHARGER_PASSWORD="$(cat admin-token.txt)" hardcharger --host localhost --username token \
+$ HARDCHARGER_PASSWORD="$(cat admin-token.txt)" hardcharger --host localhost --tls=false --username token \
     --command "SELECT * FROM hr.salaries" 2>&1 | grep -o "Access denied: You do not have read access to catalog 'hr'"
 Access denied: You do not have read access to catalog 'hr'
 ```

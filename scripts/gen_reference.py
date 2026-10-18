@@ -102,7 +102,7 @@ class Server:
 
     def client(self, *args: str) -> str:
         done = subprocess.run(
-            args=[str(self.bin_dir / "hardcharger"), "--host", "127.0.0.1", "--port", str(self.port),
+            args=[str(self.bin_dir / "hardcharger"), "--host", "127.0.0.1", "--port", str(self.port), "--tls=false",
                   "--username", "hardcharger", "--quiet", *args],
             env=dict(self.env, HARDCHARGER_PASSWORD="reference-only"), capture_output=True, text=True, timeout=60)
         if done.returncode != 0:

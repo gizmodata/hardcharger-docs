@@ -86,7 +86,7 @@ extensions, secrets) needs a system privilege such as `READ FILESYSTEM`.
 Some things are refused whatever the role, administrators included:
 
 ```console test exit=1
-$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger \
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger \
     --command "SELECT * FROM read_text('/etc/passwd')"
 Error: Permission denied: Hardcharger blocked access to '/etc/passwd' (system account files). Hardcharger keeps credential and system files on the server host out of reach of SQL, whatever the role.
 ```

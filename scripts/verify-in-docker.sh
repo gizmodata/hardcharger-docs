@@ -44,7 +44,7 @@ docker run --rm -i \
 # server package and the examples' other imports. Rebuilt when the checkout changes.
 REV=$(git -C /src/hardcharger-adbc rev-parse HEAD 2>/dev/null || echo unknown)
 mkdir -p ~/.ssh && ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
-git config --global url."git@github.com:gizmodata/".insteadOf https://github.com/gizmodata/
+git -C / config --global url."git@github.com:gizmodata/".insteadOf https://github.com/gizmodata/  # -C /: /docs may be a worktree whose .git points outside the container
 export GOPRIVATE='github.com/gizmodata/*' GOFLAGS=-mod=mod
 if [ ! -f "/opt/venv/.built-$REV" ]; then
   rm -rf /tmp/hc-adbc /tmp/hc-py /opt/venv/* && cp -R /src/hardcharger-adbc /tmp/hc-adbc && cp -R /src/hardcharger-py /tmp/hc-py

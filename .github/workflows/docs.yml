@@ -242,6 +242,9 @@ jobs:
 
       - name: Every tested example
         run: |
-          # The examples run with their own HOME; Docker and Go keep using the runner's.
+          # The examples run with their own HOME; Docker and Go keep using the runner's. Their PATH
+          # is built from scratch, so it is given the toolchains set up above (setup-go's Go, not
+          # the image's older one, which can't build modules that need a newer Go).
           export DOCKER_CONFIG="$HOME/.docker" GOMODCACHE="$(go env GOMODCACHE)" GOCACHE="$(go env GOCACHE)"
+          export HARDCHARGER_DOCS_EXTRA_PATH="$(go env GOROOT)/bin:$(dirname "$(command -v node)"):$JAVA_HOME/bin"
           .venv/bin/python scripts/verify_examples.py

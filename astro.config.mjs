@@ -19,11 +19,13 @@ export default defineConfig({
 	integrations: [
 		mermaid({ theme: 'dark', autoTheme: true }),
 		starlight({
-			title: 'Hardcharger',
+			title: 'Hardcharger™',
 			description:
-				'Hardcharger is GizmoData’s DuckDB 2.0 server: fast, secure, remote DuckDB over the Warp SQL protocol. Every feature included.',
-			logo: { src: './src/assets/gizmodata-logo.png', alt: 'GizmoData' },
+				'Hardcharger™ is GizmoData’s DuckDB 2.0 server: fast, secure, remote DuckDB over the Warp SQL protocol. Every feature included.',
+			logo: { src: './src/assets/gizmodata-logo.png', alt: 'GizmoData™' },
 			favicon: '/favicon.png',
+			// Hardcharger™ in each page's <title> and descriptions; the body: src/middleware.ts.
+			routeMiddleware: './src/starlightRouteData.ts',
 			customCss: ['./src/styles/theme.css'],
 			editLink: { baseUrl: 'https://github.com/gizmodata/hardcharger-docs/edit/main/' },
 			lastUpdated: true,

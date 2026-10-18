@@ -1,6 +1,7 @@
 ---
 // Starlight's footer (edit link, last updated, pagination), then "Built by GizmoData"
-// with the hex logo, as at the bottom of every README.
+// with the hex logo, as at the bottom of every README, and the trademark notice (pending
+// marks: ™, never ®).
 import Default from '@astrojs/starlight/components/Footer.astro';
 import { Image } from 'astro:assets';
 import logo from '../assets/gizmodata-logo.png';
@@ -8,12 +9,13 @@ import logo from '../assets/gizmodata-logo.png';
 
 <Default><slot /></Default>
 <div class="hc-footer">
-	<a href="https://gizmodata.com" class="hc-footer-logo" aria-label="GizmoData">
-		<Image src={logo} alt="GizmoData" width={48} height={51} />
+	<a href="https://gizmodata.com" class="hc-footer-logo" aria-label="GizmoData™">
+		<Image src={logo} alt="GizmoData™" width={48} height={51} />
 	</a>
-	<p>Built by <a href="https://gizmodata.com">GizmoData</a></p>
+	<p>Built by <a href="https://gizmodata.com">GizmoData™</a></p>
 	<p class="hc-footer-small">
-		Hardcharger is Apache 2.0 licensed. Apache Arrow and DuckDB are trademarks of their owners.
+		Hardcharger™ and GizmoData™ are trademarks of GizmoData LLC. Hardcharger is Apache 2.0 licensed.
+		Apache Arrow and DuckDB are trademarks of their owners.
 	</p>
 </div>
 

@@ -109,10 +109,14 @@ Error: Permission denied: Hardcharger blocked access to '/etc/passwd' (system ac
   read-only. A DuckDB store checkpoints each change into its file at once, so nothing depends on
   its write-ahead log. One limit: an extension with file I/O of its own, such as `sqlite_scanner`
   (which only an administrator or a user granted `MANAGE EXTENSIONS` can load), goes past DuckDB's
-  file system, so for it only a path written out in the statement is refused. A computed path
-  reaches the file, where SQLite finds no database it can read (`file is not a database`), and a
-  file it creates beside the store, such as one where the WAL goes, undoes nothing, as every change
-  is already in the store file.
+  file system. For the store, a path written out in the statement is refused, and a computed one
+  reaches a file where SQLite finds no database it can read (`file is not a database`); a file it
+  creates where the store's WAL goes undoes nothing, as every change is already in the store file.
+  The database, instrumentation and log files are checkpointed as DuckDB usually does, so a SQLite
+  database written where one of their WALs goes (which takes the administrator, or a role that may
+  create tables in the catalog it attaches) loses that file's changes since its last checkpoint if
+  the server then stops without one. Keep `MANAGE EXTENSIONS` for roles you would trust with the
+  server's files.
 - **Unredacted secrets** ([`block_unredacted_secrets`](/reference/configuration/#block_unredacted_secrets),
   on): `SET allow_unredacted_secrets` is refused, so `duckdb_secrets()` never shows a secret's value.
 - SQL containing a NUL byte is refused.

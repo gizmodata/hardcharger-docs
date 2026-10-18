@@ -176,8 +176,12 @@ transaction are gone. The drivers open a new session, replay the options they se
 (a warning, and a counter on the connection). Inside a transaction they refuse to continue
 instead, since half a transaction must not commit.
 
-An administrator's `KILL SESSION`, a password change or a dropped user ends a session with
-`401 session_ended` and a `reason`. The client signs in again before it opens a new session.
+An administrator's `KILL SESSION`, a password change or a dropped or disabled user ends a
+session. Its requests then get `401 session_ended` with a
+[`reason`](/reference/errors/#session_ended-reasons) (`killed`, `credentials_changed`,
+`principal_dropped`, `token_expired`); when access control ended it, the old token gets
+`401 invalid_token` first. The client signs in again before it opens a new session. A
+`GET` of the ended session answers the same way, so a liveness probe sees it as gone.
 
 ## Errors
 

@@ -146,5 +146,10 @@ Then it cancels what is left. A second signal stops it at once. With
 `graceful_shutdown=false`, the first signal stops it at once. Both can be changed live with
 `SET GLOBAL`.
 
+Stopping at once closes every session: running statements are cancelled, result streams are cut
+(clients see a failed stream, never a short one that looks complete), and a bulk upload whose body
+is still arriving is aborted and rolls back, partitioned uploads included. Nothing is half
+loaded, and the server exits with status 0.
+
 In Kubernetes, set `terminationGracePeriodSeconds` a little above the grace period
 ([guide](/guides/docker-and-kubernetes/)).

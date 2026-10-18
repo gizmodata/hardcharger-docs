@@ -88,7 +88,7 @@ Boston 12.5
 | `async` | `false` | Submit, long-poll, fetch: for long queries behind proxies |
 | `retainResults` | server's | `true` keeps results on the server, so a broken download resumes |
 | `ipcCompression` | `none` | `zstd` |
-| `resultPartitions` | `1` | Read a large result over up to n connections at once ([partitions](/concepts/warp-sql/#partitioned-results)) |
+| `resultPartitions` | `8` | Read a large result over up to n connections at once ([partitions](/concepts/warp-sql/#partitioned-results)); `1`: one stream |
 | `resultOrder` | `preserve` | `any`: rows in arrival order |
 | `resultBufferSize` | `134217728` | Bytes an unread result may buffer when another statement needs its session |
 

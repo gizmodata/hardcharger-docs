@@ -158,6 +158,49 @@ $ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --username vic 
 refused
 ```
 
+## What users can see
+
+Metadata follows privileges, table by table. A user sees a table or view only when they hold a
+privilege on it (`SELECT` on it or on any of its columns, `INSERT`, `UPDATE` or `DELETE`; owning it
+holds them all), a column only when they may read it, and a schema only when they hold a grant on
+or in it or own something there. That covers the drivers' metadata calls (ADBC `GetObjects`, JDBC
+`DatabaseMetaData`) and SQL's own listings: `information_schema`, `duckdb_tables()`,
+`duckdb_columns()` and the other `duckdb_*()` functions, `SHOW TABLES`, `SHOW ALL TABLES`,
+`pragma_table_info()`. DuckDB's own views (catalog `system`) and the session's temporary objects
+stay listed. `vic` sees the one view he may read:
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --username vic --csv \
+    --command "SELECT table_schema, table_name FROM information_schema.tables WHERE table_catalog = 'my'"
+table_schema,table_name
+published,revenue_by_region
+```
+
+`DESCRIBE` (and `SHOW <table>`) of a table the user holds no privilege on is refused, and so is
+`DESCRIBE` of a table they may read only some columns of, since it would show them all;
+`pragma_table_info()` lists the columns they may read:
+
+```console test profile=rbac exit=1
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --username vic --csv \
+    --command "DESCRIBE analytics.orders"
+Error: Hardcharger blocked this statement: user vic holds no privilege on table my.analytics.orders, so it cannot describe it
+$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --username joe --csv \
+    --command "DESCRIBE main.customers"
+Error: Hardcharger blocked this statement: user joe may read only some columns of table my.main.customers, and DESCRIBE shows them all; pragma_table_info('my.main.customers') lists the ones it may read
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --username joe --csv \
+    --command "SELECT name FROM pragma_table_info('main.customers')"
+name
+id
+email
+```
+
+A grant or revoke applies to the next listing, prepared ones included. Scoped tokens, `SET ROLE`,
+tenants and [catalog access rules](/guides/catalog-access-rules/) narrow what is listed the same
+way they narrow what can be read.
+
 ## Seeing grants
 
 ```console test profile=rbac
@@ -184,7 +227,48 @@ DROP USER IF EXISTS ann;
 
 Dropping or disabling a user, changing their password, or revoking a role takes effect on every
 replica within about a second, including in sessions that are open: a revoke can stop a
-statement that is running.
+statement that is running. The user's tokens stop working at once (`401 invalid_token`), and once
+they sign in again, their old sessions answer `401 session_ended` with a
+[`reason`](/reference/errors/#session_ended-reasons): `principal_dropped` (dropped or disabled) or
+`credentials_changed` (a new password, or anything else access control revoked).
+
+## Users who sign in with a certificate
+
+With [certificate sign-in](/guides/tls/#signing-in-with-the-certificate) on, a client certificate
+signs in as the store user its identity names (by default its e-mail SAN; ASCII case doesn't
+matter, except in URI identities such as SPIFFE IDs). Such a user needs no password, and roles
+decide what it may do, as for any user. The administrator signs in with a password here over a
+plain client certificate, since this server requires one on every connection:
+
+```console test profile=rbac_mtls
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --tls --tls-roots ca.crt \
+    --mtls-cert client.crt --mtls-key client.key --csv --command 'CREATE ROLE sales_reader;
+      CREATE TABLE sales AS SELECT 42 AS amount;
+      GRANT SELECT ON sales TO sales_reader;
+      CREATE USER "joe@example.com";
+      GRANT sales_reader TO "joe@example.com"'
+result
+Role sales_reader created
+OK, 1 rows affected
+result
+Granted SELECT on my.main.sales to sales_reader
+result
+User joe@example.com created
+result
+Granted sales_reader to joe@example.com
+```
+
+`joe.crt` carries `email:joe@example.com`. Joe signs in with it alone:
+
+```console test profile=rbac_mtls
+$ hardcharger --host localhost --tls --tls-roots ca.crt --auth-type mtls \
+    --mtls-cert joe.crt --mtls-key joe.key --csv --command "SELECT HARDCHARGER_USER() AS who, amount FROM sales"
+who,amount
+joe@example.com,42
+```
+
+A certificate whose identity is no user (or a disabled one) is refused with
+`unknown_certificate_identity`.
 
 ## Active roles
 

@@ -21,7 +21,7 @@ glibc …
 | You see | Then |
 |---|---|
 | `aarch64` and glibc 2.38 or newer (Raspberry Pi OS based on Debian 13 "Trixie", Ubuntu 24.04) | Install natively, below. |
-| `aarch64` and an older glibc (Raspberry Pi OS "Bookworm": 2.36) | Use Docker, below, or upgrade the OS. Builds for glibc 2.28 are planned. |
+| `aarch64` and an older glibc (Raspberry Pi OS "Bookworm": 2.36) | Use Docker, below, or upgrade the OS. From the release after 0.2.0 the builds need only glibc 2.28, so Bookworm installs natively. |
 | `armv7l` or `armv6l` | That's a 32-bit OS. Install the 64-bit Raspberry Pi OS: Hardcharger has no 32-bit build. |
 
 The installer checks all of this before it downloads anything, and says what to do.

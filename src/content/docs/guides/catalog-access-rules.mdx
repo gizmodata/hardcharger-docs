@@ -108,7 +108,7 @@ The token's `role` limits what kind of statement runs, and the rules limit where
 
 | Role | Can |
 |---|---|
-| `admin` | Read and write data where the rules allow; read (never write) the server's own catalogs; instance administration that reaches no data (SET GLOBAL, CHECKPOINT, KILL SESSION, every session in `hardcharger_sessions()`). |
+| `admin` | Read and write data where the rules allow; instance administration that reaches no data (SET GLOBAL, CHECKPOINT). Not the server's own catalogs, other sessions or KILL SESSION (see below). |
 | `user` | Read and write data where the rules allow; no file-system or instance-level commands. |
 | `readonly` | Read where the rules allow; nothing that modifies state. |
 

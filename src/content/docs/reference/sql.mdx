@@ -42,13 +42,61 @@ RESET hardcharger.query_timeout;
 
 <SqlSettings />
 
+## HUGEINT and UHUGEINT
+
+DuckDB's 128-bit integers travel as Arrow `decimal128(38, 0)` by default, which every Arrow client
+reads. That type holds at most 38 digits, so a value of 10<sup>38</sup> or more (a HUGEINT can reach
+about 1.7 × 10<sup>38</sup>, a UHUGEINT twice that) can't be sent in it. Such a statement fails
+with a conversion error that names the value, rather than sending a wrong number:
+
+```console test exit=1
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --csv \
+    --command "SELECT 170141183460469231731687303715884105727::HUGEINT AS big"
+Error: Conversion Error: Hardcharger cannot send the HUGEINT value 170141183460469231731687303715884105727 as Arrow decimal128(38, 0), which holds at most 38 digits. CAST it to VARCHAR, or set the session option arrow_lossless_conversion to true (DuckDB's 16-byte HUGEINT Arrow type, which holds every value)
+```
+
+Every value that fits is sent exactly as before. For the others, either `CAST` to `VARCHAR`:
+
+```console test
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger --csv \
+    --command "SELECT CAST(170141183460469231731687303715884105727::HUGEINT AS VARCHAR) AS big"
+big
+170141183460469231731687303715884105727
+```
+
+or turn on `arrow_lossless_conversion` for the session, which sends DuckDB's own 16-byte Arrow
+types (an `arrow.opaque` extension type over `fixed_size_binary(16)`, little-endian) that hold every
+value, and decode them in the client. It also changes how UUID and JSON columns are sent.
+
+```python test
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger", password="change-me") as conn:
+    with conn.cursor() as cur:
+        cur.execute(operation="SET SESSION arrow_lossless_conversion = true")
+        cur.execute(operation="SELECT 340282366920938463463374607431768211455::UHUGEINT AS biggest")
+        raw = cur.fetchone()[0]
+        print(int.from_bytes(raw, byteorder="little", signed=False))
+```
+
+```text output
+340282366920938463463374607431768211455
+```
+
+Write `SET SESSION`: a plain `SET arrow_lossless_conversion` is DuckDB's global setting, which
+changes every session's results and needs an administrator (`MANAGE CONFIG` under access
+control). Over [plain HTTP](/clients/http/), the session option `arrow_lossless_conversion` does the
+same for one session. JSON bind parameters beyond the 64-bit range bind exactly as HUGEINT or
+UHUGEINT; wider ones are refused.
+
 ## KILL SESSION
 
 ```sql
 KILL SESSION '<session id>';
 ```
 
-Ends another session at once (administrators only); its next request gets `401 session_ended`.
+Ends another session at once (administrators only); its next request gets `401 session_ended`
+with reason `killed`.
 `hardcharger_sessions()` lists the ids. See [Statement control](/guides/statement-control/#kill-a-session).
 
 ## Access-control statements

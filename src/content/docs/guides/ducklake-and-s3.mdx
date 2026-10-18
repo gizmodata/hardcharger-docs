@@ -49,10 +49,12 @@ see the credentials.
 
    Save it as `compose.yaml` and start it with `docker compose up -d --wait`.
 
-2. Write the init SQL: the extensions, a secret for each service, and the lake:
+2. Write the init SQL: a secret for each service, and the lake. DuckLake, PostgreSQL and S3
+   (`ducklake`, `postgres`, `httpfs`) are built into the server, so there is nothing to `INSTALL`
+   and it works offline; `LOAD` of a built-in extension does nothing and is harmless. (0.2.0 has
+   them as downloads: begin with `INSTALL ducklake; INSTALL postgres; INSTALL httpfs;` there.)
 
    ```sql test file=lake.sql server=none
-   INSTALL ducklake; INSTALL postgres; INSTALL httpfs;
    LOAD ducklake; LOAD postgres; LOAD httpfs;
 
    CREATE SECRET lake_s3 (TYPE s3, KEY_ID 'lake-key', SECRET 'lake-secret',

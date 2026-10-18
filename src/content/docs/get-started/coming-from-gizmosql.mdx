@@ -47,8 +47,8 @@ switch, rather than wonder why a setting didn't apply.
 - **The port.** 31337 by default, as before, but HTTP: it works through ordinary reverse proxies
   and load balancers ([guide](/guides/load-balancers/)).
 - **The names**, below.
-- **The access-control store.** RBAC keeps users, roles and grants in a new schema,
-  `hardcharger_rbac`. GizmoSQL's `gizmosql_rbac` is not read: recreate users and grants.
+- **Access control** is new: users, roles, grants, row policies and masking, kept in
+  PostgreSQL ([guide](/guides/access-control/)).
 
 ## Options
 
@@ -97,9 +97,6 @@ Every option also has a YAML key: the flag without its leading `--`, with `_` fo
 | `GIZMOSQL_REJECT_UNKNOWN_SESSIONS` | (none: always so) | (none) |
 | `--query-timeout`, `QUERY_TIMEOUT`, `GIZMOSQL_QUERY_TIMEOUT` | `--query-timeout-seconds` | `HARDCHARGER_QUERY_TIMEOUT_SECONDS` |
 | `-Q`, `PRINT_QUERIES`, `GIZMOSQL_PRINT_QUERIES` | `--print-queries` | `HARDCHARGER_PRINT_QUERIES` |
-| `GIZMOSQL_RBAC_STORE_URI` | `--rbac-store-uri` | `HARDCHARGER_RBAC_STORE_URI` |
-| `GIZMOSQL_RBAC_OPA_URL` | `--rbac-opa-url` | `HARDCHARGER_RBAC_OPA_URL` |
-| `GIZMOSQL_RBAC_OPA_TIMEOUT_MS` | `--rbac-opa-timeout-ms` | `HARDCHARGER_RBAC_OPA_TIMEOUT_MS` |
 | `GIZMOSQL_AUDIT_CHAIN_KEY` | `--audit-chain-key` | `HARDCHARGER_AUDIT_CHAIN_KEY` |
 | `GIZMOSQL_MAX_CONCURRENT_STATEMENTS` | `--max-concurrent-statements` | `HARDCHARGER_MAX_CONCURRENT_STATEMENTS` |
 | `GIZMOSQL_MAX_QUEUED_STATEMENTS` | `--max-queued-statements` | `HARDCHARGER_MAX_QUEUED_STATEMENTS` |
@@ -223,7 +220,6 @@ GizmoSQL 1.x server created.
 
 | GizmoSQL 1.x | Hardcharger |
 |---|---|
-| RBAC store schema `gizmosql_rbac` | `hardcharger_rbac` (a new store; 1.x's is not read) |
 | table metadata key `GIZMOSQL:COLUMN_DEFAULT` | `WARP:SQL:COLUMN_DEFAULT` (Warp SQL's key) |
 | `gizmosql_*` Prometheus metrics (`gizmosql_statements_total`, ...) | `hardcharger_*` (`hardcharger_statements_total`, ...); `gizmosql_license_expiry_seconds` is gone |
 | server tokens with `iss=gizmosql` | only tokens this server signs (`iss=hardcharger`) |
@@ -235,10 +231,8 @@ GizmoSQL 1.x server created.
 Both apply a token's `catalog_access` rules whatever its role: an `admin` token with rules
 reads and writes only where they allow (temp included) and sees only those catalogs; an
 administrator without rules (the password administrator, or a token without the claim) is
-unrestricted. Both let a restricted administrator read, never write, the server's own
-catalogs (instrumentation, logs) whatever its rules, and keep SET GLOBAL, CHECKPOINT, KILL
-SESSION and every session in `hardcharger_sessions()`. Hardcharger differs on purpose where
-1.x's administrator rights reached data around the rules:
+unrestricted. Both let a restricted administrator keep SET GLOBAL and CHECKPOINT. Hardcharger
+differs on purpose where 1.x's administrator rights reached data around the rules:
 
 | A restricted administrator (`role: admin` with `catalog_access`) | GizmoSQL 1.x | Hardcharger |
 |---|---|---|
@@ -250,5 +244,4 @@ SESSION and every session in `hardcharger_sessions()`. Hardcharger differs on pu
 | CREATE MACRO / TYPE | allowed | refused (as for every non-superuser under the plan check) |
 | table functions such as `pragma_storage_info('c.t')` | allowed | only those any rules principal gets |
 | `nextval()` / `currval()` on a sequence | any | by the rules of the sequence's catalog |
-| access-control statements under RBAC (CREATE USER, GRANT, ...) | allowed (1.x drops the rules under RBAC) | refused, and the rules hold under RBAC |
 | a claim that isn't a non-empty list (`[]`, a string, an object, `null`) | no rules: unrestricted | grants nothing |

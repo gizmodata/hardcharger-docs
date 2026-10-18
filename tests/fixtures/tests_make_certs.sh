@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Throwaway test certificates for the tls and mtls profiles: a CA, a server certificate
-# for localhost and 127.0.0.1, and a client certificate, all signed by the CA.
+# for localhost and 127.0.0.1, a client certificate, and joe.crt, a client certificate whose
+# e-mail SAN (joe@example.com) is its identity for certificate sign-in, all signed by the CA.
 set -euo pipefail
 [ -f ca.crt ] && exit 0
 openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 2 \
@@ -15,3 +16,8 @@ openssl req -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -subj "/CN=joe" \
 printf 'extendedKeyUsage=clientAuth\n' > client.ext
 openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 2 \
   -extfile client.ext -out client.crt 2>/dev/null
+openssl req -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -subj "/CN=Joe" \
+  -keyout joe.key -out joe.csr 2>/dev/null
+printf 'extendedKeyUsage=clientAuth\nsubjectAltName=email:joe@example.com\n' > joe.ext
+openssl x509 -req -in joe.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 2 \
+  -extfile joe.ext -out joe.crt 2>/dev/null

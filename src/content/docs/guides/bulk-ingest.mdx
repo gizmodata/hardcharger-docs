@@ -169,10 +169,9 @@ of 14.0 s; see the [benchmarks](/benchmarks/#partitioned-uploads-2026-10-17)).
 - If any part fails (bad data, a refused batch, a dropped connection), nothing is written.
 
 <Aside type="note" title="In the drivers">
-The Warp SQL ADBC driver sends loads of two batches or more as 8 parts by default
-(`adbc.warp.ingest.parts`; `1` keeps one ordered stream) from its main branch on.
-`adbc-driver-hardcharger` gets it when it moves to that version; until then it sends one
-stream, and the protocol below is how to use it directly.
+The ADBC drivers (`adbc-driver-hardcharger`, the Go package) send loads of two batches or more
+as 8 parts by default (`adbc.warp.ingest.parts`, also `adbc.hardcharger.ingest.parts`; `1` keeps
+one ordered stream). The protocol below is how to use it directly.
 </Aside>
 
 Over plain HTTP: open the ingest, upload the parts at once, commit:

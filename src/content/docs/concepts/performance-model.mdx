@@ -38,7 +38,7 @@ flowchart LR
   <Card title="🔀 Partitioned results">
     A client can read a large result as several partitions over separate connections at once,
     past the limits of one TCP flow and one client core. Order is kept when the query asks for
-    one. The CLI asks for 8 by default; small results come as one stream.
+    one. The drivers and the CLI ask for 8 by default; small results come as one stream.
   </Card>
   <Card title="📦 Big batches">
     Results go out in batches of up to 122,880 rows (one DuckDB row group), so per-batch overhead
@@ -68,7 +68,7 @@ flowchart LR
 
 | You want | Do this |
 |---|---|
-| A large result faster over a fast network | Partitions: `adbc.warp.statement.result_partitions` (ADBC), `resultPartitions` (JDBC), `--result-partitions` (the CLI, 8 by default). On a fast LAN, 32 was fastest in the benchmarks; the server caps it at [`max_result_partitions`](/reference/configuration/#max_result_partitions) (32). |
+| A large result faster over a fast network | Partitions: `adbc.warp.statement.result_partitions` (ADBC), `resultPartitions` (JDBC), `--result-partitions` (the CLI); each is 8 by default. On a fast LAN, 32 was fastest in the benchmarks; the server caps it at [`max_result_partitions`](/reference/configuration/#max_result_partitions) (32). |
 | A large load faster | [Partitioned uploads](/guides/bulk-ingest/#partitioned-uploads), when the rows needn't keep the upload's order. |
 | A large result faster over a slow or long link | zstd (`adbc.warp.ipc_compression=zstd`, JDBC `ipcCompression=zstd`) cuts the bytes to about a quarter. On a LAN it is slower than none, because the client decompresses on one core. Over high latency, prefer up to 8 partitions, in any order. |
 | Long queries behind a proxy | Submit asynchronously (`adbc.warp.statement.async`, JDBC `async=true`) so no request outlives the proxy's timeout. |

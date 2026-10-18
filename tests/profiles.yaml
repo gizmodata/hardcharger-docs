@@ -37,6 +37,15 @@ rbac:
   env: {HARDCHARGER_ADMIN_PASSWORD: change-me}
   env_from: {HARDCHARGER_RBAC_STORE_URI: pg_uri}
 
+# Access control with certificate sign-in (the access-control guide's certificate users).
+rbac_mtls:
+  needs: [postgres]
+  setup: [bash tests_make_certs.sh]
+  args: [--database, my.duckdb, --health-port, "31338", --tls-cert, server.crt, --tls-key, server.key,
+         --mtls-ca-cert, ca.crt, --mtls-certificate-sign-in]
+  env: {HARDCHARGER_ADMIN_PASSWORD: change-me}
+  env_from: {HARDCHARGER_RBAC_STORE_URI: pg_uri}
+
 # Access control plus the SSO guide's stand-in identity provider (idp.py, written by the page).
 sso_rbac:
   needs: [postgres]

@@ -13,8 +13,9 @@ doesn't:
 
 - **The `hardcharger` CLI.** 0.2.0's tarballs and image have only `hardcharger-server`; build the
   client from source, or use a [driver](/clients/python/) or [curl](/clients/http/).
-- **Partitioned results** (`max_result_partitions`, `Warp-Result-Partitions`), which the CLI uses for
-  large results by default, and **partitioned uploads** (Warp SQL §8.3).
+- **Partitioned results** (`max_result_partitions`, `Warp-Result-Partitions`), which the drivers and the
+  CLI use for large results by default, and **partitioned uploads** (Warp SQL §8.3), which the ADBC
+  drivers use for large loads by default.
 - **`session_ended` with its `reason`** (`killed`, `principal_dropped`, `token_expired`,
   `credentials_changed`).
 - **Fixes**: `HARDCHARGER_VERSION()` says `0.2.0` (0.2.0 says `v0.2.0`), `hardcharger_settings()`
@@ -24,6 +25,19 @@ doesn't:
   [network benchmarks](/benchmarks/#over-a-real-network-aws-2026-10-17): the pipelined TLS stream
   and parallel ingest. 0.2.0's TLS streams and ingest are several times slower.
 - **`--print-options-json`.**
+- **[Certificate sign-in](/guides/tls/#signing-in-with-the-certificate)** (`--mtls-certificate-sign-in`,
+  the `client_certificate` grant, certificate-bound tokens, CRLs). 0.2.0 uses client certificates
+  only to admit connections, and ignores `--mtls-ca-cert` without `--tls-cert`; `main` refuses to start.
+- **[Metadata follows privileges](/guides/access-control/#what-users-can-see)** table by table, and
+  `DESCRIBE` of a table you hold no privilege on is refused. 0.2.0 hides only other tenants' catalogs.
+- **[HUGEINT and UHUGEINT](/reference/sql/#hugeint-and-uhugeint)** values past 38 digits fail with a
+  conversion error (0.2.0 sends them wrong), and `arrow_lossless_conversion` set for a session stays in that session.
+- **`GET` of an ended session** answers `401 session_ended` (0.2.0: `200`).
+- **A forced stop** during an upload finishes, and never aborts the server.
+- **Built-in extensions**: httpfs, ducklake, postgres, autocomplete and tpch, next to parquet, json
+  and icu, so DuckLake and S3 work offline; nothing installs or loads by itself.
+- **Linux builds for glibc 2.28** (0.2.0: 2.38), self-contained, with a `SHA256SUMS` file per
+  release; **Windows** x64 and arm64 zips and MSIs.
 
 The [release notes](/reference/release-notes/) list every change.
 

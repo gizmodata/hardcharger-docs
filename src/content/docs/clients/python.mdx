@@ -131,7 +131,8 @@ with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hard
 
 | Option (`db_kwargs`, or per statement) | Default | Does |
 |---|---|---|
-| `adbc.warp.statement.result_partitions` | `1` | Read a large result over up to n connections at once ([partitions](/concepts/warp-sql/#partitioned-results)) |
+| `adbc.warp.statement.result_partitions` | `8` | Read a large result over up to n connections at once ([partitions](/concepts/warp-sql/#partitioned-results)); `1`: one stream. Small results are one stream anyway |
+| `adbc.warp.ingest.parts` | `8` | Send a bulk load of two batches or more over up to n connections at once ([partitioned uploads](/guides/bulk-ingest/#partitioned-uploads)); `1`: one stream, in the upload's order |
 | `adbc.warp.statement.result_order` | `preserve` | `any`: batches in arrival order (faster when order doesn't matter) |
 | `adbc.warp.ipc_compression` | `none` | `zstd` for slow links |
 | `adbc.warp.statement.async` | `false` | Submit, poll, fetch: for long queries behind proxies |

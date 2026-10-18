@@ -1,6 +1,6 @@
 ---
 title: "Users, roles and grants"
-description: "Turn on Hardcharger's role-based access control with a PostgreSQL store, then create users and roles, grant table, column, schema and system privileges, own objects, and check grants in SQL."
+description: "Turn on Hardcharger's role-based access control with a PostgreSQL store (or, for one server, a DuckDB file), then create users and roles, grant table, column, schema and system privileges, own objects, and check grants in SQL."
 ---
 
 import { Aside, Steps } from '@astrojs/starlight/components';
@@ -47,6 +47,22 @@ HARDCHARGER_RBAC_STORE_URI='duckdb:/var/lib/hardcharger/rbac.duckdb' \
   however the path is written or computed (see [the server's own files](/concepts/security-model/#guards-that-apply-to-everyone)).
 - There is no migration between the two stores: moving to PostgreSQL later means creating the
   users, roles and grants there again.
+
+With the store in `rbac.duckdb`, not even the administrator can read it in SQL, and a second server
+on the same file stops at startup:
+
+```console test profile=rbac_duckdb exit=1
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger \
+    --command "SELECT count(*) FROM read_blob('rbac.duckdb')"
+Error: Permission denied: Hardcharger blocked access to 'rbac.duckdb' (the access-control store). It is one of the server's own files, which no SQL may open, read or write, whatever the role.
+```
+
+```console test profile=rbac_duckdb exit=1
+$ HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --port 31400 --health-port 31401 \
+    --database other.duckdb --rbac-store-uri duckdb:rbac.duckdb
+…
+… A DuckDB store serves a single server; for several replicas, use a PostgreSQL store (rbac_store_uri: postgresql://...)
+```
 
 <Aside>
 The administrator (`--admin-username`, `hardcharger` by default) is a superuser and is never

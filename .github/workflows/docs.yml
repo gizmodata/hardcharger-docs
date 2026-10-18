@@ -123,6 +123,7 @@ jobs:
       HARDCHARGER_DOCS_PG_URI: postgresql://hardcharger:hardcharger@127.0.0.1:55450/postgres
       GOPRIVATE: github.com/gizmodata/*
     steps:
+      - uses: actions/checkout@v7
       - name: Deploy keys for the internal repositories
         env:
           DEPLOY_KEY_HARDCHARGER: ${{ secrets.DEPLOY_KEY_HARDCHARGER }}
@@ -135,7 +136,9 @@ jobs:
         run: |
           # One SSH host alias per repository, each with its own key, and git rewrites every
           # spelling of that repository's URL (https, ssh, scp-like) to its alias. Go's module
-          # fetches and git submodules go through the same rewrites.
+          # fetches and git submodules go through the same rewrites. After this repository's own
+          # checkout: the rules are URL prefixes, and "hardcharger" is a prefix of
+          # "hardcharger-docs".
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
           for repo in hardcharger warp-sql hardcharger-adbc warp-sql-adbc hardcharger-jdbc warp-sql-jdbc warp-sql-js; do
@@ -152,7 +155,6 @@ jobs:
             done
           done
 
-      - uses: actions/checkout@v7
       - name: Source repositories
         run: |
           for repo in hardcharger warp-sql hardcharger-adbc hardcharger-jdbc warp-sql-js; do

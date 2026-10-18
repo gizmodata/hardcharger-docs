@@ -8,6 +8,13 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Changed
 
+- The JavaScript page (and the landing page's client card) use `@gizmodata/hardcharger`
+  (gizmodata/hardcharger-js): `import { connect } from '@gizmodata/hardcharger'` with
+  `hardcharger://` URLs, a URL table, and `authType: 'client_certificate'` (or `'mtls'`);
+  `@gizmodata/warp-sql` stays named as the generic client for any Warp SQL server. CI builds
+  hardcharger-js on the warp-sql-js tarball it already builds (new secret
+  `DEPLOY_KEY_HARDCHARGER_JS`, a read-only deploy key of gizmodata/hardcharger-js) and runs the
+  page's examples with it.
 - CI uses no personal token: the server and the CLI come from `ghcr.io/gizmodata/hardcharger:main`
   (pulled with `GITHUB_TOKEN`), and the internal repositories are read with one read-only deploy
   key each (`DEPLOY_KEY_*` secrets). Examples that download a release run against a release

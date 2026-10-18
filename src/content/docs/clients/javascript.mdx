@@ -1,33 +1,39 @@
 ---
 title: "JavaScript"
-description: "Query Hardcharger from Node.js, browsers, Deno, Bun and Workers with @gizmodata/warp-sql (preview): Arrow tables and streams, parameters, ingest, prepared statements, cancel."
+description: "Query Hardcharger from Node.js, browsers, Deno, Bun and Workers with @gizmodata/hardcharger (preview): hardcharger:// URLs, Arrow tables and streams, parameters, ingest, prepared statements, cancel."
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 import HeroBanner from '../../../components/HeroBanner.astro';
 import banner from '../../../assets/banners/hardcharger-js-banner.svg';
 
-<HeroBanner src={banner} alt="Hardcharger from JavaScript, by GizmoData" href="https://github.com/gizmodata/warp-sql-js" />
+<HeroBanner src={banner} alt="Hardcharger from JavaScript, by GizmoData" href="https://github.com/gizmodata/hardcharger-js" />
 
-[`@gizmodata/warp-sql`](https://github.com/gizmodata/warp-sql-js) is a TypeScript client for Warp
-SQL. It runs wherever `fetch` does (Node, browsers, Deno, Bun, Cloudflare Workers) with no native
-code, and returns [`apache-arrow`](https://arrow.apache.org/docs/js/) Tables or streams of record
-batches.
+[`@gizmodata/hardcharger`](https://github.com/gizmodata/hardcharger-js) is Hardcharger's
+TypeScript client. It runs wherever `fetch` does (Node, browsers, Deno, Bun, Cloudflare Workers)
+with no native code, takes the same `hardcharger://` URLs as the [Python](/clients/python/) and
+[Go](/clients/go/) drivers, and returns [`apache-arrow`](https://arrow.apache.org/docs/js/) Tables
+or streams of record batches.
+
+It is a thin layer on [`@gizmodata/warp-sql`](https://github.com/gizmodata/warp-sql-js), the
+generic JavaScript client for any Warp SQL server, which it depends on and re-exports: import
+everything from `@gizmodata/hardcharger`.
 
 <Aside type="caution" title="Preview">
-The client is internal and unreleased (0.1.0), and not on npm yet. Until it is, build it from
-[gizmodata/warp-sql-js](https://github.com/gizmodata/warp-sql-js): `npm ci && npm run build && npm pack`,
-then `npm install ./gizmodata-warp-sql-0.1.0.tgz apache-arrow`. A `hardcharger://` URL scheme is
-planned; until then use `warp://host:31337`.
+The client is internal and unreleased (0.1.0), and neither package is on npm yet. Until they are,
+build both: in [gizmodata/warp-sql-js](https://github.com/gizmodata/warp-sql-js),
+`npm ci && npm run build && npm pack`; in [gizmodata/hardcharger-js](https://github.com/gizmodata/hardcharger-js),
+`npm run warp-sql && npm ci && npm run build && npm pack`. Then
+`npm install apache-arrow ./gizmodata-warp-sql-0.1.0.tgz ./gizmodata-hardcharger-0.1.0.tgz`.
 </Aside>
 
 ## Query, stream, ingest
 
 ```js test
 import { tableFromArrays } from 'apache-arrow';
-import { WarpSqlError, connect } from '@gizmodata/warp-sql';
+import { HardchargerError, connect } from '@gizmodata/hardcharger';
 
-const conn = await connect({ url: 'warp://localhost:31337?tls=false', username: 'hardcharger', password: 'change-me' });
+const conn = await connect({ url: 'hardcharger://localhost?tls=false', username: 'hardcharger', password: 'change-me' });
 
 // A query with a bind parameter: an Arrow Table back.
 const table = await conn.query('SELECT 42 AS answer, ?::VARCHAR AS greeting', ['hello']);
@@ -49,7 +55,7 @@ try {
     signal: AbortSignal.timeout(1000),
   });
 } catch (err) {
-  if (!(err instanceof WarpSqlError)) throw err;
+  if (!(err instanceof HardchargerError)) throw err;
   console.log(`${err.code}: ${err.message}`);
 }
 
@@ -76,14 +82,31 @@ statement_timeout: the operation timed out (its AbortSignal fired)
 
 Statement options (per call, or as defaults in `connect`): `signal`, `async`, `retainResult`,
 `statementTimeoutMs`, `queryTag`, `resultPartitions` (8 in Node, 4 in browsers), `resultOrder`,
-`ipcCompression: 'zstd'`. Every error is a `WarpSqlError` with the server's stable `code`,
+`ipcCompression: 'zstd'`. Every error is a `HardchargerError` (the Warp SQL client's
+`WarpSqlError`, under Hardcharger's name) with the server's stable `code`,
 `status`, `sqlstate` and `requestId`. A result stream that ends without Arrow's end-of-stream
 marker throws: a short table is never taken for a complete one.
 
+## URLs
+
+| URL | Meaning |
+|---|---|
+| `hardcharger://host` | HTTPS to `host:31337` |
+| `hardcharger://host:port` | HTTPS to another port |
+| `hardcharger://host?tls=false` | Plain HTTP (development, loopback) |
+| `hardcharger://host:port/custom/prefix` | The server mounts Warp SQL under `/custom/prefix` |
+| `warp://…`, `https://…`, `http://…` | The Warp SQL client's own spellings |
+
+`hardcharger+http://`, credentials in the URL and unknown parameters (`useEncryption` included)
+are refused before anything is sent, with an `invalid_argument` error that says what to write.
+
 ## TLS
 
-In Node, Deno and Bun, `connect({ url: 'warp://db.example.com:31337', tls: { ca, cert, key } })`
-takes PEM text for a private CA and mutual TLS. Browsers use the system's trust store.
+In Node, Deno and Bun, `connect({ url: 'hardcharger://db.example.com', tls: { ca, cert, key } })`
+takes PEM text for a private CA and mutual TLS. With `authType: 'client_certificate'` (or `'mtls'`)
+and no password, the client certificate is the credential, on a server with
+`--mtls-certificate-sign-in` ([TLS](/guides/tls/#mutual-tls)). Browsers use the system's trust
+store.
 
 ## In the browser
 

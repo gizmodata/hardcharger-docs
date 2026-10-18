@@ -25,6 +25,29 @@ The URI is `postgresql://user:password@host[:port]/database`, or a libpq string 
 `'host=db.internal dbname=hardcharger user=hardcharger'`. Every replica names the same database;
 changes reach all of them within about a second.
 
+### A DuckDB file, for one server
+
+Use PostgreSQL in production, and for any cluster of more than one replica. For development, or
+a server that will only ever run as one replica, the store can be a DuckDB file of its own
+instead: `duckdb:` and a path, or any path ending in `.duckdb`.
+
+```bash
+HARDCHARGER_ADMIN_PASSWORD='change-me' \
+HARDCHARGER_RBAC_STORE_URI='duckdb:/var/lib/hardcharger/rbac.duckdb' \
+  hardcharger-server --database analytics.duckdb
+```
+
+- The file and its write-ahead log are created `0600`, and each change is checkpointed into the
+  file at once. An existing file that other users of the
+  host can read or write is refused at startup (`chmod 600` it), and so is a store file that is
+  also the database, the instrumentation or the log file.
+- One server per file: a second server on the same file stops at startup, saying the DuckDB store
+  serves a single server and to use PostgreSQL for several replicas.
+- The file holds password hashes and grants, so no SQL reaches it, the administrator's included,
+  however the path is written or computed (see [the server's own files](/concepts/security-model/#guards-that-apply-to-everyone)).
+- There is no migration between the two stores: moving to PostgreSQL later means creating the
+  users, roles and grants there again.
+
 <Aside>
 The administrator (`--admin-username`, `hardcharger` by default) is a superuser and is never
 subject to grants. Everyone else should be a store user. A store user's name can't be the

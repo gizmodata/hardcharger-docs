@@ -18,7 +18,7 @@ flowchart TB
   H --> Z[Authorization: roles, or access control on each statement's plan]
   Z --> G[Guards for everyone: credential files, secrets, NUL bytes]
   G --> D[(DuckDB 2.0)]
-  Z -. users, roles, grants .-> P[(PostgreSQL store)]
+  Z -. users, roles, grants .-> P[(PostgreSQL or DuckDB-file store)]
   Z -. every decision .-> L[Tamper-evident audit log]
 ```
 
@@ -73,7 +73,8 @@ Sign-in tokens may also carry [catalog access rules](/guides/catalog-access-rule
 write or no access per catalog.
 
 **With access control** ([`rbac_store_uri`](/guides/access-control/)), users, roles and grants
-live in a PostgreSQL database that every replica shares, and you manage them in SQL. Each
+live in a PostgreSQL database that every replica shares (or, for development or a server that
+will only ever run one replica, a DuckDB file), and you manage them in SQL. Each
 statement is checked inside DuckDB against its own plan, after binding and again before
 optimizing, so nested SQL, views and macros can't route around a grant. Anything the check can't
 classify is refused. Views read with their owner's rights; [row and masking policies](/guides/row-policies-and-masking/)
@@ -95,6 +96,21 @@ Error: Permission denied: Hardcharger blocked access to '/etc/passwd' (system ac
   by default): `/etc/shadow` and friends, `/proc`, mounted secrets, `~/.ssh`, `~/.aws`, `~/.kube`,
   DuckDB's stored secrets, the server's own TLS key, init SQL and config file, and anything in
   [`sensitive_paths`](/reference/configuration/#sensitive_paths), however the path is spelled.
+- **The server's own files**, always: a [DuckDB access-control store](/guides/access-control/#a-duckdb-file-for-one-server)
+  (password hashes and grants), and the database, instrumentation and log files the server keeps
+  attached. No statement opens, lists the contents of, writes, moves or removes them, however it
+  writes or computes the path (`'/data/rb' || 'ac.duckdb'`, a glob's matches, `..`, relative paths,
+  symlinks, hard links, `file:` URLs, case, `file_search_path`, `~` under another
+  `home_directory`), and the same goes for the files DuckDB keeps beside them (the `.wal` and its
+  checkpoint and recovery copies, the `.tmp` directory). A guard in DuckDB's own file system
+  refuses every such open: only the server's storage opens its attached files, under the path it
+  attached them by, and nothing in the serving instance opens the store. The database is read
+  through its catalog, under grants; the instrumentation and log catalogs are the administrator's,
+  read-only. A DuckDB store checkpoints each change into its file at once, so nothing depends on
+  its write-ahead log. One limit: an extension with file I/O of its own, such as `sqlite_scanner`
+  (which only an administrator or a user granted `MANAGE EXTENSIONS` can load), goes past DuckDB's
+  file system, so for it only a path written out in the statement is refused. A computed path
+  reaches the file, where SQLite finds no database it can read (`file is not a database`).
 - **Unredacted secrets** ([`block_unredacted_secrets`](/reference/configuration/#block_unredacted_secrets),
   on): `SET allow_unredacted_secrets` is refused, so `duckdb_secrets()` never shows a secret's value.
 - SQL containing a NUL byte is refused.

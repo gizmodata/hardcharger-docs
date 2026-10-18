@@ -617,7 +617,7 @@ Log every statement.
 
 ### `rbac_store_uri`
 
-Turn on role-based access control, with users, roles and grants kept in this PostgreSQL database (postgresql://user:password@host/db or 'host=... dbname=...'); every replica of a cluster names the same one.
+Turn on role-based access control, with users, roles and grants kept in this PostgreSQL database (postgresql://user:password@host/db or 'host=... dbname=...'), which every replica of a cluster names; or, for development or a server that will only ever run one replica, in a DuckDB file of its own (duckdb:/path/to/rbac.duckdb, or a path ending in .duckdb), which one server alone may open. Use PostgreSQL in production.
 
 | | |
 |---|---|

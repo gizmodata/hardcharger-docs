@@ -131,6 +131,10 @@ not read the instrumentation or log catalogs (a read would expose other sessions
 only its own session in `hardcharger_sessions()`, and cannot `KILL SESSION`. GizmoSQL 1.x let
 an administrator's token keep those; see [Coming from GizmoSQL](/get-started/coming-from-gizmosql/).
 
+A view created by a token with rules gets no owner: the token's rights are its rules, for its
+own sessions only. Such a view reads with each reader's own rights (the creator's rules
+included), and is refused to a reader whose rights don't reach what it reads.
+
 A token without `role` gets [`token_default_role`](/reference/configuration/#token_default_role);
 without that, it is refused.
 

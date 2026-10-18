@@ -403,6 +403,28 @@ rest. A connection is closed after five failed sign-ins.
 TLS must end at Hardcharger for any of this (a TCP or TLS-passthrough load balancer): a proxy
 that ends TLS keeps the certificate.
 
+### From a page on another origin
+
+A browser presents the user's client certificate on a cross-origin request only when the page asks
+for credentials (`credentials: "include"`, the JavaScript client's default with
+`authType: "client_certificate"`), and lets the page read the answer only if it allows them. An
+origin in [`cors_origins`](/reference/configuration/#cors_origins) gets
+`Access-Control-Allow-Credentials: true` with its `Access-Control-Allow-Origin`, preflights
+included; other origins get no CORS headers:
+
+```console test profile=cors stop
+$ curl -s -o /dev/null -D - -X OPTIONS localhost:31337/warp/v1/auth/token \
+    -H 'Origin: https://app.example.com' -H 'Access-Control-Request-Method: POST' \
+    | grep -i '^access-control-allow-\(origin\|credentials\)' | tr -d '\r'
+Access-Control-Allow-Origin: https://app.example.com
+Access-Control-Allow-Credentials: true
+```
+
+A preflight carries no certificate, so a server that refuses handshakes without one fails it.
+For browser pages on another origin, make certificates optional at the handshake
+(`--mtls-require-client-cert=false`) and let certificate sign-in do the checking. On the server's
+own origin there is no preflight.
+
 ## Behind a TLS-terminating proxy
 
 If a load balancer terminates TLS, run Hardcharger on plain HTTP on a private network, or

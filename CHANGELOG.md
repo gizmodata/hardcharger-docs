@@ -8,6 +8,12 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Added
 
+- Hardcharger integration/batch-1 (eb289605; lands with it): `CREATE VIEW` needs `SELECT` on what
+  the view reads (tested refusal), views made by a `catalog_access` token get no owner, a statement
+  that has failed when the server answers is an error response (never `200` with a `failed`
+  document), lingering close (a resent upload's answer arrives), and CORS with credentials for
+  cross-origin certificate sign-in (`cors_origins` plus `--mtls-require-client-cert=false`, tested).
+  Reference regenerated from that build and its warp-sql (4c88fd0).
 - Hardcharger™ and GizmoData™ (pending trademarks; ™, never ®): the site title and header
   wordmark, the home page hero, banner and social card, the first prose mention on every page
   (`src/middleware.ts`; never in code, CLI output or headings), each page's `<title>` and

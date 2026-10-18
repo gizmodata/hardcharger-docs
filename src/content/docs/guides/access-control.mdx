@@ -158,6 +158,25 @@ $ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --username vic 
 refused
 ```
 
+Creating a view takes more than `CREATE VIEW` on its schema: the creator must be able to `SELECT`
+everything the view's query reads, each table, view and column, as their own `SELECT` of the query
+would. Otherwise a view would let its owner see the shape of a table they hold nothing on.
+
+```sql test profile=rbac
+CREATE ROLE view_maker;
+GRANT CREATE VIEW ON SCHEMA published TO view_maker;
+GRANT view_maker TO vic;
+```
+
+```console test profile=rbac exit=1
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --username vic --csv \
+    --command "CREATE VIEW published.all_orders AS SELECT * FROM analytics.orders"
+Error: Permission Error: Hardcharger blocked this statement: user vic may create a view only over what it can SELECT itself, and the query of view my.published.all_orders reads more: user vic has no SELECT privilege on table my.analytics.orders. Access control on this server lets user vic do only what their roles are granted (see SHOW GRANTS)
+```
+
+Once created, a view still reads with its owner's rights, so one granted to others keeps working,
+and revoking the owner's access closes it.
+
 ## What users can see
 
 Metadata follows privileges, table by table. A user sees a table or view only when they hold a

@@ -13,7 +13,25 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+### Fixed
+
+- The answer to an ingest part or one-request upload sent again (same `Idempotency-Key`)
+  reaches the client on Linux and macOS: the server answers it from the first upload without
+  reading the body, and then reset the connection with the body unread, so the client saw a
+  broken pipe or a reset and sent it again (warp-sql-adbc's `TestIntegrationIngestPartAnswerLost`
+  counted a part sent three times). The connection now closes lingering, reading and dropping
+  what the client still sends (up to 2 s, 256 MiB), as it already did on Windows. No row was
+  ever written twice. From warp-sql `2dbcd84`; its conformance tests
+  `test_the_answer_to_a_part_sent_again_arrives` and `test_the_answer_to_an_upload_sent_again_arrives`.
+
 ### Added
+
+- Allowed CORS origins (`cors_origins`) get `Access-Control-Allow-Credentials: true`, preflights
+  included (Warp SQL §9.5), so a page on another origin can sign in with the user's client
+  certificate (`credentials: "include"`). Other origins still get no CORS headers. The README's
+  mTLS section says such pages need `mtls_require_client_cert: false` (a preflight carries no
+  certificate). From warp-sql `ec318ff`; CI runs the conformance suite's credentials tests with
+  `WARP_SQL_TEST_SERVER_CORS_FLAG=--cors-origins`.
 
 - Client certificates as identity (Warp SQL §4.4): with `mtls_ca_cert`, the
   `client_certificate` grant signs a client in with its verified certificate and no
@@ -160,6 +178,17 @@ own changelog in `python/CHANGELOG.md`.
 
 ### Fixed
 
+- A query that failed within about 5 s, after it had produced some rows, could be answered
+  `200` with a `failed` statement document instead of its error (warp-sql: the SDK did so
+  for a statement with buffered rows, and a request for partitions, which every driver
+  sends by default, waits up to 5 s for the split decision). Every client shipped treats
+  such a document as an error (Go ADBC, JDBC, JS, the C++ client), so no failure was
+  reported as a success, but the answer was not the spec's. It is now the error response
+  (`500 execution_error`), on submission and on prepared execution. That includes a
+  HUGEINT/UHUGEINT value too wide for decimal128(38, 0), whose refusal came back as `201`
+  with a `failed` document (`test_wide_integers.py` now asserts the error response).
+  `server.yml`'s `failure_repro` dispatch input runs those conformance cases 200 times
+  against both servers on every platform.
 - The release binaries are self-contained, as GizmoSQL's: DuckDB (with its built-in
   extensions), OpenSSL 3, Arrow, Boost, yaml-cpp and replxx are linked in statically, so
   the tarballs hold just `bin/hardcharger-server`, `bin/hardcharger`, the licence and the
@@ -188,6 +217,31 @@ own changelog in `python/CHANGELOG.md`.
 
 ### Fixed
 
+- Security: `CREATE VIEW` (and `CREATE OR REPLACE VIEW`, temporary views, views created
+  `WITH (defer_binding = true)`) needed only CREATE VIEW on the schema, so a user could
+  create a view over a table or columns it can't read; the view failed only when read, but
+  its creator owns it, and since metadata follows privileges it could list the view's
+  columns, and so the column names of a table it holds nothing on. A view's query is now
+  checked when the view is created, as the creator's own SELECT of it would be: SELECT on
+  every table and view it reads and on each column it reads of them, through CTEs,
+  subqueries, set operations and table macros, views it reads with their owners' rights,
+  under SET ROLE, scoped tokens and `catalog_access` rules (also through a view over a
+  denied catalog). The refusal says why with the SELECT's own reason ("user bob may create
+  a view only over what it can SELECT itself, and the query of view c.main.v reads more:
+  user bob has no SELECT privilege on table c.main.secrets"), so it tells no more than that
+  SELECT would. Views still read with their owner's rights, so one granted to others keeps
+  working, and a later REVOKE still closes it. Administrators, and servers without access
+  control, are unchanged. This changes one expectation of GizmoSQL 1.x's RBAC branch
+  (`test_rbac_views.py`; see BATTERY.md and docs/migrating-from-gizmosql.md).
+  `test_rbac_view_creation.py`, and a `catalog_access` case in `test_catalog_access_admin.py`.
+- A view created by a `catalog_access` principal (a token on a rules-only server, or an
+  administrator's token with rules under access control) could not be read by anyone, its
+  creator included ("its owner is disabled or was dropped"): its owner was recorded as a
+  store user that doesn't exist. Such a principal's rights are its token's rules, for its
+  own sessions only, so what it creates now gets no owner (and clears any record an earlier
+  object of that name left; dropping an object clears it too): its views read with each
+  reader's own rights, the creator's rules included, and are refused when those don't reach
+  what the view reads. `test_catalog_access_admin.py` (5 cases).
 - Security: metadata follows authorization object by object (Warp SQL §9.4). Inside a
   catalog a user could see, the metadata calls and SQL's catalog listings showed every
   schema, table, view (with its definition) and column, whatever the user's privileges;

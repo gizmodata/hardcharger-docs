@@ -33,7 +33,7 @@ Besides the options below, the server takes these command-line actions, which ru
 | `--verify-tls URL` | Fetch a URL over HTTPS with the system's CA bundle, then exit 0 or 1 |
 | `--verify-audit-log FILE [--verify-audit-log-partial]` | Check an [audit log](/guides/instrumentation-and-audit/#the-audit-log)'s hash chain |
 
-77 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
+84 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
 
 ## Listener
 
@@ -134,6 +134,90 @@ CA (PEM) client certificates must chain to.
 | YAML | `mtls_ca_cert: …` |
 | Type | string |
 | Default | `(empty)` |
+
+### `mtls_require_client_cert`
+
+Refuse connections without a client certificate (false: they sign in another way)
+
+| | |
+|---|---|
+| Flag | `--mtls-require-client-cert` |
+| Environment | `HARDCHARGER_MTLS_REQUIRE_CLIENT_CERT` |
+| YAML | `mtls_require_client_cert: …` |
+| Type | boolean |
+| Default | `true` |
+
+### `mtls_certificate_sign_in`
+
+Offer certificate sign-in (the client_certificate grant); off: certificates only admit connections.
+
+| | |
+|---|---|
+| Flag | `--mtls-certificate-sign-in` |
+| Environment | `HARDCHARGER_MTLS_CERTIFICATE_SIGN_IN` |
+| YAML | `mtls_certificate_sign_in: …` |
+| Type | boolean |
+| Default | `false` |
+
+### `mtls_crl_allow_missing_ca_crls`
+
+Accept a CA above the leaf that has no CRL in mtls_crl_file (default: refuse it)
+
+| | |
+|---|---|
+| Flag | `--mtls-crl-allow-missing-ca-crls` |
+| Environment | `HARDCHARGER_MTLS_CRL_ALLOW_MISSING_CA_CRLS` |
+| YAML | `mtls_crl_allow_missing_ca_crls: …` |
+| Type | boolean |
+| Default | `false` |
+
+### `mtls_crl_file`
+
+Certificate revocation lists (PEM) for client certificates; reloaded when the file changes.
+
+| | |
+|---|---|
+| Flag | `--mtls-crl-file <value>` |
+| Environment | `HARDCHARGER_MTLS_CRL_FILE` |
+| YAML | `mtls_crl_file: …` |
+| Type | string |
+| Default | `(empty)` |
+
+### `mtls_identity_source`
+
+Where certificate sign-in takes the identity from: san_email, san_uri or subject_cn.
+
+| | |
+|---|---|
+| Flag | `--mtls-identity-source <value>` |
+| Environment | `HARDCHARGER_MTLS_IDENTITY_SOURCE` |
+| YAML | `mtls_identity_source: …` |
+| Type | string |
+| Default | `san_email` |
+
+### `mtls_admin_identities`
+
+Client certificate identities that sign in as the administrator.
+
+| | |
+|---|---|
+| Flag | `--mtls-admin-identities <a,b,...>` |
+| Environment | `HARDCHARGER_MTLS_ADMIN_IDENTITIES` |
+| YAML | `mtls_admin_identities: …` |
+| Type | list |
+| Default | `(empty)` |
+
+### `mtls_require_identity_match`
+
+A password or token sign-in over a client certificate must be for its identity.
+
+| | |
+|---|---|
+| Flag | `--mtls-require-identity-match` |
+| Environment | `HARDCHARGER_MTLS_REQUIRE_IDENTITY_MATCH` |
+| YAML | `mtls_require_identity_match: …` |
+| Type | boolean |
+| Default | `false` |
 
 ## Database
 

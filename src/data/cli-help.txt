@@ -17,7 +17,7 @@ TLS:
       --mtls-key FILE           mTLS client private key (PEM)
 
 Sign-in:
-      --auth-type TYPE          'password' (default) or 'external' (the server's browser sign-in, OAuth/SSO)
+      --auth-type TYPE          'password' (default), 'external' (the server's browser sign-in, OAuth/SSO) or 'mtls' (the --mtls-cert client certificate is the credential; no password)
       --oauth-port PORT         The server's browser sign-in port (default: 31339; env: HARDCHARGER_OAUTH_PORT)
       --oauth-base-url URL      The browser sign-in server's URL (default: http(s)://HOST:OAUTH_PORT; env: HARDCHARGER_OAUTH_BASE_URL)
 

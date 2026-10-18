@@ -91,6 +91,76 @@
       "description": "CA (PEM) client certificates must chain to"
     },
     {
+      "name": "mtls_require_client_cert",
+      "group": "TLS",
+      "flag": "--mtls-require-client-cert",
+      "env": "HARDCHARGER_MTLS_REQUIRE_CLIENT_CERT",
+      "yaml_key": "mtls_require_client_cert",
+      "type": "boolean",
+      "default": "true",
+      "description": "refuse connections without a client certificate (false: they sign in another way)"
+    },
+    {
+      "name": "mtls_certificate_sign_in",
+      "group": "TLS",
+      "flag": "--mtls-certificate-sign-in",
+      "env": "HARDCHARGER_MTLS_CERTIFICATE_SIGN_IN",
+      "yaml_key": "mtls_certificate_sign_in",
+      "type": "boolean",
+      "default": "false",
+      "description": "offer certificate sign-in (the client_certificate grant); off: certificates only admit connections"
+    },
+    {
+      "name": "mtls_crl_allow_missing_ca_crls",
+      "group": "TLS",
+      "flag": "--mtls-crl-allow-missing-ca-crls",
+      "env": "HARDCHARGER_MTLS_CRL_ALLOW_MISSING_CA_CRLS",
+      "yaml_key": "mtls_crl_allow_missing_ca_crls",
+      "type": "boolean",
+      "default": "false",
+      "description": "accept a CA above the leaf that has no CRL in mtls_crl_file (default: refuse it)"
+    },
+    {
+      "name": "mtls_crl_file",
+      "group": "TLS",
+      "flag": "--mtls-crl-file",
+      "env": "HARDCHARGER_MTLS_CRL_FILE",
+      "yaml_key": "mtls_crl_file",
+      "type": "string",
+      "default": "",
+      "description": "certificate revocation lists (PEM) for client certificates; reloaded when the file changes"
+    },
+    {
+      "name": "mtls_identity_source",
+      "group": "TLS",
+      "flag": "--mtls-identity-source",
+      "env": "HARDCHARGER_MTLS_IDENTITY_SOURCE",
+      "yaml_key": "mtls_identity_source",
+      "type": "string",
+      "default": "san_email",
+      "description": "where certificate sign-in takes the identity from: san_email, san_uri or subject_cn"
+    },
+    {
+      "name": "mtls_admin_identities",
+      "group": "TLS",
+      "flag": "--mtls-admin-identities",
+      "env": "HARDCHARGER_MTLS_ADMIN_IDENTITIES",
+      "yaml_key": "mtls_admin_identities",
+      "type": "list",
+      "default": "",
+      "description": "client certificate identities that sign in as the administrator"
+    },
+    {
+      "name": "mtls_require_identity_match",
+      "group": "TLS",
+      "flag": "--mtls-require-identity-match",
+      "env": "HARDCHARGER_MTLS_REQUIRE_IDENTITY_MATCH",
+      "yaml_key": "mtls_require_identity_match",
+      "type": "boolean",
+      "default": "false",
+      "description": "a password or token sign-in over a client certificate must be for its identity"
+    },
+    {
       "name": "database",
       "group": "Database",
       "flag": "--database",

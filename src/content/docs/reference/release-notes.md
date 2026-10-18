@@ -15,6 +15,49 @@ own changelog in `python/CHANGELOG.md`.
 
 ### Added
 
+- Client certificates as identity (Warp SQL §4.4): with `mtls_ca_cert`, the
+  `client_certificate` grant signs a client in with its verified certificate and no
+  password. `mtls_identity_source` (`san_email`, the default; `san_uri`; `subject_cn`) says
+  where the identity comes from; a certificate with none or several values is refused.
+  `mtls_admin_identities` sign in as the administrator; under access control any other
+  identity must be an enabled store user (`CREATE USER "joe@example.com"`, no password
+  needed), and grants decide what it may do; without access control nothing else signs in.
+  The tokens carry RFC 8705's `cnf` (`x5t#S256`) and work only on connections presenting the
+  same certificate. `mtls_crl_file` refuses revoked certificates at the handshake, is reloaded
+  when the file changes (looked at every 5 s), and reaches open connections at their next
+  request. `mtls_require_client_cert` (default true) and `mtls_require_identity_match`
+  (default false: a password or token sign-in over a certificate must be for its identity).
+  Certificate sign-ins, allowed and refused, are audit records (`kind: authentication`,
+  `method: client_certificate`, the identity, subject, issuer, serial and thumbprint).
+  A session opened with a bound token is used only with tokens bound to the same certificate,
+  and a scoped token (`CREATE SCOPED TOKEN`) minted over a bound token carries its `cnf` too.
+  `hardcharger_sessions()` shows `client_certificate` as the auth method. Tests:
+  `test_mtls_identity.py` (42), and the conformance suite's `test_mtls.py` (41).
+- From the security review: certificate sign-in is opt-in (`mtls_certificate_sign_in`,
+  default false; `mtls_admin_identities` needs it), so `mtls_ca_cert` alone keeps mTLS a
+  transport check. CRLs cover every certificate of the chain, and a CA without one is refused
+  unless `mtls_crl_allow_missing_ca_crls`; open connections are re-checked when a CRL passes
+  its nextUpdate. Identities are printable ASCII. A session takes only tokens bound as its
+  opener's was, so a scoped token always carries the binding of the request that minted it,
+  and a bound session can't mint `FOR USER` another user. Certificate refusals are security
+  warnings and audit records (user, token id, thumbprint, peer), and a token is logged as
+  validated only after its certificate checks.
+- Second review: SPIFFE IDs (`spiffe://…`, any URI-form name) can be access-control users;
+  they are always system scope, a tenant admin can't create or drop one, and a role can't be
+  named like one. Certificate refusals are rate-limited per source by the SDK (summaries carry
+  `suppressed`), and nothing else logs them per request; the handshake refusing a client
+  certificate is an audit record (`the TLS handshake refused a client certificate`). CRL
+  files: the newest CRL per CA, a CA's CRL must be signed by it, no delta CRLs (the SDK).
+- Third review: handshake refusals are rate-limited by the client's address (IPv6 /64), not
+  by the unverified certificate, and every client-supplied field of a refusal record is cut
+  at 512 bytes; a refused password sign-in logs at most 256 bytes of the user name. A failed
+  CRL reload is retried. A scoped token bound to a certificate can't be exchanged (as user
+  `token`'s password) over another one. URI identities (SPIFFE IDs) must match a user name
+  exactly, case included; e-mail and CN identities still ignore ASCII case. CI runs
+  `warpsql-sdk-tests` (the limiter's unit tests), under TSan too.
+- The `hardcharger` client: `--auth-type mtls` (or `authType=mtls` in a URI) signs in with
+  the `--mtls-cert` certificate, and signs in again with it when the server ends the session.
+
 - `hardcharger`, the command-line SQL client: GizmoSQL 1.x's `gizmosql_client` on Warp
   SQL, with the same options (in Hardcharger's names: `HARDCHARGER_HOST`, `_PORT`, `_USER`,
   `_PASSWORD`, `_TLS`, `_TLS_ROOTS`, `_OAUTH_PORT`, `_SESSION_TAG`, `_QUERY_TAG`;
@@ -51,11 +94,52 @@ own changelog in `python/CHANGELOG.md`.
 - `session_ended` errors carry their `reason` (Warp SQL §5.6): `killed` (KILL SESSION),
   `principal_dropped` (the user was dropped or disabled), `token_expired` (a scoped token
   revoked or expired), `credentials_changed` (anything else access control revoked).
+- DuckDB's httpfs, ducklake, postgres scanner, autocomplete and tpch extensions are built
+  into the server, next to parquet, json and icu, at the commits DuckDB's own build of
+  the pinned DuckDB uses. They work offline and in air-gapped deployments, with no
+  extension repository (the pinned DuckDB is a pre-release, which the repository may not
+  serve), and their libraries (libcurl, libpq, CRoaring) are linked in statically. `LOAD`
+  of a built-in extension is a no-op; `INSTALL` is DuckDB's download, so offline it fails
+  and is not needed.
+- Each GitHub Release carries a `SHA256SUMS` file (`sha256sum -c` format) for its
+  tarballs.
+- `ghcr.io/gizmodata/hardcharger:main` and `:sha-<commit>`: the development image, pushed
+  for each commit on `main` that passes every CI gate (ghcr.io only).
+
+- Windows x64 and arm64 builds (MSVC): `hardcharger-windows-{amd64,arm64}.zip` (bin\
+  with `hardcharger-server.exe` and the `hardcharger.exe` client, LICENSE,
+  CHANGELOG.md) and an MSI of each that installs under Program Files and puts `bin\` on
+  the PATH (unsigned for now). On Windows the console's Ctrl+C and Ctrl+Break stop the
+  server as SIGINT and SIGTERM do elsewhere (drain first when `graceful_shutdown` is on, a second one stops at
+  once); closing the console or shutting Windows down stops it at once. Outbound HTTPS
+  (OpenID discovery, JWKS, OPA) trusts the Windows certificate store unless
+  `SSL_CERT_FILE` names a bundle. The executables are single files: DuckDB and its
+  built-in extensions, Arrow, OpenSSL, Boost, yaml-cpp, zstd, replxx and the C++ runtime
+  (/MT) are linked in, so they import only Windows' own DLLs (CI checks the list) and
+  need no Visual C++ Redistributable.
+- The `hardcharger` client on Windows: Ctrl+C cancels the running statement (a console
+  control handler hands it to a thread of the client's own), Ctrl+Break exits as SIGTERM
+  does, colors and the pager use the console's ANSI mode, the password prompt doesn't
+  echo, browser sign-in opens the default browser (or runs `HARDCHARGER_BROWSER`, a
+  command line there, with the URL appended as its last argument, never through
+  cmd.exe), and TLS trusts the Windows certificate store. Its cases at a terminal
+  (pexpect, a pty) are marked `pty` and deselected on Windows, which has no pty.
+- The sensitive-path guard on Windows: the account database and registry hives
+  (`System32\config`), installer answer files, DPAPI keys, Credential Manager and the
+  vaults, machine and user private keys, `%APPDATA%` credential files (gcloud,
+  PostgreSQL's `pgpass.conf`, GnuPG), `_netrc`, the `\\.\` and `\\?\` device namespace,
+  administrative shares (`\\host\C$`) and Kubernetes' `C:\var\run\secrets`, across
+  Windows' spellings of a path (either separator, any case, `\\?\C:\`, trailing dots and
+  spaces, `::$DATA` streams, 8.3 names, `file:` URLs).
 
 ### Changed
 
 - `hardcharger` reads large results over up to 8 connections by default (was 1);
   `--result-partitions 1` reads over one.
+- `mtls_ca_cert` without `tls_cert` and `tls_key` is refused at startup; it used to be
+  ignored, so a server that seemed to require client certificates took plain HTTP. The other
+  `mtls_*` options need `mtls_ca_cert`.
+
 - `result_batch_rows` defaults to 122,880 (one DuckDB row group) instead of 2,048:
   SF10 lineitem over TLS 4.6 s -> 3.5 s, with zstd 26.4 s -> 6.3 s; small results are
   unchanged (one batch), a full scan's first batch takes 21 ms instead of 2 ms.
@@ -64,9 +148,121 @@ own changelog in `python/CHANGELOG.md`.
   of plaintext to the same speed on one AWS connection); uploads are read in 1 MiB pieces (plaintext
   ingest was slower than TLS); bulk ingest inserts on many DuckDB threads in one
   transaction, keeping the upload's row order. See docs/benchmarks.md.
+- The server no longer installs or loads DuckDB extensions by itself
+  (`autoinstall_known_extensions` and `autoload_known_extensions` are off): the ones it
+  needs are built in, and any other takes an explicit `INSTALL` and `LOAD`.
+- The Linux release tarballs (and the container image made from them) are built in
+  manylinux_2_28 for a glibc 2.28 baseline, with OpenSSL 3 linked in statically: they run
+  on any Linux distribution with glibc 2.28 or newer (Oracle/RHEL/Rocky/Alma Linux 8,
+  Debian 10+, Ubuntu 20.04+, Amazon Linux 2023), not only on Ubuntu 24.04. CI checks the
+  highest glibc symbol version of every shipped file and runs each tarball on Oracle
+  Linux 8.
 
 ### Fixed
 
+- The release binaries are self-contained, as GizmoSQL's: DuckDB (with its built-in
+  extensions), OpenSSL 3, Arrow, Boost, yaml-cpp and replxx are linked in statically, so
+  the tarballs hold just `bin/hardcharger-server`, `bin/hardcharger`, the licence and the
+  changelog (no `lib/libduckdb`, no rpath). On Linux they need only glibc and the GCC
+  runtime (0.2.0's needed the system's libssl.so.3); on macOS only the OS's own libraries
+  and frameworks (0.2.0's linked Homebrew's openssl@3). CI fails a build that links
+  anything else, and runs each tarball on a clean system.
+- The access-control Open Policy Agent client verifies HTTPS against the system's CA
+  bundle, as the server's other outbound calls do, rather than OpenSSL's compiled-in
+  certificate directory (a build-time path in a portable build).
+- A forced stop (a second stop signal during a drain) now and then aborted the server
+  (SIGABRT) instead of exiting 0: the grace-period watcher read the drain's start time by
+  reference from the signal thread's stack, after that thread had stopped the server and
+  returned. AddressSanitizer caught it as a read of the freed stack frame (CI's ASan job,
+  intermittently); a release build read whatever was left there. The watcher keeps its own
+  copy.
+- A stop (a forced one, or the first signal with `graceful_shutdown` off) during a bulk
+  ingest whose body was still arriving never finished: the server waited for the engine
+  thread, which waited for bytes from the connection the stop had already shut. Closing a
+  session (a stop closes them all) now aborts its uploads, and the load rolls back.
+- The graceful-shutdown tests show the end of the server's log when it exits non-zero or
+  hangs, and cover a forced stop with a stalled result stream, an ingest upload (one
+  request, or a part of a partitioned one), and prepared statements in flight, with
+  `graceful_shutdown` on and off, and all of them at once over TLS with a client
+  certificate.
+
+### Fixed
+
+- Security: metadata follows authorization object by object (Warp SQL §9.4). Inside a
+  catalog a user could see, the metadata calls and SQL's catalog listings showed every
+  schema, table, view (with its definition) and column, whatever the user's privileges;
+  only other tenants' catalogs were hidden (GizmoSQL 1.x's RBAC branch filters by
+  catalog only too). Now the db-schemas, tables (and their `table_schema`), primary-keys,
+  imported-/exported-keys and cross-reference calls, and `duckdb_tables()`,
+  `duckdb_views()`, `duckdb_columns()`, `duckdb_schemas()`, `duckdb_constraints()`,
+  `duckdb_indexes()`, `information_schema`, `SHOW TABLES`, `SHOW ALL TABLES`,
+  `pragma_table_info()` and `pragma_show()` list a table or view only when the user holds
+  SELECT on it or on any of its columns, or INSERT, UPDATE or DELETE on it (owning it
+  holds them all); a column only when the user may SELECT it (or holds INSERT, UPDATE or
+  DELETE on its table); a schema only when the user holds a grant on or in it or owns
+  something in it; keys only when every table and column they name is listed. The rules
+  ask the same `Check()` a SELECT does, so scoped tokens, SET ROLE, tenants and
+  `catalog_access` rules (which grant whole catalogs) hold. `DESCRIBE`, `SHOW <table>`,
+  `pragma_table_info()` and `pragma_show()` of a table the user holds no privilege on are
+  refused ("user joe holds no privilege on table c.s.t, so it cannot describe it"), and
+  `DESCRIBE` of a table the user may read only some columns of is refused too (it shows
+  them all; `pragma_table_info()` lists the readable ones). DuckDB's own views (catalog
+  `system`) and the session's temporary objects stay listed. A grant or revoke applies to
+  the next listing, prepared ones included. `test_metadata_privileges.py`.
+- HUGEINT and UHUGEINT values that Arrow's decimal128(38, 0) can't hold were sent wrong:
+  DuckDB copies the 16 bytes as they are, so a UHUGEINT of 2^127 or more arrived negative
+  (its maximum as -1) and any value of 10^38 or more as an invalid decimal128(38, 0).
+  DuckDB is now patched (`scripts/patch-duckdb-arrow-hugeint.cmake`) to fail such a
+  statement with a conversion error naming the value and the two ways around it (CAST to
+  VARCHAR, or the `arrow_lossless_conversion` session option, DuckDB's 16-byte types,
+  which hold every value); every value that fits is sent exactly as before, nested ones
+  included. `test_wide_integers.py` round-trips every boundary value.
+- JSON bind parameters outside the 64-bit range were bound as rounded doubles
+  (10^38 - 1 as 1e38); they now bind exactly as HUGEINT or UHUGEINT, and wider ones are
+  refused (from the Warp SQL SDK; Warp SQL §6.1 now requires it).
+- The `arrow_lossless_conversion` session option changed the instance-wide default, so
+  any user switching it changed every other session's HUGEINT, UUID and JSON results; it
+  is now the session's own (from the Warp SQL SDK).
+- `GET /warp/v1/sessions/{id}` of a session that `KILL SESSION` or access control ended
+  answers `401` `session_ended` with its `reason` (Warp SQL §5.6), as every other request
+  for it does; it answered `200`, so a liveness probe saw the dead session as alive. (The
+  structured `reason` field itself is on main since after 0.2.0, which sent the reason
+  only in the detail text.)
+- Security: a `SET VARIABLE v = (SELECT ... FROM c.t)` whose subquery read a catalog the
+  session's `catalog_access` rules deny was not checked, so `getvariable('v')` then handed
+  back the result. Any rules principal was affected: a rules-only user, a restricted
+  administrator, an RBAC administrator with rules. The value query is now plan-checked
+  against the rules like any read. (GizmoSQL 1.x was not affected: its `catalog_access`
+  check reads DuckDB's `StatementProperties.read_databases`, which already includes the
+  subquery's catalog.) The same plan check already covered the other embedded-query forms
+  (CTAS, INSERT ... SELECT, CTEs, scalar subqueries, EXISTS, COPY (SELECT ...), CREATE VIEW,
+  DELETE/UPDATE with a subquery); each has a regression test.
+- Security: a rules-restricted administrator could read the instrumentation and log
+  catalogs, exposing every session's `sql_text` (with literals from catalogs its rules
+  deny), and saw every session in `hardcharger_sessions()`. A restricted administrator now
+  does not read those catalogs at all (hidden, as for a non-administrator) and sees only its
+  own session; `KILL SESSION` needs an administrator without rules. An administrator without
+  rules is unchanged (reads the catalogs, sees and kills every session). This is stricter
+  than 1.x, where an administrator's token kept that access whatever its rules.
+- Security: an administrator's token (`role: admin`) that carries `catalog_access` rules was
+  not restricted by them; GizmoSQL 1.x applies a token's rules whatever its role. It now is,
+  without and with RBAC: reads and writes per catalog (temp included) and what it sees
+  (SHOW DATABASES, `information_schema`, `duckdb_*()`, the `_hardcharger_system` views,
+  metadata requests), with 1.x's refusals ("Access denied: You do not have write access to
+  catalog ..."). An administrator without rules (the password administrator, or a token
+  without the claim) is unrestricted, as before. Like 1.x, a restricted administrator still
+  reads the instrumentation and log catalogs (never writes them) and keeps SET GLOBAL,
+  CHECKPOINT, KILL SESSION and every session in `hardcharger_sessions()`. Unlike 1.x, on
+  purpose, it holds no privilege that reaches data around its rules: no ATTACH/DETACH (it
+  could detach a denied catalog and attach its file under a name the rules allow), file
+  reads and writes, INSTALL/LOAD, secrets or EXPORT/IMPORT DATABASE; no macros or types;
+  only the table functions other rules principals get; sequences by the rules; and under
+  RBAC it runs no access-control statements (CREATE USER, GRANT, ...). docs/migrating-from-gizmosql.md
+  lists the differences.
+- Security: a `catalog_access` claim that is present but isn't a list (a string, an object,
+  `null`) was ignored, so the token kept full access (non-administrators: everything but the
+  server's own catalogs). It now grants nothing, as an empty list does (1.x treats both as
+  no rules).
 - `hardcharger` (the client): a script whose last line is a comment after the final statement
   failed with "no SQL statement given" (exit 1). Comments after a statement, on lines of their
   own and before a statement (`--` and `/* */`) are no-ops in `-c`, `-f`, a pipe and a heredoc,
@@ -97,6 +293,9 @@ own changelog in `python/CHANGELOG.md`.
   prepared statement returned no rows from the second execution on, and every execution showed
   the rows of the moment it was prepared: the rows were built when the statement was bound.
   They are now read again for each execution.
+- The sensitive-path guard missed `file:/path` (one slash), which DuckDB opens as `/path`:
+  `read_text('file:/etc/passwd')` read the file. Every file URL form DuckDB accepts is now
+  checked as the path it opens.
 
 ### Documentation
 

@@ -42,6 +42,11 @@ All notable changes to the Hardcharger documentation are recorded here. The form
   extension with file I/O of its own, such as `sqlite_scanner`, is refused only a path written out
   in the statement (a computed one finds no SQLite database). Configuration reference regenerated
   (`rbac_store_uri`).
+- Web UI (`guides/web-ui`): the server's built-in browser UI at `/ui` (`--web-ui`,
+  `HARDCHARGER_WEB_UI`, `web_ui: true`), how it signs in, and how it behaves with TLS, mutual
+  TLS and certificate sign-in, its Content-Security-Policy, and access control. Linked from the
+  sidebar and the landing page, with screenshots; its 16 examples run against a server that
+  embeds the UI (Hardcharger's `feat/ui` until that merges).
 
 ### Changed
 

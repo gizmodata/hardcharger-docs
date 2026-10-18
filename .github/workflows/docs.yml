@@ -222,7 +222,7 @@ jobs:
           mkdir -p "$hc/.warp-sql" && cp "$RUNNER_TEMP"/gizmodata-warp-sql-*.tgz "$hc/.warp-sql/"
           (cd "$hc" && npm ci --silent && npm run build --silent && npm pack --silent --pack-destination "$RUNNER_TEMP")
           npm install --no-save "$RUNNER_TEMP"/gizmodata-warp-sql-*.tgz "$RUNNER_TEMP"/gizmodata-hardcharger-*.tgz
-          node --input-type=module -e 'import { toWarpUrl } from "@gizmodata/hardcharger"; console.log(toWarpUrl("hardcharger://localhost"))'
+          node --input-type=module -e 'import { parseUrl } from "@gizmodata/hardcharger"; console.log(parseUrl("hardcharger://localhost").href)'
 
       - name: The JDBC driver (hardcharger-jdbc.jar)
         run: |

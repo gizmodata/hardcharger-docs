@@ -205,11 +205,34 @@ $ curl -s --cacert ca.crt https://localhost:31337/warp || echo "refused"
 refused
 ```
 
-<Aside type="note" title="Coming in the next release: certificate identity">
-Today a client certificate proves the client holds a key your CA signed; the user still signs in
-with a password or token. Signing in **as** the certificate's identity (mapping its subject to a
-user) is being built now and arrives in the next release.
+## Signing in with the certificate
+
+<Aside type="note" title="In the next release">
+Everything in this section arrives with the next Hardcharger release.
 </Aside>
+
+With `--mtls-certificate-sign-in`, a client can sign in **as** its certificate's identity, with no
+password: Warp SQL's `client_certificate` grant, `--auth-type mtls` in the `hardcharger` client. The
+certificate proves who the user is; grants decide what they may do. It is off by default: with
+`--mtls-ca-cert` alone, a certificate only admits the connection, as above.
+
+| Option | Default | What it does |
+|---|---|---|
+| `--mtls-certificate-sign-in` | off | Offer certificate sign-in at all |
+| `--mtls-identity-source` | `san_email` | Where the identity comes from: the e-mail SAN, the URI SAN (`san_uri`, for SPIFFE IDs) or the subject CN (`subject_cn`). A certificate with none, or several, values of that kind is refused |
+| `--mtls-admin-identities` | none | Identities that sign in as the administrator. Under access control, any other identity must be a user (`CREATE USER "joe@example.com"`, a password optional) |
+| `--mtls-require-client-cert` | on | Off: clients without a certificate may connect and sign in another way |
+| `--mtls-crl-file` | none | CRLs for every CA of a client's chain; a revoked certificate is refused at the handshake, and the file is reloaded when it changes |
+| `--mtls-crl-allow-missing-ca-crls` | off | Accept a CA above the leaf that has no CRL in the file |
+| `--mtls-require-identity-match` | off | A password sign-in over a certificate must be for the certificate's identity |
+
+How identities match user names: an e-mail address or CN ignoring ASCII case, as user names
+compare; a URI identity such as a SPIFFE ID exactly, case included (its path is case-sensitive).
+Identities are printable ASCII.
+
+The access token from a certificate sign-in is bound to that certificate: it works only on
+connections presenting it, as do the sessions it opens and the scoped tokens minted from it. TLS
+must end at Hardcharger for this (a TCP or TLS-passthrough load balancer).
 
 ## Behind a TLS-terminating proxy
 

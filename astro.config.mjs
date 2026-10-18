@@ -63,6 +63,7 @@ export default defineConfig({
 					items: [
 						{ label: 'Quickstart', slug: 'get-started/quickstart' },
 						{ label: 'Your first query', slug: 'get-started/first-query' },
+						{ label: 'Web UI', slug: 'guides/web-ui' },
 						{ label: 'Coming from GizmoSQL', slug: 'get-started/coming-from-gizmosql' },
 					],
 				},

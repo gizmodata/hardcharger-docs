@@ -5,7 +5,7 @@ ARG GO_VERSION=1.27.2
 ARG NODE_VERSION=24.22.0
 ARG GH_VERSION=2.83.0
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      ca-certificates curl jq openssl git build-essential python3 python3-venv \
+      ca-certificates curl jq openssl git openssh-client build-essential python3 python3-venv \
       openjdk-17-jdk-headless postgresql-client xz-utils libssl3t64 \
     && rm -rf /var/lib/apt/lists/*
 RUN arch=$(dpkg --print-architecture) \

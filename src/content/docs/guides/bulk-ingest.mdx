@@ -7,8 +7,9 @@ import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Bulk ingest streams an Arrow table from the client straight into a DuckDB table: no SQL
 `INSERT`s, no row-by-row conversion. The server reads the upload in 1 MiB pieces and inserts on
-all of DuckDB's threads, **in one transaction** that keeps the upload's row order. If anything
-fails, no rows from the upload remain.
+all of DuckDB's threads, **in one transaction**: if anything fails, no rows from the upload
+remain. A large upload can also go as [several parts at once](#partitioned-uploads), over
+separate connections.
 
 ## From Python
 
@@ -156,11 +157,57 @@ A type DuckDB can't store without losing values (half floats, for one) is refuse
 `415 unsupported_arrow_type`, naming the column. Nothing silently falls back to text. A column
 with no values at all (Arrow's `null` type) becomes `VARCHAR`.
 
+## Partitioned uploads
+
+A large upload can go to the server as several parts at once, each over its own connection
+(Warp SQL §8.3, capability `partitioned_ingest`). The server inserts from all of them in
+parallel and commits them as one: all or nothing. That takes a load past what one network flow
+carries (on AWS, SF10 lineitem in 3.0 s instead of 9.1 s; across regions, SF1 in 2.9 s instead
+of 14.0 s; see the [benchmarks](/benchmarks/#partitioned-uploads-2026-10-17)).
+
+- **Rows land in no defined order.** If the upload's order matters, send one stream.
+- If any part fails (bad data, a refused batch, a dropped connection), nothing is written.
+
+<Aside type="note" title="In the drivers">
+The Warp SQL ADBC driver sends loads of two batches or more as 8 parts by default
+(`adbc.warp.ingest.parts`; `1` keeps one ordered stream) from its main branch on.
+`adbc-driver-hardcharger` gets it when it moves to that version; until then it sends one
+stream, and the protocol below is how to use it directly.
+</Aside>
+
+Over plain HTTP: open the ingest, upload the parts at once, commit:
+
+```console test
+$ H='Content-Type: application/json'
+$ TOKEN=$(curl -s localhost:31337/warp/v1/auth/token -H "$H" \
+    -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
+$ AUTH="Authorization: Bearer $TOKEN"
+$ URL=localhost:31337/warp/v1/sessions/$(curl -s localhost:31337/warp/v1/sessions -H "$AUTH" -H "$H" -d '{}' | jq -r .session_id)
+$ python3 -c "
+import pyarrow as pa
+for part in range(4):
+    table = pa.table({'n': pa.array(range(part * 250_000, (part + 1) * 250_000), type=pa.int64())})
+    with pa.OSFile(f'part{part}.arrows', 'wb') as sink, pa.ipc.new_stream(sink=sink, schema=table.schema) as writer:
+        writer.write_table(table=table)"
+$ INGEST=$(curl -s $URL/ingests -H "$AUTH" -H "$H" -d '{"table": "numbers", "mode": "replace"}' | jq -r .ingest_id)
+$ for part in 0 1 2 3; do
+    curl -s $URL/ingests/$INGEST/parts/$part -H "$AUTH" -H 'Content-Type: application/vnd.apache.arrow.stream' \
+      --data-binary @part$part.arrows -o part$part.json &
+  done; wait
+$ jq -c . part0.json
+{"part":0,"rows_received":250000}
+$ curl -s $URL/ingests/$INGEST/commit -H "$AUTH" -H "$H" -d '{"parts": 4}'
+{"rows_ingested":1000000}
+```
+
+A part whose answer was lost is safe to send again with the same `Idempotency-Key`;
+`DELETE …/ingests/{id}` aborts. While an ingest is open, its session runs nothing else.
+
 ## Speed
 
-- One upload is one HTTP request on one connection, so it can't go faster than one network flow
-  (about 1.1 GB/s of Arrow on AWS). Run several uploads into separate tables (or in separate
-  sessions) to go wider.
+- One stream can't go faster than one network flow (about 1.1 GB/s of Arrow on AWS).
+  [Partitioned uploads](#partitioned-uploads) use several; on a fast LAN, DuckDB's insert then
+  becomes the limit (the server used about 25 cores for SF10 lineitem).
 - zstd (`adbc.warp.ipc_compression=zstd`) pays off only on slow links: the client compresses on
   one core.
 - Batches of about 100,000 rows are a good size.

@@ -1,30 +1,30 @@
-.about                   Show version, copyright, and project info
-.bail on|off             Stop on error. Default: off
-.catalogs                List all catalogs
-.cd DIR                  Change working directory
-.connect URI | HOST PORT USERConnect to a Hardcharger server
-.describe TABLE          Show table column names and types
-.echo on|off             Echo input commands. Default: off
-.exit                    Exit this program (same as .quit)
-.export_last [FILE]      Export last result to Arrow IPC file
-.headers on|off          Toggle column headers. Default: on
-.help [PATTERN]          Show this help or commands matching PATTERN
-.highlight on|off        Toggle syntax highlighting. Default: on
-.last                    Re-display last query result
-.maxrows [N]             Show or set max rows displayed (0=unlimited)
-.maxwidth [N]            Show or set max width (0=auto from terminal)
-.mode MODE               Set output mode (box table csv json markdown ...)
-.nullvalue STRING        Set string for NULL values. Default: "NULL"
-.once FILE               Redirect next query output to FILE
-.output [FILE]           Redirect output to FILE or stdout
-.pager on|off|N          Toggle pager or set row threshold. Default: on/50
-.prompt MAIN [CONT]      Set prompt strings
-.quit                    Exit this program
-.read FILE               Execute SQL from FILE
-.refresh                 Refresh tab-completion schema cache
-.schema [PATTERN]        Show database schemas
-.separator COL [ROW]     Set separators for list/csv mode
-.shell CMD...            Execute CMD in system shell
-.show                    Show current settings
-.tables [PATTERN] [--flat]List tables (tree view, or --flat)
-.timer on|off            Show query execution time. Default: off
+.about                         Show version, copyright, and project info
+.bail on|off                   Stop on error. Default: off
+.catalogs                      List all catalogs
+.cd DIR                        Change working directory
+.connect URI | HOST PORT USER  Connect to a Hardcharger server
+.describe TABLE                Show table column names and types
+.echo on|off                   Echo input commands. Default: off
+.exit                          Exit this program (same as .quit)
+.export_last [FILE]            Export last result to Arrow IPC file
+.headers on|off                Toggle column headers. Default: on
+.help [PATTERN]                Show this help or commands matching PATTERN
+.highlight on|off              Toggle syntax highlighting. Default: on
+.last                          Re-display last query result
+.maxrows [N]                   Show or set max rows displayed (0=unlimited)
+.maxwidth [N]                  Show or set max width (0=auto from terminal)
+.mode MODE                     Set output mode (box table csv json markdown ...)
+.nullvalue STRING              Set string for NULL values. Default: "NULL"
+.once FILE                     Redirect next query output to FILE
+.output [FILE]                 Redirect output to FILE or stdout
+.pager on|off|N                Toggle pager or set row threshold. Default: on/50
+.prompt MAIN [CONT]            Set prompt strings
+.quit                          Exit this program
+.read FILE                     Execute SQL from FILE
+.refresh                       Refresh tab-completion schema cache
+.schema [PATTERN]              Show database schemas
+.separator COL [ROW]           Set separators for list/csv mode
+.shell CMD...                  Execute CMD in system shell
+.show                          Show current settings
+.tables [PATTERN] [--flat]     List tables (tree view, or --flat)
+.timer on|off                  Show query execution time. Default: off

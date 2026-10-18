@@ -87,7 +87,6 @@ external link, and an empty run all exit non-zero.
 export HARDCHARGER_DOCS_BIN_DIR=/path/to/hardcharger/server/build   # hardcharger-server + hardcharger
 export HARDCHARGER_DOCS_JDBC_JAR=/path/to/hardcharger-jdbc.jar
 export HARDCHARGER_DOCS_PG_URI=postgresql://hardcharger:hardcharger@127.0.0.1:55450/postgres
-export HARDCHARGER_DOCS_GITHUB_TOKEN="$(gh auth token)"              # internal releases and modules
 .venv/bin/python scripts/verify_examples.py [--page guides/tls]
 ```
 
@@ -113,14 +112,21 @@ and fails when anything committed differs from what the server says.
 | [docs](.github/workflows/docs.yml) | every push and pull request; called by release | build (internal links), external links (lychee), Chromium and WebKit in light and dark at desktop and phone width (console errors, sideways scrolling), every example, the reference check |
 | [release](.github/workflows/release.yml) | `vX.Y.Z` tags, or by hand | docs on the tagged commit, then a GitHub Release with the CHANGELOG section and the built site, and the GitHub Pages deployment |
 
-It needs two things while Hardcharger is internal:
+While Hardcharger is internal, CI uses no personal token:
 
-1. **`GIZMODATA_READ_TOKEN`**, a repository secret: read access to gizmodata/hardcharger,
-   warp-sql, hardcharger-adbc, warp-sql-adbc, hardcharger-jdbc, warp-sql-jdbc and warp-sql-js (contents and
-   releases). A GitHub App installation token is best; a fine-grained token with Contents: read
-   works, with its expiry on someone's calendar.
-2. **Read access to the `ghcr.io/gizmodata/hardcharger` package** for this repository (package
-   settings, Manage Actions access), so `GITHUB_TOKEN` can pull `:main` and `:latest`.
+1. **The image**, `ghcr.io/gizmodata/hardcharger:main` (the server and the CLI) and `:latest`
+   (the Docker examples), pulled with the workflow's `GITHUB_TOKEN`. The package must grant this
+   repository read access (package settings, **Manage Actions access**).
+2. **Read-only deploy keys**, one per internal repository, stored here as secrets:
+   `DEPLOY_KEY_HARDCHARGER`, `DEPLOY_KEY_WARP_SQL`, `DEPLOY_KEY_HARDCHARGER_ADBC`,
+   `DEPLOY_KEY_WARP_SQL_ADBC`, `DEPLOY_KEY_HARDCHARGER_JDBC`, `DEPLOY_KEY_WARP_SQL_JDBC`,
+   `DEPLOY_KEY_WARP_SQL_JS`. Each repository has the matching public key as a read-only deploy
+   key titled "hardcharger-docs CI (read-only)".
+3. **No release downloads.** Examples that download a release (the installer, tarballs, the
+   Python package's server) run against a release mirror made from the `:main` image, with the
+   real installer script and the real package.
+
+Without the image or a key, the examples job fails; it never skips.
 
 ## ✍️ Writing
 

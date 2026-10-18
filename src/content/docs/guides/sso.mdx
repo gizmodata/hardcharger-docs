@@ -171,7 +171,13 @@ $ curl -s localhost:31337/warp/v1/auth/token -H 'Content-Type: application/json'
 User 'eve@elsewhere.org' is not authorized. Contact your administrator.
 ```
 
-The CLI and the drivers report it as a failed sign-in.
+The CLI shows the same reason, and exits 1:
+
+```console test server=none exit=1
+$ HARDCHARGER_PASSWORD="$(python3 idp.py token eve@elsewhere.org)" hardcharger --host localhost \
+    --username token --command "SELECT 1"
+Error: Authentication failed for http://localhost:31337: invalid_credentials (User 'eve@elsewhere.org' is not authorized. Contact your administrator.)
+```
 
 ## With access control: users and group mappings
 

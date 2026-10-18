@@ -11,8 +11,9 @@
 #   HARDCHARGER_DOCS_ADBC_SRC    a gizmodata/hardcharger-adbc checkout with its submodule
 #   HARDCHARGER_DOCS_PY_SRC      gizmodata/hardcharger's python/ directory (the server package)
 #   HARDCHARGER_DOCS_JDBC_JAR    the standalone hardcharger-jdbc.jar
-# Optional: HARDCHARGER_DOCS_PG_URI (as seen from the container: host.docker.internal),
-#           HARDCHARGER_DOCS_GITHUB_TOKEN, HARDCHARGER_DOCS_S3_ENDPOINT.
+# Optional: HARDCHARGER_DOCS_PG_URI (as seen from the container: host.docker.internal).
+# The gizmodata Go modules are fetched over SSH with this machine's SSH agent (Docker Desktop
+# forwards it), as a developer with access to the repositories does.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 for v in HARDCHARGER_DOCS_LINUX_DIR HARDCHARGER_DOCS_ADBC_SRC HARDCHARGER_DOCS_PY_SRC HARDCHARGER_DOCS_JDBC_JAR; do
@@ -36,16 +37,14 @@ docker run --rm -i \
   -e HARDCHARGER_DOCS_JDBC_JAR=/src/hardcharger-jdbc.jar \
   -e GOMODCACHE=/root/go/pkg/mod -e GOCACHE=/root/go/cache \
   -e HARDCHARGER_DOCS_PG_URI="${HARDCHARGER_DOCS_PG_URI:-}" \
-  -e HARDCHARGER_DOCS_S3_ENDPOINT="${HARDCHARGER_DOCS_S3_ENDPOINT:-}" \
-  -e HARDCHARGER_DOCS_GITHUB_TOKEN="${HARDCHARGER_DOCS_GITHUB_TOKEN:-}" \
+  -v /run/host-services/ssh-auth.sock:/ssh-agent -e SSH_AUTH_SOCK=/ssh-agent \
   -w /docs "$IMAGE" bash -euo pipefail -s -- "$@" <<'SCRIPT'
 # The Hardcharger ADBC driver's C library, built from the hardcharger-adbc checkout (no zig:
 # this library only has to run in this container), into a Python environment with the
 # server package and the examples' other imports. Rebuilt when the checkout changes.
 REV=$(git -C /src/hardcharger-adbc rev-parse HEAD 2>/dev/null || echo unknown)
-if [ -n "${HARDCHARGER_DOCS_GITHUB_TOKEN:-}" ]; then
-  git config --global url."https://x-access-token:${HARDCHARGER_DOCS_GITHUB_TOKEN}@github.com/".insteadOf https://github.com/
-fi
+mkdir -p ~/.ssh && ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+git config --global url."git@github.com:gizmodata/".insteadOf https://github.com/gizmodata/
 export GOPRIVATE='github.com/gizmodata/*' GOFLAGS=-mod=mod
 if [ ! -f "/opt/venv/.built-$REV" ]; then
   rm -rf /tmp/hc-adbc /tmp/hc-py /opt/venv/* && cp -R /src/hardcharger-adbc /tmp/hc-adbc && cp -R /src/hardcharger-py /tmp/hc-py

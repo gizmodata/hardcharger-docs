@@ -147,19 +147,18 @@ or any Arrow-compatible object. See [Bulk ingest](/guides/bulk-ingest/).
 
 ## Errors
 
-The driver raises `adbc_driver_manager` exceptions (`adbc_driver_manager.Error` and its
-subclasses, such as `ProgrammingError`), whose message carries the server's code, HTTP status,
+The module has DB-API's exception classes (`hardcharger.Error`, `DatabaseError`,
+`ProgrammingError`, `OperationalError`, ...). The message carries the server's code, HTTP status,
 request id and SQLSTATE:
 
 ```python test
-import adbc_driver_manager
 from adbc_driver_hardcharger import dbapi as hardcharger
 
 with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger", password="change-me") as conn:
     with conn.cursor() as cur:
         try:
             cur.execute(operation="SELECT * FROM no_such_table")
-        except adbc_driver_manager.Error as e:
+        except hardcharger.Error as e:
             print(type(e).__name__, e.sqlstate)
 ```
 
@@ -185,7 +184,7 @@ the same.
 platform, checks it and runs it on a free port, which makes a real server one line away in tests
 and notebooks.
 
-```python test server=none github
+```python test server=none release
 import hardcharger
 
 with hardcharger.Server() as server, server.connect() as conn, conn.cursor() as cur:

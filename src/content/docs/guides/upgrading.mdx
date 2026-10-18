@@ -38,17 +38,22 @@ say what, under **Changed**. Patch versions only fix things.
 
 ## Rolling back
 
-The installer keeps every version you installed: switching back doesn't download anything.
+The installer keeps every version you installed, so switching back doesn't download anything:
 
-```console test server=none github
-$ curl -s https://install.hardcharger.gizmodata.com | HARDCHARGER_INSTALL_TOKEN="$(gh auth token)" HARDCHARGER_VERSION=0.1.2 sh > /dev/null 2>&1
-$ curl -s https://install.hardcharger.gizmodata.com | HARDCHARGER_INSTALL_TOKEN="$(gh auth token)" HARDCHARGER_VERSION=0.2.0 sh > /dev/null 2>&1
+```bash
+curl https://install.hardcharger.gizmodata.com | HARDCHARGER_VERSION=0.1.2 sh   # back to 0.1.2
+curl https://install.hardcharger.gizmodata.com | HARDCHARGER_VERSION=0.2.0 sh   # and forward again
+```
+
+`--list` shows what is installed, the current version starred:
+
+```console test server=none release
+$ curl -s https://install.hardcharger.gizmodata.com | sh > /dev/null 2>&1
 $ curl -s https://install.hardcharger.gizmodata.com | sh -s -- --list
 Hardcharger versions in …/.hardcharger/versions:
-    0.1.2
-  * 0.2.0 (current)
+  * … (current)
 $ ~/.hardcharger/bin/hardcharger-server --version
-Hardcharger 0.2.0
+Hardcharger …
 ```
 
 `sh -s -- --uninstall 0.1.2` removes one version.

@@ -40,7 +40,6 @@ Three places set a statement's time limit; the most specific wins:
 | `Warp-Statement-Timeout: <ms>` (JDBC `setQueryTimeout`, ADBC `adbc.warp.statement.timeout_seconds`) | One statement |
 
 ```python test profile=instrumentation
-import adbc_driver_manager
 from adbc_driver_hardcharger import dbapi as hardcharger
 
 with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger", password="change-me",
@@ -49,7 +48,7 @@ with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hard
         try:
             cur.execute(operation="SELECT count(*) FROM range(1000000000000) a")
             cur.fetchall()
-        except adbc_driver_manager.Error as e:
+        except hardcharger.Error as e:
             print("statement_timeout" in str(e))
 ```
 
@@ -135,10 +134,7 @@ hardcharger.max_concurrent_statements,4
 hardcharger.max_queue_wait,60
 ```
 
-<Aside type="note">
-`hardcharger_settings()` lists `hardcharger.max_queued_statements`'s default as `0`, but the
-server's default is `-1` (8 × the concurrency). The startup option is what applies.
-</Aside>
+`RESET GLOBAL` returns a limit to the value the server started with.
 
 ## Graceful shutdown
 

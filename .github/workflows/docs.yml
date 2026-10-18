@@ -14,14 +14,18 @@ name: docs
 #     CLI help, release notes, the Warp SQL spec) is regenerated from that server and those
 #     repositories and must match what is committed.
 #
-# Access while Hardcharger is internal (no personal token in this repository):
-#   - ghcr.io/gizmodata/hardcharger, pulled with this workflow's GITHUB_TOKEN: the package must
-#     grant this repository read access (package settings, Manage Actions access).
-#   - GIZMODATA_READ_TOKEN: read-only access to gizmodata/hardcharger (releases, CHANGELOG),
-#     warp-sql (the spec), hardcharger-adbc and warp-sql-adbc (the Python/Go driver),
-#     hardcharger-jdbc and warp-sql-jdbc (the JDBC driver), warp-sql-js (the JavaScript client).
-#     A GitHub App installation token or a
-#     fine-grained token with Contents: read on those repositories.
+# Access while Hardcharger is internal, with no personal token:
+#   - ghcr.io/gizmodata/hardcharger (:main for the server and the CLI, :latest for the Docker
+#     examples), pulled with this workflow's GITHUB_TOKEN: the package grants this repository
+#     read access (package settings, Manage Actions access).
+#   - the internal repositories, each through a read-only deploy key of that repository, kept
+#     here as a secret: DEPLOY_KEY_HARDCHARGER (CHANGELOG, the Python server package),
+#     DEPLOY_KEY_WARP_SQL (the spec), DEPLOY_KEY_HARDCHARGER_ADBC and DEPLOY_KEY_WARP_SQL_ADBC
+#     (the Python and Go driver; Go fetches both modules), DEPLOY_KEY_HARDCHARGER_JDBC and
+#     DEPLOY_KEY_WARP_SQL_JDBC (the JDBC driver and its submodule), DEPLOY_KEY_WARP_SQL_JS (the
+#     JavaScript client).
+#   - Release downloads (the installer, tarballs, the Python package's server) are exercised
+#     against a release mirror made from the :main image (verify_examples.py, `release`).
 
 on:
   push:
@@ -29,9 +33,6 @@ on:
   pull_request:
   workflow_dispatch:
   workflow_call:
-    secrets:
-      GIZMODATA_READ_TOKEN:
-        required: false
 
 permissions:
   contents: read
@@ -120,30 +121,55 @@ jobs:
           --health-cmd "pg_isready -U hardcharger" --health-interval 2s --health-timeout 5s --health-retries 30
     env:
       HARDCHARGER_DOCS_PG_URI: postgresql://hardcharger:hardcharger@127.0.0.1:55450/postgres
-      HARDCHARGER_DOCS_GITHUB_TOKEN: ${{ secrets.GIZMODATA_READ_TOKEN }}
       GOPRIVATE: github.com/gizmodata/*
     steps:
-      - name: The read token is there
+      - name: Deploy keys for the internal repositories
+        env:
+          DEPLOY_KEY_HARDCHARGER: ${{ secrets.DEPLOY_KEY_HARDCHARGER }}
+          DEPLOY_KEY_WARP_SQL: ${{ secrets.DEPLOY_KEY_WARP_SQL }}
+          DEPLOY_KEY_HARDCHARGER_ADBC: ${{ secrets.DEPLOY_KEY_HARDCHARGER_ADBC }}
+          DEPLOY_KEY_WARP_SQL_ADBC: ${{ secrets.DEPLOY_KEY_WARP_SQL_ADBC }}
+          DEPLOY_KEY_HARDCHARGER_JDBC: ${{ secrets.DEPLOY_KEY_HARDCHARGER_JDBC }}
+          DEPLOY_KEY_WARP_SQL_JDBC: ${{ secrets.DEPLOY_KEY_WARP_SQL_JDBC }}
+          DEPLOY_KEY_WARP_SQL_JS: ${{ secrets.DEPLOY_KEY_WARP_SQL_JS }}
         run: |
-          if [ -z "$HARDCHARGER_DOCS_GITHUB_TOKEN" ]; then
-            echo "::error::the GIZMODATA_READ_TOKEN secret is not set (see the comment at the top of docs.yml)"
-            exit 1
-          fi
-          git config --global url."https://x-access-token:${HARDCHARGER_DOCS_GITHUB_TOKEN}@github.com/".insteadOf https://github.com/
+          # One SSH host alias per repository, each with its own key, and git rewrites every
+          # spelling of that repository's URL (https, ssh, scp-like) to its alias. Go's module
+          # fetches and git submodules go through the same rewrites.
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+          for repo in hardcharger warp-sql hardcharger-adbc warp-sql-adbc hardcharger-jdbc warp-sql-jdbc warp-sql-js; do
+            var="DEPLOY_KEY_$(echo "$repo" | tr 'a-z-' 'A-Z_')"
+            key="${!var}"
+            if [ -z "$key" ]; then
+              echo "::error::the $var secret is not set: the private key of a read-only deploy key of gizmodata/$repo"
+              exit 1
+            fi
+            printf '%s\n' "$key" > ~/.ssh/"$repo" && chmod 600 ~/.ssh/"$repo"
+            printf 'Host github.com-%s\n  HostName github.com\n  User git\n  IdentityFile ~/.ssh/%s\n  IdentitiesOnly yes\n' "$repo" "$repo" >> ~/.ssh/config
+            for from in "https://github.com/gizmodata/$repo" "ssh://git@github.com/gizmodata/$repo" "git@github.com:gizmodata/$repo"; do
+              git config --global --add url."git@github.com-$repo:gizmodata/$repo".insteadOf "$from"
+            done
+          done
 
       - uses: actions/checkout@v7
       - name: Source repositories
         run: |
           for repo in hardcharger warp-sql hardcharger-adbc hardcharger-jdbc warp-sql-js; do
             git clone --quiet --depth 1 --recurse-submodules --shallow-submodules \
-              "https://github.com/gizmodata/$repo.git" "$RUNNER_TEMP/src/$repo"
+              "git@github.com:gizmodata/$repo.git" "$RUNNER_TEMP/src/$repo"
             echo "$repo at $(git -C "$RUNNER_TEMP/src/$repo" rev-parse --short HEAD)"
           done
 
       - name: hardcharger-server and hardcharger from ${{ env.HARDCHARGER_IMAGE }}
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-          docker pull "$HARDCHARGER_IMAGE"
+          printf '%s' "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin > /dev/null
+          if ! docker pull -q "$HARDCHARGER_IMAGE"; then
+            echo "::error::can't pull $HARDCHARGER_IMAGE with this workflow's GITHUB_TOKEN: grant $GITHUB_REPOSITORY read access to the hardcharger package (package settings, Manage Actions access)"
+            exit 1
+          fi
           id=$(docker create "$HARDCHARGER_IMAGE")
           docker cp "$id:/opt/hardcharger" "$RUNNER_TEMP/hardcharger"
           docker rm "$id" > /dev/null

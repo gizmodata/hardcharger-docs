@@ -31,7 +31,7 @@ Input and output:
 Tags:
       --session-tag JSON        Session tag sent after connecting (env: HARDCHARGER_SESSION_TAG)
       --query-tag JSON          Query tag sent after connecting (env: HARDCHARGER_QUERY_TAG)
-      --result-partitions N     Read large results in up to N partitions at once, over N connections (env: HARDCHARGER_RESULT_PARTITIONS; default 1)
+      --result-partitions N     Read large results in up to N partitions at once, over N connections (env: HARDCHARGER_RESULT_PARTITIONS; default 8; 1: one stream)
 
 Output modes:
       --csv                     Set output mode to CSV

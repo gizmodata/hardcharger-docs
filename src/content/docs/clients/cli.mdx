@@ -66,6 +66,8 @@ my.main> SELECT city, miles FROM trips ORDER BY miles DESC;
 my.main> .quit
 ```
 
+- **Color** at a terminal only: prompts, errors and highlighting are plain in pipes and files,
+  and `NO_COLOR` (set to anything) turns color off everywhere.
 - **Line editing** with history (`~/.hardcharger_history`), tab completion of SQL keywords,
   catalogs, schemas, tables and columns, and syntax highlighting.
 - **A pager** for results longer than the screen (`.pager on|off|N`).
@@ -119,10 +121,7 @@ $ grep -o "Table with name missing_table does not exist" error.txt
 Table with name missing_table does not exist
 ```
 
-<Aside type="caution" title="Known issue">
-A script whose **last** statement is followed by a `-- comment` fails with
-`no SQL statement given` (exit status 1). Put the comment on its own line before the statement.
-</Aside>
+Comments (`--` and `/* */`) anywhere in a script are fine, including after the last statement.
 
 ## Output modes
 
@@ -212,8 +211,10 @@ $ printf '.tables --flat\n.describe trips\n' | hardcharger --host localhost --us
 
 ## Large results
 
-`--result-partitions N` (or `HARDCHARGER_RESULT_PARTITIONS`) reads a large result over up to N
-connections at once, in the same order ([partitions](/concepts/warp-sql/#partitioned-results)).
+The client reads a large result over up to 8 connections at once, in the same order
+([partitions](/concepts/warp-sql/#partitioned-results)); small results come as one stream.
+`--result-partitions N` (or `HARDCHARGER_RESULT_PARTITIONS`) changes the 8; `1` reads over one
+connection.
 
 ## Tags
 

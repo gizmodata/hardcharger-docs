@@ -6,6 +6,22 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ## [Unreleased]
 
+### Changed
+
+- CI uses no personal token: the server and the CLI come from `ghcr.io/gizmodata/hardcharger:main`
+  (pulled with `GITHUB_TOKEN`), and the internal repositories are read with one read-only deploy
+  key each (`DEPLOY_KEY_*` secrets). Examples that download a release run against a release
+  mirror made from that image, with the real installer and the real Python package.
+- The docs follow Hardcharger's main (bced775): the version reads `0.2.0` everywhere,
+  `max_queued_statements` reports `-1`, the CLI keeps color to terminals (and honours `NO_COLOR`),
+  shows the server's reason for a refused sign-in and takes comments anywhere in a script, the
+  Python driver raises DB-API's own exception classes, the CLI reads large results in 8
+  partitions by default, and partitioned uploads (Warp SQL §8.3) are documented and run over
+  plain HTTP. Benchmarks and the landing page carry the new load numbers.
+- Output comparisons are exact again (no color codes are stripped outside the interactive
+  shell), and `console` commands may span lines with open quotes or loops.
+- 136 runnable examples.
+
 ## [0.1.0] - 2026-10-17
 
 The first private preview of the Hardcharger documentation.

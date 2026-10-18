@@ -13,8 +13,13 @@ doesn't:
 
 - **The `hardcharger` CLI.** 0.2.0's tarballs and image have only `hardcharger-server`; build the
   client from source, or use a [driver](/clients/python/) or [curl](/clients/http/).
-- **Partitioned results** (`max_result_partitions`, `Warp-Result-Partitions`, the drivers'
-  `result_partitions` and `--result-partitions`).
+- **Partitioned results** (`max_result_partitions`, `Warp-Result-Partitions`), which the CLI uses for
+  large results by default, and **partitioned uploads** (Warp SQL §8.3).
+- **`session_ended` with its `reason`** (`killed`, `principal_dropped`, `token_expired`,
+  `credentials_changed`).
+- **Fixes**: `HARDCHARGER_VERSION()` says `0.2.0` (0.2.0 says `v0.2.0`), `hardcharger_settings()`
+  reports `max_queued_statements` as `-1` by default, and the server's table functions in a
+  prepared statement return fresh rows on every execution.
 - **Results in 122,880-row batches** by default (0.2.0: 2,048), and the transfer work behind the
   [network benchmarks](/benchmarks/#over-a-real-network-aws-2026-10-17): the pipelined TLS stream
   and parallel ingest. 0.2.0's TLS streams and ingest are several times slower.

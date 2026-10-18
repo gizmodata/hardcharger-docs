@@ -105,7 +105,8 @@ the server cuts the stream short, and the client reports the error.
 One TCP connection carries what one network flow allows (about 10 Gbit/s on AWS, much less
 across regions). For a large result, a client can send `Warp-Result-Partitions: n`, and the
 server may split the result into up to `n` partitions, which the client reads at once, each
-over its own connection:
+over its own connection. The CLI asks for 8 by default; a result of fewer than two batches
+still comes as one stream:
 
 ```python test
 from adbc_driver_hardcharger import dbapi as hardcharger
@@ -129,6 +130,13 @@ With the default `result_order=preserve` the server deals batches to partitions 
 client must read every partition, concurrently, to its end-of-stream marker before it treats
 the result as complete. The JDBC driver's option is `resultPartitions`, and the CLI's is
 `--result-partitions`.
+
+## Partitioned uploads
+
+Uploads go wide the same way (§8.3, capability `partitioned_ingest`): a client opens one ingest,
+sends it as several parts at once over separate connections, and commits them as one. The
+server inserts from every part in parallel, in one transaction, all or nothing. The rows land in
+no defined order ([bulk ingest](/guides/bulk-ingest/#partitioned-uploads)).
 
 <Aside type="tip" title="Why partitions are in the protocol">
 Results are already described as partitions with a `location`. Today every partition lives on

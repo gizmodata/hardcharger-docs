@@ -2,7 +2,7 @@
   {
     "name": "hardcharger_build_info",
     "type": "gauge",
-    "help": "Server build: version, edition, DuckDB version.",
+    "help": "Server build: version, DuckDB version.",
     "labels": [
       "duckdb_version",
       "server",

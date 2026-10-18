@@ -63,9 +63,9 @@ flowchart LR
     Ask for a large result as several partitions and read them over separate connections at
     once. `ORDER BY` still holds.
   </Card>
-  <Card title="Parallel ingest" icon="download">
-    Uploads go into DuckDB on all of its threads, in one transaction. A failed load leaves
-    nothing behind.
+  <Card title="Partitioned uploads" icon="download">
+    Large loads go up in parts over several connections and into DuckDB on all of its threads, in one
+    transaction. A failed load leaves nothing behind.
   </Card>
   <Card title="Never at the cost of correctness" icon="approve-check">
     A result is complete only when every partition has arrived with its end-of-stream marker.
@@ -80,7 +80,9 @@ GizmoSQL 1.42 on the same data:
 | Fetch TPC-H SF10 lineitem (60M rows, 10.5 GB of Arrow) | **0.97 s** | 15.2 s | **15.7× faster** |
 | Fetch TPC-H SF1 lineitem (6M rows) | **0.148 s** | 1.74 s | **11.7× faster** |
 | Fetch 100M narrow rows | **0.45 s** | 5.43 s | **12.0× faster** |
-| Load SF10 lineitem (bulk ingest) | 9.34 s | 9.43 s | on par |
+| Fetch SF1 lineitem across regions (46 ms away) | **1.96 s** | 12.26 s | **6.3× faster** |
+| Load SF10 lineitem (bulk ingest, 8 upload parts) | **3.00 s** | 9.44 s | **3.1× faster** |
+| Load SF1 lineitem across regions (8 upload parts) | **2.91 s** | 13.94 s | **4.8× faster** |
 
 The method, every run and what Hardcharger doesn't win yet are on the
 [benchmarks page](/benchmarks/). How the pipeline works is in the

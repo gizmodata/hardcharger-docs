@@ -57,7 +57,6 @@ drivers do, one per `;`).
 Now sign in as `joe`. What he may read works; what he may not is refused, with the reason:
 
 ```python test profile=rbac
-import adbc_driver_manager
 from adbc_driver_hardcharger import dbapi as hardcharger
 
 with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="joe", password="joe-secret") as conn:
@@ -68,7 +67,7 @@ with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="joe"
         print(cur.fetchall())
         try:
             cur.execute(operation="SELECT birthday FROM main.customers")
-        except adbc_driver_manager.Error as e:
+        except hardcharger.ProgrammingError as e:
             print("refused:", e)
 ```
 

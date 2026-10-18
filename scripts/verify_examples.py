@@ -19,9 +19,12 @@ Options in the info string:
     file=NAME      write the block to NAME in the page's directory instead of running it
     run=CMD        with file=: run CMD (in the page's directory) to check the file
     kind=repl      a console transcript of an interactive shell, driven with pexpect
-    github         the block reads gizmodata's internal GitHub releases or repositories: it
-                   gets GH_TOKEN (from HARDCHARGER_DOCS_GITHUB_TOKEN) and a git credential
-                   in its HOME, as a user signed in with `gh auth login` has
+    release        the block downloads a Hardcharger release (the installer, a tarball, the
+                   Python package's server). While the releases are internal, CI has no token
+                   for them, so the block gets a release mirror built from the server under
+                   test (HARDCHARGER_INSTALL_MIRROR, HARDCHARGER_VERSION, the tarball in its
+                   directory) and HARDCHARGER_SERVER_BINARY: it exercises the real installer
+                   script and the real package, with this build instead of a download
     stop           stop the page's background processes (and run their cleanup) first
     cleanup=CMD    run CMD when the page ends or its background stops (`docker rm -f NAME`)
 
@@ -44,6 +47,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import hashlib
 import os
 import pathlib
 import re
@@ -63,6 +67,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOCS = ROOT / "src" / "content" / "docs"
 PROFILES = ROOT / "tests" / "profiles.yaml"
 FIXTURES = ROOT / "tests" / "fixtures"
+MIRROR: pathlib.Path | None = None  # the release mirror, made on first use
 VENV = pathlib.Path(os.environ.get("HARDCHARGER_DOCS_VENV", ROOT / ".venv"))  # Python with the drivers
 FENCE = re.compile(r"^(?P<indent>\s*)(?P<fence>`{3,}|~{3,})(?P<info>.*)$")
 ELLIPSIS = "…"
@@ -141,8 +146,8 @@ ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 
 
 def matches(expected: str, actual: str) -> bool:
-    # Compare what a terminal shows: the CLI colors its errors even when stderr is a pipe.
-    actual = ANSI.sub("", actual)
+    # Exact: output into pipes and files must carry no color codes (the interactive shell's
+    # transcript is compared after its terminal codes are stripped, in repl()).
     want = [line.rstrip() for line in expected.rstrip("\n").splitlines()]
     have = [line.rstrip() for line in actual.rstrip("\n").splitlines()]
 
@@ -312,11 +317,32 @@ class Page:
             subprocess.run(args=["bash", "-c", command], cwd=self.dir, env=self.env, capture_output=True, timeout=120)
         self.cleanups = []
 
-    def github(self) -> dict:
-        token = need_env("HARDCHARGER_DOCS_GITHUB_TOKEN", "a token that can read gizmodata's internal releases")
-        gitconfig = pathlib.Path(self.env["HOME"]) / ".gitconfig"
-        gitconfig.write_text(f'[url "https://x-access-token:{token}@github.com/"]\n\tinsteadOf = https://github.com/\n')
-        return {"GH_TOKEN": token}
+    def release(self) -> dict:
+        """A release mirror (vX.Y.Z/hardcharger-<platform>.tar.gz and SHA256SUMS, as the
+        releases lay them out) made from the server under test, shared by the whole run."""
+        global MIRROR
+        version = subprocess.run(args=[str(self.bin_dir / "hardcharger-server"), "--version"], capture_output=True,
+                                 text=True, check=True).stdout.split()[-1]
+        system, machine = os.uname().sysname, os.uname().machine
+        platform = {("Linux", "x86_64"): "linux-amd64", ("Linux", "aarch64"): "linux-arm64",
+                    ("Darwin", "arm64"): "macos-arm64"}[(system, machine)]
+        name = f"hardcharger-{platform}"
+        if MIRROR is None:
+            MIRROR = pathlib.Path(tempfile.mkdtemp(prefix="hc-mirror-"))
+            stage = MIRROR / "stage" / name
+            shutil.copytree(self.bin_dir.parent, stage, symlinks=True) if (self.bin_dir.parent / "lib").is_dir() \
+                else (stage / "bin").mkdir(parents=True)
+            for binary in ("hardcharger-server", "hardcharger"):
+                if not (stage / "bin" / binary).exists():
+                    shutil.copy2(self.bin_dir / binary, stage / "bin" / binary)
+            release = MIRROR / f"v{version}"
+            release.mkdir()
+            subprocess.run(args=["tar", "-czf", str(release / f"{name}.tar.gz"), "-C", str(stage.parent), name], check=True)
+            digest = hashlib.sha256((release / f"{name}.tar.gz").read_bytes()).hexdigest()
+            (release / "SHA256SUMS").write_text(f"{digest}  {name}.tar.gz\n")
+        shutil.copy(MIRROR / f"v{version}" / f"{name}.tar.gz", self.dir / f"{name}.tar.gz")
+        return {"HARDCHARGER_INSTALL_MIRROR": str(MIRROR), "HARDCHARGER_VERSION": version,
+                "HARDCHARGER_SERVER_BINARY": str(self.bin_dir / "hardcharger-server")}
 
     def close(self) -> None:
         self.stop_background()
@@ -385,8 +411,8 @@ class Page:
                 stdin: str | None = None) -> str:
         env = dict(self.env)
         env.update(extra or {})
-        if "github" in block.words:
-            env.update(self.github())
+        if "release" in block.words:
+            env.update(self.release())
         if "background" in block.words:
             if "cleanup" in block.meta:
                 self.cleanups.append(block.meta["cleanup"])
@@ -422,7 +448,12 @@ class Page:
                 raise Failure(f"{block.where}: console output before any $ command: {lines[i]!r}")
             command = [lines[i][2:]]
             heredoc = re.search(r"<<-?\s*'?([A-Za-z_]+)'?", lines[i])
-            while command[-1].endswith("\\") and i + 1 < len(lines):
+            def incomplete(text: str) -> bool:  # a continued line, an open quote or loop
+                if text.endswith("\\"):
+                    return True
+                check = subprocess.run(args=["bash", "-n", "-c", text], capture_output=True, text=True)
+                return "unexpected end of file" in check.stderr or "unexpected EOF" in check.stderr
+            while not heredoc and i + 1 < len(lines) and incomplete("\n".join(command)):
                 i += 1
                 command.append(lines[i])
                 heredoc = heredoc or re.search(r"<<-?\s*'?([A-Za-z_]+)'?", lines[i])
@@ -445,8 +476,8 @@ class Page:
         for n, (command, _) in enumerate(commands):
             script += [f"printf '\\n__HC_BEGIN_{n}__\\n'", command, f"printf '\\n__HC_END_{n}__ %s\\n' \"$?\""]
         env = dict(self.env)
-        if "github" in block.words:
-            env.update(self.github())
+        if "release" in block.words:
+            env.update(self.release())
         try:
             # No pipefail: an interactive shell doesn't have it, and a console block is a terminal.
             done = subprocess.run(args=["bash", "-c", "\n".join(script)], cwd=self.dir, env=env,
@@ -529,7 +560,8 @@ class Page:
 
     def go(self, block: Block) -> None:
         # The example's imports resolve as a user's would: the gizmodata modules are fetched
-        # from GitHub (internal until launch: GOPRIVATE and a git credential). For local work,
+        # from GitHub. They are internal until launch, so GOPRIVATE, and git reaches them with the
+        # caller's git configuration and SSH agent (CI: read-only deploy keys). For local work,
         # HARDCHARGER_DOCS_GO_REPLACE="module=path,..." points modules at checkouts instead.
         module = self.dir / f"go_{block.line}"
         module.mkdir()
@@ -538,9 +570,11 @@ class Page:
         edits = "".join(f" && go mod edit -replace {shlex.quote(r)}" for r in replaces)
         script = (f"cd {module.name} && go mod init example.com/docs >/dev/null 2>&1{edits} && "
                   f"go mod tidy && go run .")
-        extra = {"GOPRIVATE": "github.com/gizmodata/*", "GOFLAGS": "-mod=mod"}
-        if not replaces:
-            extra.update(self.github())
+        extra = {"GOPRIVATE": "github.com/gizmodata/*", "GOFLAGS": "-mod=mod",
+                 "GIT_CONFIG_GLOBAL": os.environ.get("HARDCHARGER_DOCS_GIT_CONFIG",
+                                                     str(pathlib.Path.home() / ".gitconfig"))}
+        if os.environ.get("SSH_AUTH_SOCK"):
+            extra["SSH_AUTH_SOCK"] = os.environ["SSH_AUTH_SOCK"]
         self.execute(block, ["bash", "-euo", "pipefail", "-c", script], extra=extra)
 
     def server_config(self, block: Block) -> None:

@@ -166,6 +166,9 @@ Every request that creates a statement or writes data carries an `Idempotency-Ke
 answer is lost and the client sends the same request again, the server answers with the
 statement it already ran, so a retried `INSERT` doesn't insert twice. Reads and deletes are
 retried after transport errors and `429`/`502`/`503`/`504`; commit and rollback never are.
+An upload sent again is answered from the first one without its body being read, and the server
+then reads and drops the rest of that body before closing (lingering close), so the answer reaches
+the client instead of a reset connection.
 
 ## Sessions that disappear
 
@@ -186,7 +189,11 @@ session. Its requests then get `401 session_ended` with a
 ## Errors
 
 Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem documents with a stable
-`code`, a human `detail`, and usually a SQLSTATE:
+`code`, a human `detail`, and usually a SQLSTATE. A statement that has already failed when the
+server answers its submission gets the error response itself (`500 execution_error`, ...), never a
+success status with a `failed` statement document; a `failed` document comes only from polling a
+statement that was still running, or from a replay of an idempotent request. Clients treat a
+`failed` or `cancelled` document as the statement's error whatever the status code.
 
 ```console test
 $ curl -s localhost:31337/warp/v1/sessions -H 'Authorization: Bearer not-a-token' -d '{}' | jq -c '{status, code}'

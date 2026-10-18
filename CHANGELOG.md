@@ -54,6 +54,10 @@ All notable changes to the Hardcharger documentation are recorded here. The form
   workspace), and the examples get setup-go's Go, Node and Java on their PATH (they had the runner
   image's older Go, which can't build the driver's module).
 - `scripts/verify-in-docker.sh` works from a git worktree.
+- release: a run waits for the one before it instead of cancelling it (a deploy is never cut
+  off), and docs.yml's concurrency group no longer equals release's when release calls it (a
+  called workflow sharing its caller's group deadlocks). The README says the preview appears
+  after the first successful release run.
 - 156 runnable examples.
 
 ## [0.1.0] - 2026-10-17

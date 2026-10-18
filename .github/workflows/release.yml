@@ -12,9 +12,10 @@ on:
 permissions:
   contents: read
 
+# A deploy is never cut off halfway: a second run waits for the first.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  cancel-in-progress: false
 
 jobs:
   tests:

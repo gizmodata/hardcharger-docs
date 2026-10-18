@@ -23,7 +23,8 @@ These docs are internal to GizmoData until Hardcharger launches. Their future ho
 
 - **Preview:** <https://curly-adventure-gke7ezg.pages.github.io/> (GitHub Pages with private
   visibility: only members of the gizmodata organization can open it). It is deployed by a
-  release tag (`vX.Y.Z`) or by running **release** by hand, after every check passes.
+  release tag (`vX.Y.Z`) or by running **release** by hand on `main`, after every check passes.
+  **The preview appears after the first successful release run;** until then the link answers 404.
 - **Or locally:** download the `site` artifact of any **docs** run, or build it yourself:
 
   ```bash

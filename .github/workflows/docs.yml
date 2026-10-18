@@ -38,8 +38,10 @@ permissions:
   contents: read
   packages: read
 
+# "docs-" keeps this group apart from release.yml's when release calls this workflow: there
+# github.workflow is the caller's name, and a called workflow with its caller's group deadlocks.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: docs-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 env:

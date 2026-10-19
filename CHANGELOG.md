@@ -12,6 +12,11 @@ All notable changes to the Hardcharger documentation are recorded here. The form
   replaces the title text), the favicon is the bull head (SVG, with an ICO and an Apple touch
   icon), and the social card is the brand kit's 1200x630 share image. `scripts/brand_images.mjs`,
   which drew the old favicon and card, is gone. The GizmoData™ logo stays in the footer.
+- The hero banners (the home page, Python and Go, JDBC, JavaScript, the CLI, and the README's)
+  show the full charging bull in place of GizmoData's hexagon mark, with the same text and
+  layout: the brand kit's mascot, cropped, 480 px wide, as WebP
+  (`src/assets/brand/hardcharger-mascot.webp`), which `scripts/banner.py` now draws too. The
+  Warp SQL banners keep GizmoData's mark.
 
 ### Added
 

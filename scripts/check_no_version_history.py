@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Fail if the hand-written docs talk about version history.
 
+TEMPORARY: until Hardcharger 2.0.0 (its first public release), the docs describe the product as it
+is. Retire this check at 2.0.0 by deleting this script and the "No version history" step in
+.github/workflows/docs.yml; "New in <version>" notes are welcome after that.
+
 Hardcharger's docs describe the product as it is. What changed in which release belongs in the
 release notes (the generated reference/release-notes.md, which this check skips, as it does the
 other generated reference pages). Install commands and pins (`HARDCHARGER_VERSION=0.3.0`,
@@ -40,7 +44,7 @@ def main() -> int:
             if any(p.search(line) for p in PATTERNS):
                 bad.append(f"{path.relative_to(content.parent.parent) if content.is_relative_to(ROOT) else path}:{number}: {line.strip()[:140]}")
     if bad:
-        print("Version-history phrasing in the docs (describe the current behavior; history belongs in the release notes):")
+        print("Version-history phrasing in the docs. Until Hardcharger 2.0.0, docs describe the product as it is: describe the current behavior; history belongs in the release notes.")
         print("\n".join(bad))
         return 1
     print("no version-history phrasing")

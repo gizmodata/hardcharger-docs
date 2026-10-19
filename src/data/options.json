@@ -61,6 +61,16 @@
       "description": "most partitions a result is split into for a client that reads them at once (1: never split)"
     },
     {
+      "name": "web_ui",
+      "group": "Listener",
+      "flag": "--web-ui",
+      "env": "HARDCHARGER_WEB_UI",
+      "yaml_key": "web_ui",
+      "type": "boolean",
+      "default": "false",
+      "description": "serve the web UI at /ui on this port (a build that embeds it)"
+    },
+    {
       "name": "tls_cert",
       "group": "TLS",
       "flag": "--tls-cert",

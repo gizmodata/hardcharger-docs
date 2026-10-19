@@ -3,7 +3,8 @@ name: docs
 # Every check, on every push and pull request; also the gate in front of a release
 # (release.yml calls it on the tagged commit):
 #   - build: Astro builds the site; starlight-links-validator fails on any broken internal
-#     link or anchor; Pagefind indexes it.
+#     link or anchor; Pagefind indexes it. Also fails on "New in <version>" / "since <version>"
+#     phrasing outside the release notes (scripts/check_no_version_history.py).
 #   - links: lychee checks the external links in the built site.
 #   - browsers: Chromium and WebKit, light and dark, desktop and phone: no console errors and
 #     no page that scrolls sideways on a phone.
@@ -61,6 +62,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: No version history in the hand-written docs
+        run: python3 scripts/check_no_version_history.py
       - name: Build (fails on broken internal links)
         run: npm run build
       - uses: actions/upload-artifact@v7

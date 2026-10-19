@@ -127,12 +127,10 @@ Scripts: `bench/remote/` (provisioning, server start, client harness, summarizer
   (RTT 46 ms), with Ubuntu's default TCP buffers, as a client usually has.
 - **TLS on both servers**, one self-signed P-256 certificate, TLS 1.3. `threads=32`,
   `memory_limit=40GB`, the same database file in `/dev/shm`.
-- **Hardcharger:** the `hardcharger-linux-arm64` CI artifact after the transfer work (now on
-  `main`), default settings (122,880-row batches, `max_result_partitions` 32). Client:
+- **Hardcharger:** the `hardcharger-linux-arm64` CI artifact from `main`, default settings (122,880-row batches, `max_result_partitions` 32). Client:
   `adbc-driver-warpsql`. "n partitions" rows set `adbc.warp.statement.result_partitions` = n and
   `result_order` = `any` or `preserve` ("in order"). **GizmoSQL** 1.42.0 (DuckDB 1.5.6) through
-  `adbc-driver-gizmosql` 2.0.15. "Hardcharger 0.2.0" is the release before the transfer work,
-  same method.
+  `adbc-driver-gizmosql` 2.0.15.
 - **Fetch:** `SELECT * FROM <table>`, drained as Arrow batches. **Ingest:** `adbc_ingest(mode="create")`
   of lineitem from client memory. Every fetch is checked in full (row count and three column sums
   against the server's), and every ingest afterwards.
@@ -141,13 +139,13 @@ Scripts: `bench/remote/` (provisioning, server start, client harness, summarizer
 
 ### Headline (LAN, TLS)
 
-| Workload | GizmoSQL 1.42.0 | Hardcharger 0.2.0 | Hardcharger now, 1 stream | Hardcharger now, 32 partitions |
-|---|---:|---:|---:|---:|
-| Fetch SF1 lineitem | 1.738 s | 2.136 s | 0.900 s | **0.148 s** |
-| Fetch SF10 lineitem | 15.217 s | 21.170 s | 8.760 s | **0.971 s** |
-| Fetch narrow (100M rows) | 5.431 s | 10.264 s | 3.368 s | **0.452 s** |
-| Ingest SF1 | 1.605 s | 10.200 s | **1.299 s** | n/a |
-| Ingest SF10 | 9.427 s | 102.469 s | **9.342 s** | n/a |
+| Workload | GizmoSQL 1.42.0 | Hardcharger, 1 stream | Hardcharger, 32 partitions |
+|---|---:|---:|---:|
+| Fetch SF1 lineitem | 1.738 s | 0.900 s | **0.148 s** |
+| Fetch SF10 lineitem | 15.217 s | 8.760 s | **0.971 s** |
+| Fetch narrow (100M rows) | 5.431 s | 3.368 s | **0.452 s** |
+| Ingest SF1 | 1.605 s | **1.299 s** | n/a |
+| Ingest SF10 | 9.427 s | **9.342 s** | n/a |
 
 ### Every run
 
@@ -259,16 +257,16 @@ TLS unless marked; medians in seconds.
 
 ### Reading the numbers
 
-- **One TLS stream now runs at the network's per-flow limit, like plaintext.** SF10 lineitem
+- **One TLS stream runs at the network's per-flow limit, like plaintext.** SF10 lineitem
   over TLS took 8.760 s (1.18 GB/s of Arrow, 9.5 Gbit/s on the wire), against 8.747 s over
-  plaintext and 21.170 s before the transfer work.
+  plaintext.
 - **Partitions go past one flow.** With 32 partitions SF10 took 0.971 s (10.7 GB/s of Arrow,
   86 Gbit/s on the wire). Order costs nothing on the LAN: interleaved partitions were as fast as
   any-order ones.
 - **8 partitions beat 16, and 32 beat both** (SF10: 1.43, 1.59 and 0.97 s). The server was never
   the limit; the client's reading was. Why 16 did worse than 8 is not understood yet.
-- **Ingest went from 10× slower than GizmoSQL to as fast or faster.** SF1: 1.30 s (GizmoSQL 1.61 s,
-  before 10.20 s); SF10: 9.34 s (GizmoSQL 9.43 s, before 102.5 s). Plaintext ingest is no longer
+- **Ingest is as fast as GizmoSQL's or faster.** SF1: 1.30 s (GizmoSQL 1.61 s);
+  SF10: 9.34 s (GizmoSQL 9.43 s). Plaintext ingest is no longer
   slower than TLS.
 - **zstd is for slow links.** On the LAN, zstd fetch is slower than none (SF10: 13.5 s against
   8.8 s: the client decompresses on 1.5 cores), and zstd ingest much slower (27.7 s: the Go driver

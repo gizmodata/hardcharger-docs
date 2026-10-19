@@ -6,6 +6,10 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ## [Unreleased]
 
+### Changed
+
+- No version history in the docs: "New in" notes, "from 0.3.0" and "0.2.0 has" asides are gone, the Versions page says which version the docs describe and how versions work, and CI fails on such phrasing (`scripts/check_no_version_history.py`; the release notes are exempt).
+
 ### Added
 
 - Hardcharger 0.3.0 (main 5983a6a, warp-sql a8d762a): the reference is regenerated from the

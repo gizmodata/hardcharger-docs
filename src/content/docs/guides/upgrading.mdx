@@ -6,7 +6,7 @@ description: "Upgrade Hardcharger safely - read the release notes, switch versio
 import { Aside, Steps } from '@astrojs/starlight/components';
 
 Hardcharger follows [semantic versioning](https://semver.org). Before 1.0, a minor version
-(`0.2` to `0.3`) may change options or behavior; the [release notes](/reference/release-notes/)
+(`0.3` to `0.4`) may change options or behavior; the [release notes](/reference/release-notes/)
 say what, under **Changed**. Patch versions only fix things.
 
 <Steps>
@@ -41,8 +41,8 @@ say what, under **Changed**. Patch versions only fix things.
 The installer keeps every version you installed, so switching back doesn't download anything:
 
 ```bash
-curl https://install.hardcharger.gizmodata.com | HARDCHARGER_VERSION=0.2.0 sh   # back to 0.2.0
-curl https://install.hardcharger.gizmodata.com | HARDCHARGER_VERSION=0.3.0 sh   # and forward again
+curl https://install.hardcharger.gizmodata.com | HARDCHARGER_VERSION=<previous version> sh   # back
+curl https://install.hardcharger.gizmodata.com | HARDCHARGER_VERSION=<newer version> sh      # and forward again
 ```
 
 `--list` shows what is installed, the current version starred:

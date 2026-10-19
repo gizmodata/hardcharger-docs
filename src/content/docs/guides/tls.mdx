@@ -211,10 +211,6 @@ exit status 1
 
 ## Signing in with the certificate
 
-<Aside type="note" title="New in 0.3.0">
-Certificate sign-in arrives with 0.3.0. 0.2.0 uses client certificates only to admit connections.
-</Aside>
-
 With `--mtls-certificate-sign-in`, a client signs in **as** its certificate's identity, with no
 password: Warp SQL's `client_certificate` grant, `--auth-type mtls` in the CLI. The certificate
 proves who the user is; grants decide what they may do. It is off by default: with

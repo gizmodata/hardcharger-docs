@@ -6,6 +6,22 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ## [Unreleased]
 
+### Changed
+
+- Browser sign-in is part of Warp SQL now (`oauth_browser`, on the server's own port): the SSO
+  guide describes the new flow (create a flow, sign in in the browser, collect the token once
+  with the poll secret; PKCE, state and nonce with the provider), says plainly that operators
+  must re-register the redirect URI as `<oauth_base_url>/warp/v1/auth/oauth/callback`, and drops
+  the separate port (31339), `oauth_port`, `oauth_disable_tls`, the `/oauth/...` routes and the
+  CLI's `--oauth-port`/`--oauth-base-url` (`HARDCHARGER_OAUTH_PORT`, `HARDCHARGER_OAUTH_BASE_URL`).
+  New options `oauth_provider_name` and `oauth_max_flows`; `oauth_base_url` is the server's public
+  URL. The tested example checks discovery (`auth.oauth_browser`) and a new flow's authorize URL.
+  The web UI page shows its "Sign in with ..." button, the JDBC page `authType=oauth_browser`
+  (alias `external`), the error reference `flow_not_found`, `invalid_return_to` and a failed
+  sign-in's codes, and the migration page the removed 1.x options. The configuration reference's
+  browser sign-in group, the CLI help and the protocol page's §3.1, §4.3, §9.7 and §11 are
+  regenerated from the new server and spec.
+
 ### Added
 
 - Hardcharger 0.3.0 (main 5983a6a, warp-sql a8d762a): the reference is regenerated from the

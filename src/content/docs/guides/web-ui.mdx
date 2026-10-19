@@ -89,6 +89,13 @@ to `localStorage` or a cookie. When the token expires, or an administrator ends 
 
 ![The sign-in page in its dark theme](../../../assets/web-ui/sign-in-dark.png)
 
+With [browser sign-in](/guides/sso/#browser-sign-in) configured (`oauth_client_id`), the page
+also shows **Sign in with *provider*** (the server's `oauth_provider_name`, or "single sign-on").
+It sends the tab to your identity provider, which sends it back to the UI; the page then collects
+its access token with a secret only that tab holds, so the token never appears in a URL. Register
+`<oauth_base_url>/warp/v1/auth/oauth/callback` as the redirect URI with the provider: the UI uses
+the same one as every other client.
+
 ## With TLS
 
 With [`--tls-cert` and `--tls-key`](/guides/tls/), the UI is served over HTTPS with the same

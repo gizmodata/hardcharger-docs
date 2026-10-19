@@ -28,6 +28,7 @@ Python's exception message, JDBC's `SQLException` (`getSQLState()`, `WarpProblem
 | `bad_request` | 400 | A malformed request | Fix the client |
 | `unknown_option`, `invalid_option_value` | 400 | A session option the server doesn't have, or a bad value | Check the option's name and value |
 | `sql_error` | 400 | DuckDB rejected the SQL: syntax, binding, a missing object (SQLSTATE `42P01`), an existing one (`42P07`), ... | Fix the SQL; `detail` says what |
+| `invalid_return_to` | 400 | A [browser sign-in](/guides/sso/#browser-sign-in)'s `return_to` that isn't a path on the server itself (an absolute URL, `//host`, a backslash, a fragment, ...) | Send a path such as `/ui/` |
 | `invalid_credentials` | 401 | Sign-in failed. It never says which part was wrong. | Check the user, password or token; an identity-provider token may be expired, for the wrong audience, or for a user [not authorized](/guides/sso/#limit-who-may-sign-in) |
 | `invalid_token` | 401 | A missing, malformed, expired or foreign access token (another replica's, without `allow_cross_instance_tokens`); also a token whose user's password changed, or who was disabled or dropped, or a revoked scoped token. A token the server issued itself carries a `reason` ([below](#invalid_token-reasons)) | Sign in again; after `credentials_changed` or `principal_dropped`, the old password no longer works either |
 | `session_ended` | 401 | The server ended the session: an administrator killed it, or access control ended it; `reason` says which ([below](#session_ended-reasons)) | Sign in again, then open a new session |
@@ -41,6 +42,7 @@ Python's exception message, JDBC's `SQLException` (`getSQLState()`, `WarpProblem
 | `read_only` | 403 | The server or session is read-only | Write elsewhere |
 | `session_not_found`, `statement_not_found`, `prepared_not_found`, `ingest_not_found` | 404 | No such handle, or not yours: evicted after `session_idle_timeout`, closed, server restarted | Open a new session (drivers do, and tell you) |
 | `not_found` | 404 | No such endpoint, partition, or a forgotten statement | Check the URL |
+| `flow_not_found` | 404 | No such browser sign-in, a wrong poll secret, or one already collected or expired (sign-ins last 10 minutes) | Start the sign-in again |
 | `method_not_allowed` | 405 | The endpoint exists, but not for this method | |
 | `result_not_ready` | 409 | The statement has no result schema yet | Retry |
 | `result_not_resumable` | 409 | Re-reading a result that wasn't retained | Submit with `Warp-Retain-Result: true` |
@@ -53,17 +55,28 @@ Python's exception message, JDBC's `SQLException` (`getSQLState()`, `WarpProblem
 | `idempotency_key_reused` | 422 | The same `Idempotency-Key` with a different request | Use a new key for a new request |
 | `headers_too_large` | 431 | Request headers over [`max_header_bytes`](/reference/configuration/#max_header_bytes) | Raise the limit (large identity tokens) |
 | `too_many_sessions` | 429 | Past [`max_sessions`](/reference/configuration/#max_sessions) | Close sessions, or retry later |
-| `rate_limited` | 429 | The [statement queue](/guides/statement-control/#the-statement-queue) is full, or a statement waited longer than `max_queue_wait` | Retry after `Retry-After` |
+| `rate_limited` | 429 | The [statement queue](/guides/statement-control/#the-statement-queue) is full, a statement waited longer than `max_queue_wait`, or more browser sign-ins are in progress than [`oauth_max_flows`](/reference/configuration/#oauth_max_flows) | Retry after `Retry-After` |
 | `result_quota_exceeded` | 429 | Too many retained results | Read and delete results |
 | `statement_timeout` | — | Inside a statement document: the statement ran past its timeout | Raise the timeout, or speed the query up |
 | `statement_cancelled` | — | Inside a statement document: cancelled (`cancel_reason`: `client`, `killed`, `privilege_revoked`, `server_shutdown`, ...) | |
 | `execution_error` | 500 | The statement failed while running | `detail` says why |
 | `server_draining` | 503 | The server is shutting down | Retry after `Retry-After`, elsewhere |
-| `not_implemented` | 501 | The server doesn't implement this operation | |
+| `not_implemented` | 501 | The server doesn't implement this operation, such as browser sign-in without `oauth_client_id` | |
 
 A failed streamed result ends **without** Arrow's end-of-stream marker: the HTTP status was
 already `200`, so the cut stream is the error. Clients must treat it as failed and fetch the
 statement document for the reason. The drivers do.
+
+## Browser sign-in failures
+
+A [browser sign-in](/guides/sso/#browser-sign-in) that fails is reported once, by the poll that
+would have received the token, as `{"state": "failed", "error": {"code", "detail"}}`:
+
+| `error.code` | When |
+|---|---|
+| `access_denied` | You, or the identity provider, refused the sign-in |
+| `invalid_credentials` | The provider's answer didn't verify, or names someone who may not sign in (`token_authorized_emails`; under access control, no store user) |
+| `identity_provider_error` | The server couldn't finish with the provider (unreachable, the code was refused: often a redirect URI the provider doesn't have registered) |
 
 ## `invalid_token` reasons
 

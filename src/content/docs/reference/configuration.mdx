@@ -479,7 +479,7 @@ JWKS of the identity provider whose ID tokens sign users in.
 
 ### `oauth_client_id`
 
-OAuth client id; set, the browser sign-in server runs.
+OAuth client id; set, browser sign-in is offered (Warp SQL oauth_browser)
 
 | | |
 |---|---|
@@ -491,7 +491,7 @@ OAuth client id; set, the browser sign-in server runs.
 
 ### `oauth_client_secret`
 
-OAuth client secret.
+OAuth client secret (prefer the environment variable)
 
 | | |
 |---|---|
@@ -513,21 +513,9 @@ OAuth scopes requested.
 | Type | string |
 | Default | `openid profile email` |
 
-### `oauth_port`
-
-Port of the browser sign-in server.
-
-| | |
-|---|---|
-| Flag | `--oauth-port <n>` |
-| Environment | `HARDCHARGER_OAUTH_PORT` |
-| YAML | `oauth_port: …` |
-| Type | integer |
-| Default | `31339` |
-
 ### `oauth_base_url`
 
-Public URL of the browser sign-in server (default http(s)://localhost:&lt;oauth_port&gt;)
+The server's public URL, for the redirect URI (default http(s)://localhost:&lt;port&gt;)
 
 | | |
 |---|---|
@@ -539,7 +527,7 @@ Public URL of the browser sign-in server (default http(s)://localhost:&lt;oauth_
 
 ### `oauth_redirect_uri`
 
-Redirect URI registered with the provider (default &lt;base url&gt;/oauth/callback)
+Redirect URI registered with the provider (default &lt;base url&gt;/warp/v1/auth/oauth/callback)
 
 | | |
 |---|---|
@@ -561,17 +549,29 @@ Prefix of the OAuth state, for a shared callback proxy.
 | Type | string |
 | Default | `(empty)` |
 
-### `oauth_disable_tls`
+### `oauth_provider_name`
 
-Serve browser sign-in over plain HTTP even with TLS on (behind a TLS proxy)
+The identity provider's name for people ("Sign in with &lt;name&gt;")
 
 | | |
 |---|---|
-| Flag | `--oauth-disable-tls` |
-| Environment | `HARDCHARGER_OAUTH_DISABLE_TLS` |
-| YAML | `oauth_disable_tls: …` |
-| Type | boolean |
-| Default | `false` |
+| Flag | `--oauth-provider-name <value>` |
+| Environment | `HARDCHARGER_OAUTH_PROVIDER_NAME` |
+| YAML | `oauth_provider_name: …` |
+| Type | string |
+| Default | `(empty)` |
+
+### `oauth_max_flows`
+
+Browser sign-ins in progress at once.
+
+| | |
+|---|---|
+| Flag | `--oauth-max-flows <n>` |
+| Environment | `HARDCHARGER_OAUTH_MAX_FLOWS` |
+| YAML | `oauth_max_flows: …` |
+| Type | integer |
+| Default | `10000` |
 
 ## Sessions
 

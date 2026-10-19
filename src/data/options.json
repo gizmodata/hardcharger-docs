@@ -378,7 +378,7 @@
       "yaml_key": "oauth_client_id",
       "type": "string",
       "default": "",
-      "description": "OAuth client id; set, the browser sign-in server runs"
+      "description": "OAuth client id; set, browser sign-in is offered (Warp SQL oauth_browser)"
     },
     {
       "name": "oauth_client_secret",
@@ -388,7 +388,7 @@
       "yaml_key": "oauth_client_secret",
       "type": "string",
       "default": "",
-      "description": "OAuth client secret"
+      "description": "OAuth client secret (prefer the environment variable)"
     },
     {
       "name": "oauth_scopes",
@@ -401,16 +401,6 @@
       "description": "OAuth scopes requested"
     },
     {
-      "name": "oauth_port",
-      "group": "Browser sign-in",
-      "flag": "--oauth-port",
-      "env": "HARDCHARGER_OAUTH_PORT",
-      "yaml_key": "oauth_port",
-      "type": "integer",
-      "default": "31339",
-      "description": "port of the browser sign-in server"
-    },
-    {
       "name": "oauth_base_url",
       "group": "Browser sign-in",
       "flag": "--oauth-base-url",
@@ -418,7 +408,7 @@
       "yaml_key": "oauth_base_url",
       "type": "string",
       "default": "",
-      "description": "public URL of the browser sign-in server (default http(s)://localhost:<oauth_port>)"
+      "description": "the server's public URL, for the redirect URI (default http(s)://localhost:<port>)"
     },
     {
       "name": "oauth_redirect_uri",
@@ -428,7 +418,7 @@
       "yaml_key": "oauth_redirect_uri",
       "type": "string",
       "default": "",
-      "description": "redirect URI registered with the provider (default <base url>/oauth/callback)"
+      "description": "redirect URI registered with the provider (default <base url>/warp/v1/auth/oauth/callback)"
     },
     {
       "name": "oauth_instance_id",
@@ -441,14 +431,24 @@
       "description": "prefix of the OAuth state, for a shared callback proxy"
     },
     {
-      "name": "oauth_disable_tls",
+      "name": "oauth_provider_name",
       "group": "Browser sign-in",
-      "flag": "--oauth-disable-tls",
-      "env": "HARDCHARGER_OAUTH_DISABLE_TLS",
-      "yaml_key": "oauth_disable_tls",
-      "type": "boolean",
-      "default": "false",
-      "description": "serve browser sign-in over plain HTTP even with TLS on (behind a TLS proxy)"
+      "flag": "--oauth-provider-name",
+      "env": "HARDCHARGER_OAUTH_PROVIDER_NAME",
+      "yaml_key": "oauth_provider_name",
+      "type": "string",
+      "default": "",
+      "description": "the identity provider's name for people (\"Sign in with <name>\")"
+    },
+    {
+      "name": "oauth_max_flows",
+      "group": "Browser sign-in",
+      "flag": "--oauth-max-flows",
+      "env": "HARDCHARGER_OAUTH_MAX_FLOWS",
+      "yaml_key": "oauth_max_flows",
+      "type": "integer",
+      "default": "10000",
+      "description": "browser sign-ins in progress at once"
     },
     {
       "name": "max_sessions",

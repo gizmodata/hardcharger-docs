@@ -109,7 +109,7 @@ All notable changes to the Hardcharger documentation are recorded here. The form
   off), and docs.yml's concurrency group no longer equals release's when release calls it (a
   called workflow sharing its caller's group deadlocks). The README says the preview appears
   after the first successful release run.
-- 156 runnable examples.
+- 184 runnable examples (all passing locally against `ghcr.io/gizmodata/hardcharger:main` at sha-5983a6a).
 
 ## [0.1.0] - 2026-10-17
 

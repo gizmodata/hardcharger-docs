@@ -50,6 +50,39 @@ env,status
 docs,running
 ```
 
+### Statement and execution ids
+
+Statements and executions are recorded under the Warp SQL ids clients hold: the
+`Warp-Statement-Id` of a response, the statement an error response names, the `statement_id`
+of [`hardcharger_active_connections()`](/guides/statement-control/), and the `prepared_id` of
+a prepared statement. A session's `session_id` is its `s_...` id the same way.
+
+| Statement | `sql_statements.statement_id` | `sql_executions.execution_id` |
+|---|---|---|
+| submitted (`POST .../statements`) | its `q_...` | the same `q_...` |
+| several statements in one request (a script) | its `q_...` | `q_....1`, `q_....2`, ... by place in the script |
+| prepared (`POST .../prepared`) | its `p_...` | each execute request's own `q_...` |
+
+In a script, a `SET hardcharger.*` or `KILL SESSION` takes its number but has no execution
+row. Statements the server runs for itself (init SQL, access control's own queries) are not
+recorded. The query log uses the same ids: its lines carry `statement_id` (`q_...`, or
+`q_....N`) and, for prepared statements, `prepared_id`. Here a statement looks itself up,
+from the id `hardcharger_active_connections()` shows for it:
+
+```console test profile=instrumentation
+$ export HARDCHARGER_PASSWORD='change-me'
+$ q=$(hardcharger --host localhost --tls=false --username hardcharger --quiet --csv --command \
+    "SELECT statement_id FROM hardcharger_active_connections() WHERE is_current" | tail -1)
+$ hardcharger --host localhost --tls=false --username hardcharger --csv --command \
+    "SELECT execution_id = '$q' AS same_id, statement_id = '$q' AS one_statement, status FROM _hardcharger_instr.execution_details WHERE execution_id = '$q'"
+same_id,one_statement,status
+true,true,success
+```
+
+An instrumentation table whose statement or execution ids are UUIDs, from an earlier build, is
+refused at startup with what to do: drop the instrumentation tables, rename them to keep their
+rows, or use a new instrumentation database.
+
 ### Query profiles
 
 With `capture_query_profile` set to `standard` or `detailed` (a startup option, or

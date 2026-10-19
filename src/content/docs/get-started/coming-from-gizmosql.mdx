@@ -212,6 +212,7 @@ The dot commands and output modes are 1.x's. What behaves differently, and why:
 | `_gizmosql_logs` | `_hardcharger_logs` |
 | `gizmosql_instrumentation.db`, `gizmosql_logs.db` (default files) | `hardcharger_instrumentation.db`, `hardcharger_logs.db` |
 | `instances.gizmosql_version`, `instances.gizmosql_edition` | `instances.hardcharger_version` (no edition column) |
+| `sql_statements.statement_id`, `sql_executions.execution_id` (UUIDs) | the Warp SQL ids clients hold: a statement's `q_...`, a prepared statement's `p_...` ([Instrumentation](/guides/instrumentation-and-audit/#statement-and-execution-ids)) |
 
 Hardcharger creates its own instrumentation and log tables; it does not migrate tables a
 GizmoSQL 1.x server created.

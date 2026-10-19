@@ -8,6 +8,13 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Added
 
+- Instrumentation guide: **Statement and execution ids**, how `sql_statements` and
+  `sql_executions` key rows by the Warp SQL ids clients hold (`q_...` for a statement and its
+  execution, `q_....N` for the statements of a one-request script, `p_...` for a prepared
+  statement with an execution per request), the same ids in the query log, and what startup
+  says about a table with UUID ids; with a tested example (a statement found by the id
+  `hardcharger_active_connections()` shows). Coming from GizmoSQL: the UUID columns' row
+  (hardcharger `feat/instrumentation-warp-ids`).
 - Hardcharger 0.3.0 (main 5983a6a, warp-sql a8d762a): the reference is regenerated from the
   `:main` image (`sha-5983a6a`), and the release notes show the `[0.3.0]` section. New:
   - Error codes: `invalid_token` reasons (`token_expired`, `token_revoked`, `credentials_changed`,

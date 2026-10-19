@@ -20,8 +20,8 @@ prints one. After launch, no token is needed.
 <Tabs syncKey="install">
 <TabItem label="Installer">
 
-macOS on Apple silicon and Linux (x86-64 or arm64, glibc 2.38 or newer for 0.2.0; from the release after
-0.2.0, glibc 2.28 or newer: RHEL, Rocky and Alma Linux 8, Debian 10, Ubuntu 20.04, Amazon Linux 2023):
+macOS on Apple silicon and Linux (x86-64 or arm64, glibc 2.28 or newer: RHEL, Rocky and Alma Linux 8,
+Debian 10, Ubuntu 20.04, Amazon Linux 2023; 0.2.0 needs glibc 2.38):
 
 ```console test server=none release
 $ curl https://install.hardcharger.gizmodata.com | HARDCHARGER_INSTALL_TOKEN="$(gh auth token)" sh
@@ -32,7 +32,7 @@ Hardcharger …
 
 The installer puts every version under `~/.hardcharger/versions/` and links the current one
 into `~/.hardcharger/bin`; add that directory to your `PATH`. It checks each download against
-the release's SHA-256 before switching. `HARDCHARGER_VERSION=0.2.0` installs a given version,
+the release's SHA-256 before switching. `HARDCHARGER_VERSION=0.3.0` installs a given version,
 and `sh -s -- --list` lists what you have.
 
 Start the server:
@@ -58,7 +58,7 @@ sign in first: `gh auth token | docker login ghcr.io -u <your GitHub user> --pas
 </TabItem>
 <TabItem label="Binaries">
 
-Linux (x86-64, arm64) and macOS (Apple silicon) tarballs are attached to every
+Linux (x86-64, arm64) and macOS (Apple silicon) tarballs, and Windows zips and MSIs, are attached to every
 [release](https://github.com/gizmodata/hardcharger/releases/latest). Download the one for your
 platform (during the preview, `gh release download --repo gizmodata/hardcharger --pattern
 'hardcharger-<platform>.tar.gz'` does it with your GitHub sign-in), then unpack it:
@@ -75,6 +75,18 @@ mv "hardcharger-$PLATFORM" hardcharger
 
 ```bash test server=self background wait=http://127.0.0.1:31337/warp/v1/health
 HARDCHARGER_ADMIN_PASSWORD='change-me' ./hardcharger/bin/hardcharger-server --database my.duckdb
+```
+
+On Windows (x64 and arm64, from 0.3.0), unzip `hardcharger-windows-amd64.zip` or `-arm64.zip` in
+PowerShell, or run `Hardcharger-windows-amd64.msi` / `-arm64.msi`, which installs under Program
+Files and puts `hardcharger-server.exe` and the `hardcharger.exe` client on the `PATH`. The
+executables are single files that need no Visual C++ Redistributable. Ctrl+C or Ctrl+Break stops
+the server as `SIGINT` or `SIGTERM` does elsewhere.
+
+```powershell
+Expand-Archive hardcharger-windows-amd64.zip -DestinationPath .
+$env:HARDCHARGER_ADMIN_PASSWORD = 'change-me'
+.\hardcharger-windows-amd64\bin\hardcharger-server.exe --database my.duckdb
 ```
 
 </TabItem>

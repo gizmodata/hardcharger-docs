@@ -16,7 +16,7 @@ and CI fails when they drift.
 <SqlFunctions describe={{
   HARDCHARGER_USER: 'The user this session signed in as.',
   HARDCHARGER_ROLE: 'The session\'s role: <code>admin</code>, <code>user</code> or <code>readonly</code> (for store users under access control, their role in the server\'s sense).',
-  HARDCHARGER_VERSION: 'The server\'s version, such as <code>0.2.0</code> (as <code>--version</code> prints it).',
+  HARDCHARGER_VERSION: 'The server\'s version, such as <code>0.3.0</code> (as <code>--version</code> prints it).',
   HARDCHARGER_CURRENT_SESSION: 'This session\'s id (a UUID), as <code>KILL SESSION</code> and instrumentation name it.',
   HARDCHARGER_CURRENT_INSTANCE: 'This server process\'s id (a UUID), new at every start.',
   HARDCHARGER_CURRENT_CLUSTER: 'The <code>cluster_id</code> the replicas share, or NULL when unset.',
@@ -80,6 +80,17 @@ with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hard
 ```
 
 ```text output
+340282366920938463463374607431768211455
+```
+
+The [`hardcharger` CLI](/clients/cli/) decodes them for you: with the option on, it prints exact
+integers in every output mode.
+
+```console test
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv --quiet \
+    --command "SET SESSION arrow_lossless_conversion = true; SELECT 340282366920938463463374607431768211455::UHUGEINT AS biggest"
+OK
+biggest
 340282366920938463463374607431768211455
 ```
 

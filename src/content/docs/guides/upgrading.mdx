@@ -23,7 +23,7 @@ say what, under **Changed**. Patch versions only fix things.
 
    - Installer: `curl https://install.hardcharger.gizmodata.com | HARDCHARGER_VERSION=0.3.0 sh`
      installs the version next to the others and switches to it. Restart the server.
-   - Docker or Kubernetes: change the image tag. Pin versions (`:0.2.0`), not `:latest`, so
+   - Docker or Kubernetes: change the image tag. Pin versions (`:0.3.0`), not `:latest`, so
      that a restart never upgrades by surprise.
    - Python: `pip install --upgrade hardcharger` downloads the server version the package pins.
 
@@ -41,8 +41,8 @@ say what, under **Changed**. Patch versions only fix things.
 The installer keeps every version you installed, so switching back doesn't download anything:
 
 ```bash
-curl https://install.hardcharger.gizmodata.com | HARDCHARGER_VERSION=0.1.2 sh   # back to 0.1.2
-curl https://install.hardcharger.gizmodata.com | HARDCHARGER_VERSION=0.2.0 sh   # and forward again
+curl https://install.hardcharger.gizmodata.com | HARDCHARGER_VERSION=0.2.0 sh   # back to 0.2.0
+curl https://install.hardcharger.gizmodata.com | HARDCHARGER_VERSION=0.3.0 sh   # and forward again
 ```
 
 `--list` shows what is installed, the current version starred:

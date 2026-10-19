@@ -138,6 +138,12 @@ SHOW SCOPED TOKENS
 A token lasts an hour unless you say otherwise, and at most 30 days. The administrator must name
 the user; a user may mint tokens only for themselves.
 
+A dropped token is refused at once with `401 invalid_token` and the
+[`reason`](/reference/errors/#invalid_token-reasons) `token_revoked`, an expired one with
+`token_expired`. A session opened with a scoped token ends when the token expires: its next request
+gets `401 session_ended` (`token_expired`), so a job learns that it needs a new token rather than
+seeing each statement refused.
+
 ## Open Policy Agent
 
 To have an external policy decide too, set [`rbac_opa_url`](/reference/configuration/#rbac_opa_url)

@@ -8,7 +8,7 @@ import { Aside } from '@astrojs/starlight/components';
 ## The image
 
 `ghcr.io/gizmodata/hardcharger` (also `docker.io/gizmodata/hardcharger`) is built for
-`linux/amd64` and `linux/arm64`. Tags: each release's version (`0.2.0`) and `latest`.
+`linux/amd64` and `linux/arm64`. Tags: each release's version (`0.3.0`) and `latest`.
 
 | | |
 |---|---|
@@ -16,7 +16,7 @@ import { Aside } from '@astrojs/starlight/components';
 | User | `hardcharger` (uid 999), home and working directory `/var/lib/hardcharger` |
 | Ports | 31337 (Warp SQL), 31338 (`/health`, plaintext) |
 | Preset | `HARDCHARGER_HOST=0.0.0.0`, `HARDCHARGER_PORT=31337`, `HARDCHARGER_HEALTH_PORT=31338` |
-| Also inside | the `hardcharger` CLI, on `PATH` (images after 0.2.0) |
+| Also inside | the `hardcharger` CLI, on `PATH` (from 0.3.0) |
 | Required | `HARDCHARGER_ADMIN_PASSWORD` |
 
 ## Keep the data
@@ -38,7 +38,7 @@ $ curl -s localhost:31338/health
 {"status":"serving"}
 ```
 
-From the release after 0.2.0 the image also carries the `hardcharger` CLI, so
+From 0.3.0 the image also carries the `hardcharger` CLI, so
 `docker exec -it hardcharger hardcharger --tls=false --username hardcharger` opens a shell inside it
 (`--tls=false`: the server in the image serves plain HTTP unless given a certificate).
 
@@ -94,7 +94,7 @@ spec:
         fsGroup: 999
       containers:
         - name: hardcharger
-          image: ghcr.io/gizmodata/hardcharger:0.2.0
+          image: ghcr.io/gizmodata/hardcharger:0.3.0
           args: ["--database", "/var/lib/hardcharger/data/analytics.duckdb", "--enable-metrics"]
           env:
             - name: HARDCHARGER_ADMIN_PASSWORD

@@ -11,8 +11,7 @@ import banner from '../../../assets/banners/hardcharger-cli-banner.svg';
 
 `hardcharger` is Hardcharger's command-line client. Run it with no statement for an interactive
 shell, or give it SQL to run and print. It ships beside `hardcharger-server` (in the tarballs'
-`bin/` and in the image) from the release after 0.2.0; until then, build it from source with the
-server. The [CLI reference](/reference/cli/) lists every option and dot command.
+`bin/`, the Windows zips and the image) from 0.3.0 on; 0.2.0 has only the server. The [CLI reference](/reference/cli/) lists every option and dot command.
 
 ## Connect
 
@@ -130,6 +129,43 @@ Table with name missing_table does not exist
 ```
 
 Comments (`--` and `/* */`) anywhere in a script are fine, including after the last statement.
+
+When the server stops accepting the sign-in (the user's password changed, the user was dropped
+or disabled, a scoped token was revoked or expired), the client says why, from the refusal's
+[`reason`](/reference/errors/#invalid_token-reasons), and doesn't retry with the old credentials.
+Here an administrator changes `joe`'s password while joe's script runs:
+
+```console test profile=rbac
+$ export HARDCHARGER_PASSWORD='change-me'
+$ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "CREATE USER joe WITH PASSWORD 'old-secret'" > /dev/null
+$ { echo "SELECT 1 AS before;"; sleep 2
+    hardcharger --host localhost --tls=false --username hardcharger --quiet --command "ALTER USER joe WITH PASSWORD 'new-secret'" > /dev/null
+    sleep 2; echo "SELECT 2 AS after;"; } | HARDCHARGER_PASSWORD='old-secret' hardcharger --host localhost --tls=false --username joe --csv --quiet; echo "exit status $?"
+before
+1
+Error: The server no longer accepts this sign-in: the user's password or credentials changed (credentials_changed). Sign in again (.connect).
+exit status 1
+```
+
+A session an administrator ended with [`KILL SESSION`](/reference/sql/#kill-session) is different:
+the sign-in still stands, so the client opens a new session and says why. The statement that met
+the ended session fails, and the next ones run in the new session:
+
+```console test profile=rbac
+$ export HARDCHARGER_PASSWORD='change-me'
+$ { echo "SELECT 1 AS before;"; sleep 2
+    ID=$(hardcharger --host localhost --tls=false --username hardcharger --quiet --csv \
+      --command "SELECT session_id FROM hardcharger_sessions() WHERE username = 'joe' ORDER BY start_time DESC LIMIT 1" | tail -1)
+    hardcharger --host localhost --tls=false --username hardcharger --quiet --command "KILL SESSION '$ID'" > /dev/null
+    sleep 1; echo "SELECT 2 AS after;"; echo "SELECT 3 AS again;"; } | HARDCHARGER_PASSWORD='new-secret' hardcharger --host localhost --tls=false --username joe --csv --quiet; echo "exit status $?"
+before
+1
+Warning: the server ended this session: an administrator ended it (killed); a new session is open. Temporary tables and session settings are gone.
+Error: This session has been killed by an administrator (reason: killed). Sign in again and open a new session to re-authenticate.
+again
+3
+exit status 1
+```
 
 ## Output modes
 

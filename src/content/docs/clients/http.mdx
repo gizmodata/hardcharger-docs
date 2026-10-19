@@ -100,6 +100,28 @@ $ curl -s -o /dev/null -w '%{http_code}\n' -X DELETE $URL/prepared/$PREPARED -H 
 Executing with an Arrow body (`Content-Type: application/vnd.apache.arrow.stream`) runs the
 statement once per row: a batch of inserts in one request.
 
+Preparing never runs the statement, however expensive the query or whatever it writes. The answer
+describes it: `parameter_schema`, and for a statement that returns rows `result_kind: "rows"`
+with `result_schema` (base64 Arrow schemas). An `INSERT`, `UPDATE`, `DELETE` or `MERGE` with
+`RETURNING` describes its rows too, and nothing is written until it is executed:
+
+```console test
+$ . ./env.sh
+$ curl -s $URL/statements -H "$AUTH" -H "$H" -d '{"sql": "CREATE TABLE events (id INTEGER, kind VARCHAR)"}' | jq -r .state
+succeeded
+$ curl -s $URL/prepared -H "$AUTH" -H "$H" \
+    -d '{"sql": "INSERT INTO events VALUES (?, ?) RETURNING id, upper(kind) AS kind"}' > insert.json
+$ jq -r .result_kind insert.json
+rows
+$ python3 -c "import base64, json, pyarrow.ipc as ipc; print(ipc.open_stream(base64.b64decode(json.load(open('insert.json'))['result_schema'])).schema)"
+id: int32
+kind: string
+$ curl -s $URL/statements -H "$AUTH" -H "$H" -H 'Accept: application/vnd.apache.arrow.stream' \
+    -d '{"sql": "SELECT count(*) AS n FROM events"}' -o n.arrows
+$ python3 -c "import pyarrow.ipc as ipc; print(ipc.open_stream('n.arrows').read_all()['n'][0])"
+0
+```
+
 ## Metadata
 
 The metadata endpoints answer with Arrow streams in Arrow Flight SQL's result schemas, so driver

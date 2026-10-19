@@ -8,12 +8,29 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Added
 
-- Hardcharger integration/batch-1 (eb289605; lands with it): `CREATE VIEW` needs `SELECT` on what
+- Hardcharger 0.3.0 (main 5983a6a, warp-sql a8d762a): the reference is regenerated from the
+  `:main` image (`sha-5983a6a`), and the release notes show the `[0.3.0]` section. New:
+  - Error codes: `invalid_token` reasons (`token_expired`, `token_revoked`, `credentials_changed`,
+    `principal_dropped`; none for a token the server can't verify as its own), `token_revoked` among
+    the `session_ended` reasons, and a scoped token's session ending when the token expires, with
+    tested examples (a dropped scoped token, a forged signature, an expired scoped token).
+  - The CLI page: what the client prints when the server stops accepting its sign-in (tested with a
+    password changed mid-script) and when an administrator ends its session (tested with
+    `KILL SESSION`: a new session, the statement that met the kill fails).
+  - TLS guide: the CLI's messages for a revoked client certificate and for a server that requires
+    one (both tested).
+  - Plain HTTP: preparing never runs the statement, and a prepared `INSERT … RETURNING` describes its
+    rows (tested: the schema, and no row written).
+  - SQL reference: the CLI prints HUGEINT/UHUGEINT exactly with `SET SESSION
+    arrow_lossless_conversion = true` (tested).
+  - Quickstart: the Windows zips and MSIs (the PowerShell lines hardcharger's Windows CI runs).
+  - Versions: the docs describe 0.3.0, and the page lists what 0.3.0 has and 0.2.0 doesn't; "the
+    release after 0.2.0" is 0.3.0 everywhere (CLI, TLS, Docker, Raspberry Pi, quickstart, upgrading).
+- Hardcharger integration/batch-1 (eb289605): `CREATE VIEW` needs `SELECT` on what
   the view reads (tested refusal), views made by a `catalog_access` token get no owner, a statement
   that has failed when the server answers is an error response (never `200` with a `failed`
   document), lingering close (a resent upload's answer arrives), and CORS with credentials for
   cross-origin certificate sign-in (`cors_origins` plus `--mtls-require-client-cert=false`, tested).
-  Reference regenerated from that build and its warp-sql (4c88fd0).
 - Hardcharger™ and GizmoData™ (pending trademarks; ™, never ®): the site title and header
   wordmark, the home page hero, banner and social card, the first prose mention on every page
   (`src/middleware.ts`; never in code, CLI output or headings), each page's `<title>` and
@@ -45,16 +62,16 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 - Web UI (`guides/web-ui`): the server's built-in browser UI at `/ui` (`--web-ui`,
   `HARDCHARGER_WEB_UI`, `web_ui: true`), how it signs in, and how it behaves with TLS, mutual
   TLS and certificate sign-in, its Content-Security-Policy, and access control. Linked from the
-  sidebar and the landing page, with screenshots; its 16 examples run against a server that
-  embeds the UI (Hardcharger's `feat/ui` until that merges).
+  sidebar and the landing page, with screenshots; its 16 examples run against the `:main` image,
+  which embeds the UI.
 
 ### Changed
 
 - The CLI uses TLS by default (Hardcharger feat/cli-tls-default): every CLI example against a
   plain-HTTP server says `--tls=false`; the CLI page shows the hint a TLS connection to a
   plain-HTTP server prints, and its option table, the GizmoSQL mapping and the Docker guide say
-  what changed. Merge after that branch reaches Hardcharger's main (the examples run against
-  `:main`, whose client doesn't take `--tls=false` yet).
+  what changed. The DuckDB-store and `CREATE VIEW` examples, written before it, say `--tls=false`
+  too.
 - The CLI page's URI row follows the client's new URIs (Hardcharger fix/cli-uri-tls): the ADBC
   driver's `hardcharger://HOST[:PORT][/PREFIX][?tls=false]`, HTTPS unless `?tls=false`, with the
   user and the other settings as flags; `.connect URI [USER [PASSWORD]]`.

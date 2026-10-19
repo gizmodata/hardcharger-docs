@@ -52,7 +52,7 @@ With the store in `rbac.duckdb`, not even the administrator can read it in SQL, 
 on the same file stops at startup:
 
 ```console test profile=rbac_duckdb exit=1
-$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --username hardcharger \
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger \
     --command "SELECT count(*) FROM read_blob('rbac.duckdb')"
 Error: Permission denied: Hardcharger blocked access to 'rbac.duckdb' (the access-control store). It is one of the server's own files, which no SQL may open, read or write, whatever the role.
 ```
@@ -208,7 +208,7 @@ GRANT view_maker TO vic;
 ```
 
 ```console test profile=rbac exit=1
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE VIEW published.all_orders AS SELECT * FROM analytics.orders"
 Error: Permission Error: Hardcharger blocked this statement: user vic may create a view only over what it can SELECT itself, and the query of view my.published.all_orders reads more: user vic has no SELECT privilege on table my.analytics.orders. Access control on this server lets user vic do only what their roles are granted (see SHOW GRANTS)
 ```
@@ -285,8 +285,9 @@ DROP USER IF EXISTS ann;
 
 Dropping or disabling a user, changing their password, or revoking a role takes effect on every
 replica within about a second, including in sessions that are open: a revoke can stop a
-statement that is running. The user's tokens stop working at once (`401 invalid_token`), and once
-they sign in again, their old sessions answer `401 session_ended` with a
+statement that is running. The user's tokens stop working at once (`401 invalid_token`, with a
+[`reason`](/reference/errors/#invalid_token-reasons) that says why), and once they sign in again,
+their old sessions answer `401 session_ended` with a
 [`reason`](/reference/errors/#session_ended-reasons): `principal_dropped` (dropped or disabled) or
 `credentials_changed` (a new password, or anything else access control revoked).
 

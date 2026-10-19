@@ -199,17 +199,20 @@ on [certificate sign-in](#signing-in-with-the-certificate).
 
 </Steps>
 
-A client without a certificate doesn't get past the handshake:
+A client without a certificate doesn't get past the handshake, and the CLI says why:
 
 ```console test server=none
 $ curl -s --cacert ca.crt https://localhost:31337/warp || echo "refused"
 refused
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls-roots ca.crt --username hardcharger --command "SELECT 1"; echo "exit status $?"
+Error: The server at https://localhost:31337 refused the connection: it requires a client certificate (--mtls-cert and --mtls-key)
+exit status 1
 ```
 
 ## Signing in with the certificate
 
-<Aside type="note" title="After 0.2.0">
-Certificate sign-in arrives with the release after 0.2.0 (it is on `main`).
+<Aside type="note" title="New in 0.3.0">
+Certificate sign-in arrives with 0.3.0. 0.2.0 uses client certificates only to admit connections.
 </Aside>
 
 With `--mtls-certificate-sign-in`, a client signs in **as** its certificate's identity, with no
@@ -382,6 +385,10 @@ $ curl -s --cacert ca.crt --cert client.crt --key client.key https://localhost:3
 refused
 $ curl -s --cacert ca.crt --cert ops.crt --key ops.key https://localhost:31337/warp | jq -r .server.name
 Hardcharger
+$ hardcharger --host localhost --tls-roots ca.crt --mtls-cert client.crt --mtls-key client.key \
+    --auth-type mtls --command "SELECT 1"; echo "exit status $?"
+Error: The server at https://localhost:31337 refused the client certificate: certificate revoked
+exit status 1
 ```
 
 The server looks at the file every 5 seconds and reloads it when it changes (a failed reload is

@@ -182,8 +182,10 @@ instead, since half a transaction must not commit.
 An administrator's `KILL SESSION`, a password change or a dropped or disabled user ends a
 session. Its requests then get `401 session_ended` with a
 [`reason`](/reference/errors/#session_ended-reasons) (`killed`, `credentials_changed`,
-`principal_dropped`, `token_expired`); when access control ended it, the old token gets
-`401 invalid_token` first. The client signs in again before it opens a new session. A
+`principal_dropped`, `token_revoked`, `token_expired`); when access control ended it, the old
+token gets `401 invalid_token` first, with the same
+[`reason`](/reference/errors/#invalid_token-reasons). The client signs in again before it opens a
+new session. A
 `GET` of the ended session answers the same way, so a liveness probe sees it as gone.
 
 ## Errors

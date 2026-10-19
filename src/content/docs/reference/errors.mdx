@@ -29,7 +29,7 @@ Python's exception message, JDBC's `SQLException` (`getSQLState()`, `WarpProblem
 | `unknown_option`, `invalid_option_value` | 400 | A session option the server doesn't have, or a bad value | Check the option's name and value |
 | `sql_error` | 400 | DuckDB rejected the SQL: syntax, binding, a missing object (SQLSTATE `42P01`), an existing one (`42P07`), ... | Fix the SQL; `detail` says what |
 | `invalid_credentials` | 401 | Sign-in failed. It never says which part was wrong. | Check the user, password or token; an identity-provider token may be expired, for the wrong audience, or for a user [not authorized](/guides/sso/#limit-who-may-sign-in) |
-| `invalid_token` | 401 | A missing, malformed, expired or foreign access token (another replica's, without `allow_cross_instance_tokens`); also a token whose user's password changed, or who was disabled or dropped, or a revoked scoped token (`detail` says which) | Sign in again |
+| `invalid_token` | 401 | A missing, malformed, expired or foreign access token (another replica's, without `allow_cross_instance_tokens`); also a token whose user's password changed, or who was disabled or dropped, or a revoked scoped token. A token the server issued itself carries a `reason` ([below](#invalid_token-reasons)) | Sign in again; after `credentials_changed` or `principal_dropped`, the old password no longer works either |
 | `session_ended` | 401 | The server ended the session: an administrator killed it, or access control ended it; `reason` says which ([below](#session_ended-reasons)) | Sign in again, then open a new session |
 | `unsupported_grant_type` | 400 | A sign-in grant the server doesn't offer, such as `client_certificate` without [certificate sign-in](/guides/tls/#signing-in-with-the-certificate) | Sign in another way |
 | `client_certificate_required` | 401 | Certificate sign-in on a connection without a client certificate (where certificates are optional) | Connect with the certificate |
@@ -65,6 +65,24 @@ A failed streamed result ends **without** Arrow's end-of-stream marker: the HTTP
 already `200`, so the cut stream is the error. Clients must treat it as failed and fetch the
 statement document for the reason. The drivers do.
 
+## `invalid_token` reasons
+
+When the server refuses a token it issued itself, and the token is unaltered, the problem
+document's `reason` says why it stopped working:
+
+| `reason` | When |
+|---|---|
+| `token_expired` | The token's lifetime ended |
+| `token_revoked` | The token was revoked: a [scoped token](/guides/row-policies-and-masking/#scoped-tokens) dropped with `DROP SCOPED TOKEN` |
+| `credentials_changed` | The user's password changed (`ALTER USER … WITH PASSWORD`) after the token was issued |
+| `principal_dropped` | The user was dropped or disabled |
+
+A token the server can't verify as its own (malformed, signed with another key, altered) gets
+`invalid_token` with no `reason`, whatever user it names: only the holder of a real token learns
+anything about that user. The same token never works again, so don't retry with it. The
+[`hardcharger` CLI](/clients/cli/) prints the reason ("The server no longer accepts this sign-in:
+the user's password or credentials changed (credentials_changed). Sign in again (.connect).").
+
 ## `session_ended` reasons
 
 | `reason` | When |
@@ -72,12 +90,14 @@ statement document for the reason. The drivers do.
 | `killed` | An administrator ran [`KILL SESSION`](/reference/sql/#kill-session) |
 | `principal_dropped` | The user was dropped or disabled |
 | `credentials_changed` | The user's password changed, or access control revoked something else the session depended on (such as its tenant's catalogs) |
-| `token_expired` | The scoped token that opened the session was revoked or expired |
+| `token_revoked` | The scoped token that opened the session was revoked |
+| `token_expired` | The scoped token that opened the session expired: the session ends then |
 
-A killed session answers `session_ended` at once. When access control ends a session, the token
-that opened it stops working first, so its next request gets `invalid_token`; after the client
-signs in again, the old session answers `session_ended` with the reason, and the client opens a new
-one. The drivers do both steps for you.
+A killed session answers `session_ended` at once, since its token still stands. When access
+control ends a session, the token that opened it stops working first, so its next request gets
+`invalid_token` with the same `reason`; after the client signs in again, the old session answers
+`session_ended` with the reason, and the client opens a new one. The drivers do both steps for
+you.
 
 ```console test profile=rbac
 $ export HARDCHARGER_PASSWORD='change-me'
@@ -88,8 +108,41 @@ $ TOKEN=$(token old-secret)
 $ SESSION=$(curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $TOKEN" \
     -H 'Content-Type: application/json' -d '{}' | jq -r .session_id)
 $ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "ALTER USER joe WITH PASSWORD 'new-secret'" > /dev/null; sleep 2
-$ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $TOKEN" | jq -c '{code}'
-{"code":"invalid_token"}
+$ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $TOKEN" | jq -c '{code, reason}'
+{"code":"invalid_token","reason":"credentials_changed"}
 $ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $(token new-secret)" | jq -c '{code, reason}'
 {"code":"session_ended","reason":"credentials_changed"}
+```
+
+A dropped scoped token gets `token_revoked`, while a token the server can't verify as its own (here,
+the same token with its signature replaced) gets no reason at all:
+
+```console test profile=rbac
+$ export HARDCHARGER_PASSWORD='change-me'
+$ SCOPED=$(hardcharger --host localhost --tls=false --username hardcharger --quiet --csv \
+    --command "CREATE SCOPED TOKEN nightly FOR USER joe ALLOW SELECT VALID FOR '1 hour'" | tail -1 | cut -d, -f6)
+$ SESSION=$(curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $SCOPED" \
+    -H 'Content-Type: application/json' -d '{}' | jq -r .session_id)
+$ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "DROP SCOPED TOKEN nightly FOR USER joe" > /dev/null; sleep 2
+$ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $SCOPED" | jq -c '{code, reason}'
+{"code":"invalid_token","reason":"token_revoked"}
+$ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer ${SCOPED%.*}.forged" | jq -c '{code, reason}'
+{"code":"invalid_token","reason":null}
+```
+
+A session opened with a scoped token ends when the token expires. Its token gets `token_expired`,
+and the session answers `session_ended` with the same reason to the user's next sign-in:
+
+```console test profile=rbac
+$ SHORT=$(HARDCHARGER_PASSWORD='new-secret' hardcharger --host localhost --tls=false --username joe --quiet --csv \
+    --command "CREATE SCOPED TOKEN short ALLOW SELECT VALID FOR '3 seconds'" | tail -1 | cut -d, -f6)
+$ SESSION=$(curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $SHORT" \
+    -H 'Content-Type: application/json' -d '{}' | jq -r .session_id)
+$ sleep 5
+$ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $SHORT" | jq -c '{code, reason}'
+{"code":"invalid_token","reason":"token_expired"}
+$ JOE=$(curl -s localhost:31337/warp/v1/auth/token -H 'Content-Type: application/json' \
+    -d '{"grant_type": "password", "username": "joe", "password": "new-secret"}' | jq -r .access_token)
+$ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $JOE" | jq -c '{code, reason}'
+{"code":"session_ended","reason":"token_expired"}
 ```

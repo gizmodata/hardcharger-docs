@@ -67,6 +67,12 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Changed
 
+- Security model: the sensitive-path guard as Hardcharger 0.4.0 has it (hardcharger branch
+  `fix/sensitive-paths-in-fs-layer`): checked in DuckDB's file system, so computed paths,
+  `query('…')`, macros, views and prepared parameters are covered and literals are no longer
+  refused; globs from above leave protected matches out; the sqlite_scanner plan-time check; and
+  the two limits (startup and init SQL, `postgres_scanner`'s libpq). The configuration reference's
+  new `block_sensitive_paths` / `sensitive_paths` wording comes with the next regeneration.
 - The CLI uses TLS by default (Hardcharger feat/cli-tls-default): every CLI example against a
   plain-HTTP server says `--tls=false`; the CLI page shows the hint a TLS connection to a
   plain-HTTP server prints, and its option table, the GizmoSQL mapping and the Docker guide say

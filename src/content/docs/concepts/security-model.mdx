@@ -95,7 +95,20 @@ Error: Permission denied: Hardcharger blocked access to '/etc/passwd' (system ac
 - **Sensitive paths** ([`block_sensitive_paths`](/reference/configuration/#block_sensitive_paths), on
   by default): `/etc/shadow` and friends, `/proc`, mounted secrets, `~/.ssh`, `~/.aws`, `~/.kube`,
   DuckDB's stored secrets, the server's own TLS key, init SQL and config file, and anything in
-  [`sensitive_paths`](/reference/configuration/#sensitive_paths), however the path is spelled.
+  [`sensitive_paths`](/reference/configuration/#sensitive_paths). From 0.4.0 the check sits in
+  DuckDB's file system, so it sees the path DuckDB is about to open, list, write, move or remove,
+  however the statement arrived at it: a concatenation, a variable, a prepared statement's
+  parameter, `query('…')`, a macro or view, `file_search_path`, `~`, `..`, a symlink, a second hard
+  link, a different case. A glob reaching into a protected directory from above (`/home/*/.ssh/*`)
+  lists its other matches only; one whose fixed part is protected (`~/.ssh/*`) is refused. SQL text
+  is not scanned for paths, so literals such as `'{"a": 1}'` or `'.*'` work as anywhere else.
+  `ATTACH … (TYPE sqlite)` and the `sqlite_scan` / `sqlite_query` / `sqlite_attach` functions,
+  which open files with SQLite's own library, are refused at plan time for these paths too.
+  Two limits: the server's startup, the operator's init SQL included, runs before the guard
+  switches on (so init SQL may read a mounted credential to create a secret), and
+  `postgres_scanner`'s PostgreSQL client library reads `~/.pgpass` and files named by `passfile=`
+  or `sslkey=` itself, so a role that may `ATTACH` a PostgreSQL database can make the server use
+  a password or key it finds there.
 - **The server's own files**, always: a [DuckDB access-control store](/guides/access-control/#a-duckdb-file-for-one-server)
   (password hashes and grants), and the database, instrumentation and log files the server keeps
   attached. No statement opens, lists the contents of, writes, moves or removes them, however it

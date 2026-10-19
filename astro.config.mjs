@@ -22,8 +22,15 @@ export default defineConfig({
 			title: 'Hardcharger™',
 			description:
 				'Hardcharger™ is GizmoData’s DuckDB 2.0 server: fast, secure, remote DuckDB over the Warp SQL protocol. Every feature included.',
-			logo: { src: './src/assets/gizmodata-logo.png', alt: 'GizmoData™' },
-			favicon: '/favicon.png',
+			// The Hardcharger lockup (bull head and lettering) replaces the title text; the GizmoData
+			// logo stays in the footer.
+			logo: {
+				light: './src/assets/brand/hardcharger-logo-light.svg',
+				dark: './src/assets/brand/hardcharger-logo-dark.svg',
+				alt: 'Hardcharger™',
+				replacesTitle: true,
+			},
+			favicon: '/favicon.svg',
 			// Hardcharger™ in each page's <title> and descriptions; the body: src/middleware.ts.
 			routeMiddleware: './src/starlightRouteData.ts',
 			customCss: ['./src/styles/theme.css'],
@@ -44,10 +51,12 @@ export default defineConfig({
 				PageTitle: './src/components/PageTitle.astro',
 			},
 			head: [
+				{ tag: 'link', attrs: { rel: 'icon', href: `${base}favicon.ico`.replace('//', '/'), sizes: '32x32' } },
+				{ tag: 'link', attrs: { rel: 'apple-touch-icon', href: `${base}apple-touch-icon.png`.replace('//', '/') } },
 				{ tag: 'meta', attrs: { name: 'theme-color', content: '#0b1416' } },
 				{ tag: 'meta', attrs: { property: 'og:image', content: new URL(`${base}og.png`.replace('//', '/'), site).href } },
-				{ tag: 'meta', attrs: { property: 'og:image:width', content: '1280' } },
-				{ tag: 'meta', attrs: { property: 'og:image:height', content: '400' } },
+				{ tag: 'meta', attrs: { property: 'og:image:width', content: '1200' } },
+				{ tag: 'meta', attrs: { property: 'og:image:height', content: '630' } },
 				{ tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } },
 				...(indexable ? [] : [{ tag: 'meta', attrs: { name: 'robots', content: 'noindex, nofollow' } }]),
 			],

@@ -135,8 +135,10 @@ Short sentences, task first, no marketing in guides, and nothing that isn't true
 Python examples use keyword arguments. Don't name competing products, customers or internal
 documents. Every page has a `description` (it is the page's search and social summary). New
 pages go in the sidebar in [`astro.config.mjs`](astro.config.mjs). Brand assets:
-[`scripts/banner.py`](scripts/banner.py) draws README-style banners, and
-[`scripts/brand_images.mjs`](scripts/brand_images.mjs) the favicon and social card.
+[`scripts/banner.py`](scripts/banner.py) draws README-style banners. The header logo
+(`src/assets/brand/`), the favicons, `public/apple-touch-icon.png` and the social card
+(`public/og.png`) are files from the Hardcharger™ brand kit (`docs/assets/brand/` in the
+hardcharger repository), losslessly optimized, not drawn here.
 
 ## 🚀 Launch checklist (docs.hardcharger.gizmodata.com)
 

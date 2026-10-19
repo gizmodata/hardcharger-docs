@@ -6,6 +6,13 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ## [Unreleased]
 
+### Changed
+
+- The Hardcharger™ logo: the header shows the bull-head lockup (light and dark versions, it
+  replaces the title text), the favicon is the bull head (SVG, with an ICO and an Apple touch
+  icon), and the social card is the brand kit's 1200x630 share image. `scripts/brand_images.mjs`,
+  which drew the old favicon and card, is gone. The GizmoData™ logo stays in the footer.
+
 ### Added
 
 - Hardcharger 0.3.0 (main 5983a6a, warp-sql a8d762a): the reference is regenerated from the

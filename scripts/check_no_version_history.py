@@ -26,6 +26,7 @@ VERSION = r"(?<![\d.])v?(?:\d+\.\d+\.\d+|0\.\d+)\b"
 PATTERNS = [
     re.compile(rf"\b(?:new|added|introduced|changed|fixed|deprecated|removed|available|arrives?|arrived)\s+(?:in|with|since|from)\s+(?:hardcharger\s+)?{VERSION}", re.I),
     re.compile(rf"\b(?:since|as of|until|before|after|from|starting (?:in|with)|beginning (?:in|with))\s+(?:hardcharger\s+)?{VERSION}", re.I),
+    re.compile(r"\bhardcharger\s+v?0\.\d+", re.I),  # 'Hardcharger 0.3.0' as a label: say 'Hardcharger'
     re.compile(r"\bthe (?:release|version) (?:after|before)\b", re.I),
     re.compile(rf"\bchanged since\b|\bwhat {VERSION} changed\b", re.I),
 ]

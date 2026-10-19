@@ -46,7 +46,7 @@ explains why that matters.
 Same machine, same data, each server on loopback with no TLS. Each server loads the TPC-H SF10
 Parquet files (lineitem: 59,986,052 rows) into its own DuckDB file through init SQL. Every query
 runs once to warm up, then five times; the figure is the median, measured at the client from
-submit to the last row in a `pyarrow.Table`. Hardcharger 0.1.0 is called over Warp SQL's
+submit to the last row in a `pyarrow.Table`. Hardcharger is called over Warp SQL's
 one-round-trip path; GizmoSQL 1.41.0 through `adbc-driver-gizmosql` 2.0.15. Script:
 `bench/tpch.py`.
 

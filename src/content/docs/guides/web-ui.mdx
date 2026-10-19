@@ -20,6 +20,7 @@ talks [Warp SQL](/concepts/warp-sql/) back to the same origin. It is off by defa
   by access control. Preview a table in a new tab, or double-click a name to insert it.
 - **Exports** to CSV, TSV, JSON (numbers kept exact) and Parquet, written in the browser.
 - **Sessions**: the sessions you may see, and, for an administrator, a button that ends one.
+- **API**: the server's Warp SQL API in Swagger UI, where **Try it out** runs requests as you.
 - **About**: the server's version, protocol and capabilities, and when your sign-in expires.
 
 ## Turn it on
@@ -88,6 +89,28 @@ to `localStorage` or a cookie. When the token expires, or an administrator ends 
 (`KILL SESSION`), the page goes back to the sign-in form and says why.
 
 ![The sign-in page in its dark theme](../../../assets/web-ui/sign-in-dark.png)
+
+## The API page
+
+**API**, next to Query and Sessions, shows the server's own Warp SQL API: every endpoint, with
+its parameters, request and response schemas and examples, in [Swagger UI](https://swagger.io/tools/swagger-ui/).
+It reads the OpenAPI 3.1 document the server serves at `GET /warp/v1/openapi.json` (described
+on the [Warp SQL](/concepts/warp-sql/#the-api-description) page), and like the rest of the UI
+it is there only when `web_ui` is on.
+
+![The API page in its dark theme: Try it out on Read a session, with the server's answer](../../../assets/web-ui/api-dark.png)
+
+- **Try it out** runs a request against this server, signed in as you. The page adds your
+  access token to each request as it is sent, so there is no token to paste and no
+  **Authorize** button. The token goes only to the page's own origin: a request for anywhere
+  else would go without it (the Content-Security-Policy blocks such requests anyway). It isn't
+  stored anywhere new, and the **Curl** command the page shows leaves it out.
+- Every request goes to the server that served the page; there is no server picker.
+- An answer in Arrow IPC (a result, a metadata listing) comes back as **Download file**
+  (`result.arrows`), not as bytes printed as text. JSON answers are shown formatted.
+- Swagger UI is part of the build, so the page works on a server with no Internet access, and
+  it is loaded only when you open the page.
+- If the server doesn't list the document in its discovery answer, the page says so instead.
 
 ## With TLS
 
@@ -192,8 +215,8 @@ What the policy allows beyond `'self'`, and why:
 | Directive | Why |
 |---|---|
 | `script-src 'wasm-unsafe-eval'` | The Parquet export compiles WebAssembly. It allows WebAssembly only, never `eval` of JavaScript. |
-| `style-src 'unsafe-inline'` | The editor sets styles at run time (`<style>` elements and style attributes). |
-| `img-src data:` | Two small images in the editor's stylesheet. |
+| `style-src 'unsafe-inline'` | The editor sets styles at run time (`<style>` elements and style attributes), and so does Swagger UI on the API page (style attributes). |
+| `img-src data:` | Two small images in the editor's stylesheet, and the icons in Swagger UI's stylesheet. |
 
 The page can't be framed (`frame-ancestors 'none'`, `X-Frame-Options: DENY`). If a proxy in
 front of Hardcharger adds a policy of its own, browsers apply both, so it must allow at least

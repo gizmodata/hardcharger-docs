@@ -8,6 +8,11 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Added
 
+- Web UI guide: **The API page** (the server's Warp SQL API in Swagger UI; Try it out runs as
+  the signed-in user, sends the token to the page's own origin only, offers Arrow answers as a
+  download), with a dark screenshot, and the CSP table's reasons now name Swagger UI. Warp SQL
+  page: **The API description** (`GET /warp/v1/openapi.json`, OpenAPI 3.1, listed in discovery
+  as capability `openapi` and `links.openapi`), with a tested example.
 - Hardcharger 0.3.0 (main 5983a6a, warp-sql a8d762a): the reference is regenerated from the
   `:main` image (`sha-5983a6a`), and the release notes show the `[0.3.0]` section. New:
   - Error codes: `invalid_token` reasons (`token_expired`, `token_revoked`, `credentials_changed`,

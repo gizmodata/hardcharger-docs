@@ -67,6 +67,9 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Changed
 
+- The home page shows the sidebar (the table of contents) and "On this page", like every other page,
+  and on a phone the menu button: it used Starlight's `splash` template, which has neither, so the
+  contents appeared only after opening a section.
 - The CLI uses TLS by default (Hardcharger feat/cli-tls-default): every CLI example against a
   plain-HTTP server says `--tls=false`; the CLI page shows the hint a TLS connection to a
   plain-HTTP server prints, and its option table, the GizmoSQL mapping and the Docker guide say

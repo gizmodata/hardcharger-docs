@@ -10,17 +10,35 @@ the server serves it at `/ui` on its own port, with its own TLS certificate, and
 talks [Warp SQL](/concepts/warp-sql/) back to the same origin. It is off by default, and new in
 0.3.0.
 
-![The web UI in its dark theme: the schema browser, the SQL editor and a result](../../../assets/web-ui/query-dark.png)
+![The web UI in its dark theme: the schema browser, two editor tabs, and a result with a selection](../../../assets/web-ui/query-dark.png)
 
-- **SQL editor**: Ctrl/⌘+Enter runs the statement under the cursor, or the selection. Each tab
-  has its own server session, and **Cancel** stops the statement on the server.
-- **Results grid** for up to a million rows, with DuckDB's own formatting of every type.
-  Ctrl/⌘+C copies the selected cells as tab-separated text in every browser, Safari included.
-- **Schema browser**: catalogs, schemas, tables, views and columns with their types, filtered
-  by access control. Preview a table in a new tab, or double-click a name to insert it.
-- **Exports** to CSV, TSV, JSON (numbers kept exact) and Parquet, written in the browser.
+- **SQL editor** in tabs (up to 20), each with its own server session, so a long query or an
+  open transaction in one tab never touches another. Ctrl/⌘+Enter runs the statement under the
+  cursor (a bar in the margin marks it) or exactly the selection; Shift+Ctrl/⌘+Enter runs them
+  all, with a result tab for each result set and **Messages**. **Cancel** stops the statement
+  on the server. An open or failed transaction shows as a badge with **Commit** and
+  **Rollback**.
+- **Results grid** for up to a million rows, with DuckDB's own formatting of every type: sort
+  (NULLs last), filter, resize columns, and select cells like a spreadsheet. Ctrl/⌘+C copies
+  the selection so that a paste into Excel or Google Sheets lands as cells, in every browser,
+  Safari included.
+- **Schema browser and autocomplete**: catalogs, schemas, tables, views and columns with their
+  types, as access control lets the user see them. Double-click or drag a name into the editor,
+  preview a table in a new tab, show a view's definition, search every table and view by name.
+- **Saved queries** in folders, kept in the browser (see [below](#what-stays-in-the-browser)).
+- **Run as**: under access control, a tab acts with one of the user's roles, or all of them.
+- **Downloads**: CSV, TSV, JSON and Excel (.xlsx) of the rows as shown, Parquet and Arrow IPC
+  of the whole result with its exact types, all written in the browser.
 - **Sessions**: the sessions you may see, and, for an administrator, a button that ends one.
 - **About**: the server's version, protocol and capabilities, and when your sign-in expires.
+  **How the editor works** (the **?** at the end of the tab bar) sums up sessions,
+  transactions, statements and results, with this server's session idle timeout.
+
+The editor and the side panel resize (drag the bar between them, or focus it and use the arrow
+keys; double-click for the default size). On a phone-sized screen the side panel sits above the
+editor and the page scrolls.
+
+![Saved queries in a folder, and the results' Download menu](../../../assets/web-ui/saved-dark.png)
 
 ## Turn it on
 
@@ -206,6 +224,51 @@ an upgrade that asks for a file the new build doesn't have reloads itself, and t
 version is available. Files are sent gzipped to browsers that accept it.
 </Aside>
 
+## Sessions and transactions
+
+Each editor tab has its own Warp SQL session, kept from one run to the next: temporary tables,
+`USE` and `SET` carry over, and a `BEGIN` stays open across runs until `COMMIT` or `ROLLBACK`.
+**New session** ends a tab's session (rolling back an open transaction), and so does closing
+the tab. The tab's session chip shows the session's id, the one the server's log lines and
+`KILL SESSION` use.
+
+The server ends a session that has been idle for `session_idle_timeout` seconds (15 minutes by
+default; `--session-idle-timeout`, `HARDCHARGER_SESSION_IDLE_TIMEOUT`, or the YAML key). The page
+reads it from the session document (`idle_timeout_s`) and **How the editor works** names it. When
+a tab's session has ended, its next run starts a new session and says so; if a transaction was
+open, that run is refused instead, with a message that the transaction was rolled back, and
+nothing from it executes. Run it again to go on in a new session.
+
+```bash test server=self background stop
+HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb --web-ui \
+  --session-idle-timeout 3600 --health-port 31338
+```
+
+```console test server=none
+$ H='Content-Type: application/json'
+$ TOKEN=$(curl -s localhost:31337/warp/v1/auth/token -H "$H" \
+    -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
+$ curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $TOKEN" -H "$H" -d '{}' | jq .idle_timeout_s
+3600
+```
+
+## What stays in the browser
+
+The page stores nothing on the server. What it keeps, it keeps in the browser, for that
+server's address:
+
+| What | Where | For |
+|---|---|---|
+| The access token | the tab's session storage | that tab, until it closes or you sign out |
+| Saved queries | IndexedDB | each user of the server |
+| Open tabs, their text, catalog, schema and row limit | local storage | each user of the server |
+| The theme, the sizes of the side panel and the editor, whether the panel is hidden and which of its tabs shows, the phone-screen note dismissed | local storage | everyone using that browser |
+
+Saved queries don't follow you to another browser or computer, and clearing the site's data
+removes them. To move them, use **Export all to a file** in the Saved queries panel's **…** menu,
+and **Import from a file** in the other browser. In a private window, or with site data
+blocked, the panel says it can't keep saved queries, and everything else works.
+
 ## What access control shows
 
 The page shows each user what the server lets that user see, because every list in it comes
@@ -215,6 +278,9 @@ from the server, as that user. With [access control](/guides/access-control/) on
   roles have a privilege on. What a user can't see isn't there, not even its name. With
   [catalog access rules](/guides/catalog-access-rules/), a tenant's users see their catalog
   only.
+- **Run as**: a tab can act with one of the user's roles (`SET ROLE`) or **All my roles**, and
+  the schema browser and autocomplete then list what that role sees. It is locked while a
+  transaction is open. An administrator, who holds every right already, has no picker.
 - **Queries** run as the user, so a statement the user's grants don't allow fails with the
   server's message, and [row policies and masking](/guides/row-policies-and-masking/) apply to
   every result and export.

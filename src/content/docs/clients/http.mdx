@@ -17,10 +17,11 @@ read Arrow; the [specification](/reference/warp-sql-protocol/) has every detail.
 
 ```console test
 $ curl -s localhost:31337/warp | jq -c '{server: .server.name, protocol_versions, capabilities}'
-{"server":"Hardcharger","protocol_versions":["1"],"capabilities":["prepared_statements","transactions","ingest","result_retention","long_poll","ipc_compression_zstd","result_partitions","partitioned_ingest"]}
+{"server":"Hardcharger","protocol_versions":["1"],"capabilities":["prepared_statements","transactions","ingest","partitioned_ingest","long_poll","ipc_compression_zstd","ipc_compression_lz4_frame","result_partitions"]}
 ```
 
-A client uses only the optional features listed in `capabilities`.
+A client uses only the optional features listed in `capabilities`, and ignores names it doesn't
+know. Everything else in the protocol (result retention included) is core: every server has it.
 
 ## Sign in and open a session
 
@@ -29,14 +30,36 @@ $ H='Content-Type: application/json'
 $ TOKEN=$(curl -s localhost:31337/warp/v1/auth/token -H "$H" \
     -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
 $ AUTH="Authorization: Bearer $TOKEN"
-$ curl -s localhost:31337/warp/v1/sessions -H "$AUTH" -H "$H" -d '{"options": {"schema": "main"}}' | tee session.json | jq -c '{options, idle_timeout_s}'
-{"options":{"catalog":"my","schema":"main","autocommit":true,"arrow_lossless_conversion":false},"idle_timeout_s":900}
+$ curl -s localhost:31337/warp/v1/sessions -H "$AUTH" -H "$H" -d '{"options": {"schema": "main"}}' | tee session.json | jq -c '{options, transaction, idle_timeout_s}'
+{"options":{"catalog":"my","schema":"main","autocommit":true,"duckdb_arrow_lossless_conversion":false},"transaction":"none","idle_timeout_s":900}
 $ URL=localhost:31337/warp/v1/sessions/$(jq -r .session_id session.json)
 $ echo "export H='$H' AUTH='$AUTH' URL='$URL'" > env.sh
 ```
 
 The token goes in `Authorization: Bearer` on every other request. Tokens last a day by default;
 sign in again (or let a driver renew) when one expires.
+
+The session document lists every option the session has, with its current value. A bad option
+in `POST /sessions` fails the whole request (`400 unknown_option` or `invalid_option_value`), and
+no session is created. `duckdb_arrow_lossless_conversion` is an option of Hardcharger's own (DuckDB's
+`arrow_lossless_conversion` setting for this session; see
+[HUGEINT and UHUGEINT](/reference/sql/#hugeint-and-uhugeint)): names a server adds take a prefix,
+so they never collide with the protocol's. `transaction` says whether a
+transaction is `open` (or `aborted`, refusing statements until a rollback); read it here rather
+than tracking `BEGIN` and `COMMIT` yourself.
+
+## Change session options
+
+`PATCH` sets each option on its own and answers with every option and the ones that failed
+(`errors` is `{}` when none did):
+
+```console test
+$ . ./env.sh
+$ curl -s -X PATCH $URL -H "$AUTH" -H "$H" -d '{"options": {"duckdb_arrow_lossless_conversion": true, "bogus": 1}}'
+{"options":{"catalog":"my","schema":"main","autocommit":true,"duckdb_arrow_lossless_conversion":true},"errors":{"bogus":{"code":"unknown_option","detail":"unknown session option"}}}
+$ curl -s -X PATCH $URL -H "$AUTH" -H "$H" -d '{"options": {"duckdb_arrow_lossless_conversion": false}}' | jq -c .errors
+{}
+```
 
 ## Run a query
 
@@ -82,7 +105,20 @@ $ curl -s -o /dev/null -w '%{http_code}\n' -X DELETE $URL/statements/$ID -H "$AU
 
 `Prefer: wait=N` long-polls: the server answers as soon as the state changes, or after N seconds.
 Add `Warp-Retain-Result: true` when submitting to make the result re-readable and resumable
-(`?from_batch=N`); see [Warp SQL in one page](/concepts/warp-sql/#retained-resumable-results).
+(`?from_batch=N`); a server may decline, so check the statement document's `result.retained`
+before relying on a re-read. See [Warp SQL in one page](/concepts/warp-sql/#retained-resumable-results).
+
+A statement that has failed, or was cancelled, by the time the server answers its submission gets
+an error response (a [problem document](/reference/errors/) with the statement's id in
+`Warp-Statement-Id`), never a success status with a `failed` or `cancelled` document. Here a
+statement times out while the submission waits for it:
+
+```console test
+$ . ./env.sh
+$ curl -s $URL/statements -H "$AUTH" -H "$H" -H 'Warp-Statement-Timeout: 200' \
+    -d '{"sql": "SELECT sum(hash(a.range + b.range)) FROM range(1000000) a, range(1000000) b"}' | jq -c '{status, code, cancel_reason}'
+{"status":409,"code":"statement_timeout","cancel_reason":"timeout"}
+```
 
 ## Prepared statements
 
@@ -135,7 +171,29 @@ $ python3 -c "import pyarrow.ipc as ipc; print(ipc.open_stream('tables.arrows').
 ```
 
 `catalogs`, `db-schemas`, `tables`, `table-types`, `primary-keys`, `imported-keys`,
-`exported-keys`, `cross-reference` and `type-info` are Arrow; `server-info` is JSON.
+`exported-keys`, `cross-reference` and `type-info` are Arrow; `server-info` is JSON. Its keys are
+Flight SQL's `SqlInfo` names in lower case; Hardcharger's own take a prefix (`duckdb_`,
+`hardcharger_`), and a key that isn't there means unknown, not false:
+
+```console test
+$ . ./env.sh
+$ curl -s $URL/metadata/server-info -H "$AUTH" | jq .
+{
+  "server_name": "Hardcharger",
+  "server_version": "…",
+  "server_arrow_version": "…",
+  "sql_identifier_quote_char": "\"",
+  "sql_transactions_supported": true,
+  "server_read_only": false,
+  "duckdb_version": "…",
+  "hardcharger_instance_id": "…",
+  "hardcharger_access_control": false
+}
+```
+
+`server_version` is the server's version (as in discovery), `server_arrow_version` the Arrow
+library's, `duckdb_version` DuckDB's, `hardcharger_instance_id` this server process's id, and
+`hardcharger_access_control` whether [access control](/guides/access-control/) is on.
 
 ## Close
 

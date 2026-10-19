@@ -65,7 +65,9 @@ JDBC `async=true`).
 ## Retained, resumable results
 
 A **retained** result stays on the server until it expires, and can be read again from any
-batch. If a download breaks off, the client asks for the rest with `from_batch`:
+batch. If a download breaks off, the client asks for the rest with `from_batch`. Retention is part
+of every Warp SQL server, but a server may decline to keep a result, so a client reads the
+statement document's `retained` before relying on a re-read:
 
 ```bash test
 H='Content-Type: application/json'
@@ -81,7 +83,7 @@ STATEMENT=$(curl -s $URL/statements -H "Authorization: Bearer $TOKEN" -H "$H" \
 
 # Long-poll until it finishes (up to 10 s per request).
 curl -s $URL/statements/$STATEMENT -H "Authorization: Bearer $TOKEN" -H 'Prefer: wait=10' \
-  | jq -c '{state, partitions: .result.partitions}'
+  | jq -c '{state, retained: .result.retained, partitions: .result.partitions}'
 
 # Read the result from its fourth batch on, as a client resuming a broken download would.
 curl -s "$URL/statements/$STATEMENT/result?from_batch=3" -H "Authorization: Bearer $TOKEN" -o rest.arrows
@@ -89,7 +91,7 @@ python3 -c "import pyarrow.ipc as ipc; print(ipc.open_stream('rest.arrows').read
 ```
 
 ```text output
-{"state":"succeeded","partitions":[{"index":0,"location":null,"batches":9,"rows":1000000}]}
+{"state":"succeeded","retained":true,"partitions":[{"index":0,"location":null,"batches":9,"rows":1000000}]}
 631360
 ```
 
@@ -127,6 +129,8 @@ with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hard
 With the default `result_order=preserve` the server deals batches to partitions round robin
 (`interleaved`), and the driver takes them back in the same order, so `ORDER BY` holds. With
 `any`, batches come in whatever order they arrive. Small results stay in one partition. A
+result split over several partitions always says so in two response headers,
+`Warp-Result-Partitions` and `Warp-Result-Order`, so a client never guesses the order. A
 client must read every partition, concurrently, to its end-of-stream marker before it treats
 the result as complete. The JDBC driver's option is `resultPartitions`, and the CLI's is
 `--result-partitions`.
@@ -139,9 +143,10 @@ server inserts from every part in parallel, in one transaction, all or nothing. 
 no defined order ([bulk ingest](/guides/bulk-ingest/#partitioned-uploads)).
 
 <Aside type="tip" title="Why partitions are in the protocol">
-Results are already described as partitions with a `location`. Today every partition lives on
-the server you asked. A distributed engine can point partitions at other machines later,
-without a protocol change.
+Results are already described as partitions with a `location`. A server with the
+`result_locations` capability can point partitions at other machines, for a client that says it
+can read them (`Warp-Result-Locations: remote`); for every other client `location` is `null`.
+Hardcharger doesn't list `result_locations` yet: every partition lives on the server you asked.
 </Aside>
 
 ## Cancel, close and timeouts
@@ -184,18 +189,22 @@ session. Its requests then get `401 session_ended` with a
 [`reason`](/reference/errors/#session_ended-reasons) (`killed`, `credentials_changed`,
 `principal_dropped`, `token_revoked`, `token_expired`); when access control ended it, the old
 token gets `401 invalid_token` first, with the same
-[`reason`](/reference/errors/#invalid_token-reasons). The client signs in again before it opens a
-new session. A
+[`reason`](/reference/errors/#invalid_token-reasons). After any reason but `killed`, the client needs a
+new token before it opens a new session. The drivers sign in again by themselves only when a token
+expired; after `credentials_changed`, `principal_dropped` or `token_revoked` they report the
+reason, since signing in with the old credentials would fail or undo a revocation. A
 `GET` of the ended session answers the same way, so a liveness probe sees it as gone.
 
 ## Errors
 
 Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem documents with a stable
-`code`, a human `detail`, and usually a SQLSTATE. A statement that has already failed when the
-server answers its submission gets the error response itself (`500 execution_error`, ...), never a
-success status with a `failed` statement document; a `failed` document comes only from polling a
-statement that was still running, or from a replay of an idempotent request. Clients treat a
-`failed` or `cancelled` document as the statement's error whatever the status code.
+`code`, a human `detail`, and usually a SQLSTATE. A statement that has already failed, or was
+cancelled, when the server answers its submission gets the error response itself
+(`422 execution_error`, `409 statement_cancelled`, `409 statement_timeout`, ...), never a success
+status with a `failed` or `cancelled` statement document; such a document comes only from polling
+a statement that was still running, or from a replay of an idempotent request. Clients treat a
+`failed` or `cancelled` document as the statement's error whatever the status code. A
+statement's own failure is never a `5xx`: `500 internal_error` means the server itself failed.
 
 ```console test
 $ curl -s localhost:31337/warp/v1/sessions -H 'Authorization: Bearer not-a-token' -d '{}' | jq -c '{status, code}'

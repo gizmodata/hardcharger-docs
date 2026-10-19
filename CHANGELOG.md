@@ -83,6 +83,25 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Changed
 
+- Warp SQL 1.0.0 (warp-sql spec/v1.0, a828247, on the browser sign-in spec; outputs captured from
+  a Hardcharger server built from its spec/v1.0, b4c813b2): the protocol page is the 1.0.0
+  specification in full, §4.3 included (its description no longer says draft), and the rest of
+  the reference is regenerated from that server and its CHANGELOG (the release notes' Unreleased
+  section, `result_retention_seconds`, the metrics options' descriptions, the introspection
+  functions). Plain HTTP: discovery without `result_retention` (retention is core) and with
+  `ipc_compression_lz4_frame`; the session document's `duckdb_arrow_lossless_conversion` (was
+  `arrow_lossless_conversion`; DuckDB's SQL setting keeps its name) and `transaction`; a bad option
+  fails `POST /sessions`; new tested sections for `PATCH` (every option plus `errors`), a statement
+  cancelled by its timeout while the submission waits (`409 statement_timeout`), and server-info's
+  keys (`server_read_only`, `duckdb_version`, `hardcharger_instance_id`,
+  `hardcharger_access_control`). Bulk ingest: the commit takes `{"part_count": n}`, and the ingest
+  document (tested). Error codes: `certificate_required`, `statement_not_found` for a forgotten
+  statement, `partition_not_found`, `not_found` for endpoints only, `statement_cancelled` and
+  `statement_timeout` at `409`, `execution_error` at `422`, `internal_error` at `500`, the
+  cancelled-at-submit problem document, codes clients make up (`client_*`), unknown codes by status,
+  and which `invalid_token`/`session_ended` reasons a client signs in again after. Warp SQL in one
+  page: `retained` (a server may decline), both split-result headers, `result_locations`, and the
+  error statuses. Statement control: `Warp-Query-Tag`'s ASCII and 4,096-byte rule (tested).
 - The CLI uses TLS by default (Hardcharger feat/cli-tls-default): every CLI example against a
   plain-HTTP server says `--tls=false`; the CLI page shows the hint a TLS connection to a
   plain-HTTP server prints, and its option table, the GizmoSQL mapping and the Docker guide say

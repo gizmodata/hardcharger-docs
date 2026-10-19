@@ -45,6 +45,138 @@
     "return_type": "VARCHAR"
   },
   {
+    "name": "hardcharger_cancel",
+    "type": "scalar",
+    "return_type": "BOOLEAN"
+  },
+  {
+    "name": "hardcharger_active_connections",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "session_id",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "instance_id",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "cluster_id",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "username",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "role",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "tenant",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "auth_method",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "client_address",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "client_info",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "session_tags",
+        "type": "MAP(VARCHAR, VARCHAR)"
+      },
+      {
+        "name": "tls",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "tls_version",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "certificate_identity",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "certificate_thumbprint",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "token_certificate_bound",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "state",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "transaction",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "statement_id",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "statement",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "statement_started_at",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "queued_since",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "session_started_at",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "last_activity_at",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "cancel_reason",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "result_partitions",
+        "type": "INTEGER"
+      },
+      {
+        "name": "open_result_streams",
+        "type": "INTEGER"
+      },
+      {
+        "name": "open_ingest_parts",
+        "type": "INTEGER"
+      },
+      {
+        "name": "retained_results",
+        "type": "INTEGER"
+      },
+      {
+        "name": "retained_rows",
+        "type": "BIGINT"
+      },
+      {
+        "name": "is_current",
+        "type": "BOOLEAN"
+      }
+    ]
+  },
+  {
     "name": "hardcharger_metrics",
     "type": "table",
     "return_type": null,
@@ -60,6 +192,145 @@
       {
         "name": "labels",
         "type": "MAP(VARCHAR, VARCHAR)"
+      }
+    ]
+  },
+  {
+    "name": "hardcharger_server_info",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "hardcharger_version",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "duckdb_version",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "arrow_version",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "instance_id",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "cluster_id",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "instance_tag",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "start_time",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "uptime",
+        "type": "INTERVAL"
+      },
+      {
+        "name": "uptime_seconds",
+        "type": "BIGINT"
+      },
+      {
+        "name": "hostname",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "os_platform",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "os_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "os_version",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "cpu_arch",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "cpu_model",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "cpu_count",
+        "type": "INTEGER"
+      },
+      {
+        "name": "memory_total_bytes",
+        "type": "BIGINT"
+      },
+      {
+        "name": "memory_resident_bytes",
+        "type": "BIGINT"
+      },
+      {
+        "name": "database_path",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "read_only",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "listen_address",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "port",
+        "type": "INTEGER"
+      },
+      {
+        "name": "health_port",
+        "type": "INTEGER"
+      },
+      {
+        "name": "metrics_address",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "metrics_port",
+        "type": "INTEGER"
+      },
+      {
+        "name": "oauth_enabled",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "tls_enabled",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "mtls_enabled",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "mtls_client_certificate_required",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "server_certificate_sha256",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "web_ui_enabled",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "rbac_store_type",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "session_count",
+        "type": "INTEGER"
       }
     ]
   },

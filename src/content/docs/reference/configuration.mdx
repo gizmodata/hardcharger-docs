@@ -33,7 +33,7 @@ Besides the options below, the server takes these command-line actions, which ru
 | `--verify-tls URL` | Fetch a URL over HTTPS with the system's CA bundle, then exit 0 or 1 |
 | `--verify-audit-log FILE [--verify-audit-log-partial]` | Check an [audit log](/guides/instrumentation-and-audit/#the-audit-log)'s hash chain |
 
-85 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
+86 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
 
 ## Listener
 
@@ -599,6 +599,18 @@ Seconds an idle session lives (0: forever)
 | Type | integer |
 | Default | `900` |
 
+### `result_retention_seconds`
+
+Seconds a retained result (resumable, readable again) is kept after its statement ends, from 1 to 2592000 (30 days); its statement document's expires_at says until when.
+
+| | |
+|---|---|
+| Flag | `--result-retention-seconds <n>` |
+| Environment | `HARDCHARGER_RESULT_RETENTION_SECONDS` |
+| YAML | `result_retention_seconds: …` |
+| Type | integer |
+| Default | `3600` |
+
 ## Statements
 
 ### `query_timeout_seconds`
@@ -1051,7 +1063,7 @@ Record DuckDB's query profile with each execution: off, standard or detailed.
 
 ### `enable_metrics`
 
-Collect runtime metrics and serve /metrics.
+Collect runtime metrics and serve /metrics (default: on when metrics_port or metrics_bind_address is set)
 
 | | |
 |---|---|
@@ -1063,7 +1075,7 @@ Collect runtime metrics and serve /metrics.
 
 ### `metrics_port`
 
-Port serving /metrics (0: none)
+Port serving /metrics (0: none, metrics in SQL only); setting it turns metrics on.
 
 | | |
 |---|---|
@@ -1075,7 +1087,7 @@ Port serving /metrics (0: none)
 
 ### `metrics_bind_address`
 
-Address /metrics listens on.
+Address /metrics listens on; setting it turns metrics on.
 
 | | |
 |---|---|

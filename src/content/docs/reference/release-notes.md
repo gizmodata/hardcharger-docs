@@ -13,6 +13,376 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+### Added
+
+- Web UI, the rest of the editor's behavior: **How the editor works** (the ? in the tab bar):
+  sessions, with this server's idle timeout (the session document's `idle_timeout_s`),
+  transactions, statements, results, and what stays in this browser; the Saved queries panel
+  says they're kept in this browser. On a screen 760 px wide or less the side panel sits above
+  the editor at full width (it was hidden) and the page scrolls, with a note, hidden for good
+  by its ×, that a larger screen is easier. After a save, the cursor goes back to the editor
+  (it was left on the page, so the next shortcut went nowhere). e2e: `idle.spec.ts` against a
+  second server whose sessions end after 2 s idle (a new session takes over and says so; with
+  a transaction open the run is refused and nothing of it executes; the schema browser carries
+  on), `layout.spec.ts`, and every editor shortcut (Run, Run all, Save, close) acting on the
+  shown tab rather than the tab opened last (`tabs.spec.ts`).
+- Web UI: the README's screenshots show the editor's tabs, a script's result tabs and an open
+  transaction; tests for a script's 64 MiB cap (unit) and for a browser that blocks IndexedDB
+  (`saved-blocked.spec.ts`: the panel says it can't keep saved queries, Save says so, queries
+  still run).
+- Web UI, saved queries, Run as and downloads: saved queries in folders, kept in this
+  browser (IndexedDB, per user; the page works without it), with Save (Ctrl/⌘+S; the same
+  query after the first time), Save as…, the unsaved dot, new folder, rename, move by drag,
+  delete (asking, with counts), import .sql files, a query's .sql or a folder's .zip, opening
+  a query (or going to its tab), and the whole library exported to a file and imported in
+  another browser. Run as: under access control a user's tab acts with one of their roles
+  (SET ROLE) or all of them, the schema browser and autocomplete listing what that role sees;
+  locked in a transaction; no picker for an administrator or without access control.
+  Downloads: CSV, TSV, JSON and Excel (.xlsx, written here) of the rows as shown (the grid's
+  filter and sort), Parquet and Arrow IPC (.arrows) of the whole result with its exact types.
+  e2e `saved.spec.ts`, `roles.spec.ts`, `export.spec.ts` (Excel, Arrow, as shown); unit tests of
+  the zip and xlsx writers (a workbook also read back with openpyxl).
+- Web UI, the schema browser and autocomplete: Tables and Views groups, column type icons,
+  double-click or drag a fully qualified, quoted-where-needed name into the editor, a menu
+  (insert or copy a name, preview data in a new tab on that catalog and schema, insert column
+  names or a SELECT, a view's definition, use this catalog and schema; not during a
+  transaction), search of every table and view the user may see (two or more characters, up
+  to 100), re-listing after a run that changes the catalog, Retry on a failed listing, and a
+  hideable, resizable side panel (kept in this browser). Autocomplete of catalogs, schemas,
+  tables, views, columns (through aliases), functions and keywords from the server's
+  metadata, as access control filters it; nothing inside strings or comments. e2e
+  `explorer.spec.ts`, `autocomplete.spec.ts` (an RBAC user is offered only what they may see),
+  unit tests of the completion parser and quoting.
+
+- Web UI, the results grid: sort by a column (asc, desc, off; NULLs last, typed: exact
+  decimals and 64-bit integers, byte-order text), a filter across every column, column
+  resizing (drag, double-click to fit, arrow keys), the spreadsheet selection with its whole
+  keyboard (arrows, Home/End, Page Up/Down, Ctrl/⌘ jumps, Shift ranges, drag with edge
+  scrolling, row numbers, Ctrl/⌘+A, Esc), a copy that pastes into Excel and Google Sheets as
+  cells (text plus an HTML table: full values, NULL empty, line breaks inside a cell,
+  `00123` kept as text; one cell as its bare value; through the copy command, so Safari
+  copies), a cell inspector (double-click or Enter; nested values and JSON text
+  pretty-printed with exact numbers; Copy value), Copy of the rows shown, and Expand /
+  Restore. e2e `grid.spec.ts` (Chromium and WebKit; with the copy command taken out, its
+  WebKit copy test fails); unit tests for the selection moves, the clipboard forms, sorting
+  and the JSON printer.
+
+- Web UI, the SQL editor's tabs, runs and sessions:
+  up to 20 tabs (Alt+N, Alt+W asking first about an open transaction or unsaved text, rename,
+  drag to reorder, running/failed/transaction markers), each its own Warp SQL session; Run
+  runs the statement at the cursor (margin bar) or exactly the selection, and Run all
+  (⇧+Ctrl/⌘+Enter) every statement, stopping at the first error, with a result tab per result
+  set and Messages (at most 50 result sets and 64 MiB kept in the browser); Cancel notes how
+  far a script got and an aborted transaction; In transaction / Transaction failed badges with
+  Commit and Rollback, from the session document's `transaction`; Catalog and Schema pickers
+  (session options, locked in a transaction, following `USE`); row limits 100 to 1,000,000
+  (default 1,000) with "truncated at … rows"; the session chip (the server's session id, copied
+  on click); New session; a session the server lost is replaced with a note, or, with a
+  transaction open, nothing runs and the message says it was rolled back; leaving the page
+  with a transaction open asks first; a resizable editor (drag, keys, double-click, kept).
+  The editor's tab connections no longer replace a lost session silently. e2e (Chromium and
+  WebKit): `tabs.spec.ts`, `run.spec.ts`, `session.spec.ts`; unit tests for the tab store,
+  the script runner and the session's loss handling.
+
+- Introspection without instrumentation or metrics (README, Introspection; warp-sql 64eb65c):
+  `hardcharger_active_connections()`, a row per open session from the server's own session
+  tables: session_id (the Warp SQL `s_...` id), instance_id, cluster_id, username, role,
+  tenant, auth_method; the latest request's client_address and client_info (User-Agent);
+  session_tags (`MAP(VARCHAR, VARCHAR)`, the Warp SQL `session_tag` option's keys, then
+  `SET hardcharger.session_tag`'s); tls, tls_version, certificate_identity,
+  certificate_thumbprint, token_certificate_bound; state (`idle`, `queued`, `running`,
+  `streaming`, `idle_in_transaction`, `idle_in_transaction_aborted`) and transaction; the
+  statement_id and statement (redacted by the statement log's own code), statement_started_at,
+  queued_since, session_started_at, last_activity_at; cancel_reason while a cancelled
+  statement unwinds; result_partitions, open_result_streams, open_ingest_parts,
+  retained_results, retained_rows; is_current. `hardcharger_cancel(session_id)` stops what a
+  session runs and keeps it: its statement ends cancelled (`cancel_reason` `cancelled`, also
+  in instrumentation), its result readers get an incomplete stream, partitioned results and
+  ingest uploads in flight are aborted, and its next statement works; it returns whether
+  there was anything to stop. `hardcharger_server_info()`: versions, instance and cluster
+  ids, the instance tag, start time and uptime for everyone; the host (hostname, OS, CPU
+  model and count, total and resident memory), database path, listen address and ports, TLS
+  and mutual TLS, the server certificate's SHA-256 fingerprint, the web UI, the
+  access-control store type and the session count for an administrator without
+  `catalog_access` rules (NULL for everyone else). It and the instrumentation `instances`
+  row come from one collection at startup, which now also records the CPU model (on ARM
+  Linux, whose /proc/cpuinfo names none, from the CPU implementer and part: "ARM
+  Neoverse-V1").
+  Who sees and cancels what: an administrator without `catalog_access` rules, every
+  session; anyone else, a restricted administrator included, its own principal's (the same
+  user name and tenant), never a more privileged session. `hardcharger_sessions()` follows
+  the same rule (a user used to see only the calling session). `test_introspection.py`.
+
+- `result_retention_seconds` (default 3600, from 1 to 2592000): how long a retained
+  (resumable) result is kept after its statement ends; the statement document's
+  `expires_at` follows it. Flag, `HARDCHARGER_RESULT_RETENTION_SECONDS`, YAML, `--help` and
+  `--print-options-json`.
+
+- Instrumentation: `sql_executions.cancel_reason` (and in `execution_details` and
+  `session_activity`): why a cancelled execution stopped (`client`, `timeout`, `killed`,
+  `cancelled`, `session_closed`, `server_shutdown`). Tables from before get the column at
+  startup.
+
+- The session document says where the session's transaction stands (Warp SQL §5.2,
+  warp-sql 6afe76d): `GET /warp/v1/sessions/{id}` and the session's creation answer carry
+  `transaction`, `none`, `open` or `aborted`, as the engine has it, read after every
+  statement, ingest, option change, commit and rollback. `test_rbac_set_role.py` checks it
+  for a store user through an allowed, a refused and a failed statement; the conformance
+  suite's ten new session tests pass on this server.
+
+### Changed
+
+- **Browser sign-in moved into the Warp SQL protocol, on the main port** (Warp SQL §4.3,
+  capability `oauth_browser`; the SDK at warp-sql `feat/oauth-in-protocol`). Clients create a
+  flow (`POST /warp/v1/auth/oauth/flows`), the person signs in with the identity provider,
+  which redirects to `GET /warp/v1/auth/oauth/callback`, and the client collects
+  Hardcharger's own access token once with the flow's poll secret (never in a URL); the
+  provider's ID token no longer reaches clients. The server sends the provider `state`, PKCE
+  (S256) and a `nonce` (checked in the ID token), exchanges the code as before, and signs the
+  user in as `token_exchange` does (JWKS, issuer, audience, `token_authorized_emails`, role,
+  store users); the session's `auth_method` is `oauth_browser`. **The redirect URI to register
+  with the identity provider is now `<oauth_base_url>/warp/v1/auth/oauth/callback`**:
+  `oauth_base_url` is the server's public URL (default `http(s)://localhost:PORT`), and
+  `oauth_redirect_uri` still overrides it. `oauth_instance_id` still prefixes the state for a
+  shared callback proxy, and with `oauth_base_url` set the redirect back to a web page is
+  absolute on it. New: `oauth_provider_name` (discovery's `auth.oauth_browser.provider`, the
+  UI's "Sign in with NAME") and `oauth_max_flows` (sign-ins in progress at once, default
+  10000, and at most 100 per client address; beyond, `429 rate_limited`).
+  `hardcharger_server_info()` has `oauth_enabled` (BOOLEAN) for `oauth_port`.
+- `hardcharger --auth-type external` uses that flow on the server's own port and says which
+  provider it waits for; it refuses a server without `oauth_browser`.
+- Web UI: **Sign in with <provider>** (or "single sign-on") beside the user name and password
+  when the server offers browser sign-in: the page starts a flow with `return_to` set to
+  itself, keeps the poll secret in the tab, and on its return (the flow id in the URL
+  fragment, removed at once) collects the token or shows why the sign-in failed.
+- **Warp SQL 1.0.0** (warp-sql `spec/v1.0`). The protocol's shape fixed for its first stable
+  version, with no fallbacks for the drafts:
+  - A statement that fails while running is `422 execution_error` (was `500`); `500` is now
+    `internal_error`, for the server's own faults (an engine internal error, a result
+    Hardcharger itself could not build). `statement_cancelled` and `statement_timeout` are
+    `409`, and a statement cancelled before its submit is answered (a `KILL SESSION`,
+    `hardcharger_cancel()`, its timeout, a session cancel) answers with that error and its
+    `cancel_reason`, no longer a `200`/`201` document.
+  - Server-info keys of Hardcharger's own take its prefix: `hardcharger_instance_id` and
+    `hardcharger_access_control` (were `instance_id` and `access_control`), `duckdb_version`
+    (was `engine` and `engine_version`), and `server_read_only` says whether the server
+    runs read-only; `protocol` and `protocol_version` are gone (discovery has them). The
+    client's `.info` reads `duckdb_version`.
+  - The Warp SQL session option is `duckdb_arrow_lossless_conversion` (was
+    `arrow_lossless_conversion`; the SQL `SET SESSION arrow_lossless_conversion` is DuckDB's
+    and keeps its name).
+  - Discovery has no `draft` field, and no `result_retention` capability (retention is core);
+    a partitioned ingest commits with `{"part_count": n}`; a partition the result doesn't have
+    is `partition_not_found`; `client_certificate_required` is `certificate_required`.
+  - `Warp-Query-Tag` (an ASCII JSON object, at most 4 KiB) is recorded as a submitted
+    statement's query tag in the instrumentation tables, ahead of `SET hardcharger.query_tag`;
+    a malformed one is refused with `400`.
+  - The command-line client's own error codes take the protocol's `client_` prefix
+    (`client_connection_failed`, `client_tls_failed`, `client_protocol_error`, …), and so do
+    the web UI's (`client_transport_error`, `client_protocol_error`, `client_sign_in_failed`).
+  - Web UI: the vendored JavaScript client moves to warp-sql-js `4a27d4d` (Warp SQL 1.0.0, on
+    browser sign-in); browser sign-in's own failures take the `client_` codes too, and a flow
+    state the page doesn't know is polled on (Warp SQL §12) rather than refused; the
+    About dialog drops the draft label, an `invalid_token` or `session_ended` with
+    `token_revoked` says the sign-in was revoked, a reason the UI doesn't know reads as an
+    expired sign-in, and a statement timeout says so.
+  - Without a signing key, `CREATE SCOPED TOKEN` is `501 not_implemented` (was
+    `execution_error`).
+  - CI: the conformance suite's new one-signal drain and access-control tests run against
+    Hardcharger (`--shutdown-grace-period-seconds`, the DuckDB access-control store).
+
+- `KILL SESSION` runs `hardcharger_cancel()`'s cancel first (one implementation), then ends
+  the session: what it runs stops (within milliseconds for a CPU-bound statement), its
+  statement ends cancelled with `cancel_reason` `killed` (it used to fail with
+  `session_ended`), its result streams are cut off, its partitioned ingests and uploads are
+  aborted, and then every request naming it, a statement's status or result included, gets
+  `session_ended` (`killed`); a DELETE of it answers 204. Ending alone never stopped the
+  work: tests fail with the cancel taken out of KILL's path.
+
+- An error a function raises while the rows are read, when it is DuckDB's `Permission
+  Error`, is `permission_denied` (403), not `execution_error`.
+
+- The transaction a session reports (the session document, and the
+  `hardcharger_sessions` metric's `idle_in_transaction` and `idle_in_transaction_aborted`
+  states) is the one DuckDB has: a syntax error inside a transaction leaves it open
+  (DuckDB forgives it), where any failure used to count as aborted. The server's own
+  tracking is gone; it reads the Warp SQL SDK's (`test_metrics.py` covers the syntax
+  error).
+
+- With `autocommit` false, a SQL `COMMIT` or `ROLLBACK` starts the next transaction, as
+  `POST .../commit` and `.../rollback` do (warp-sql §5.5); the session used to drop out of
+  manual-commit mode after one.
+
+- Web UI: the vendored `@gizmodata/warp-sql` is warp-sql-js d2fb3b7 (was 2b96f0a), with
+  `transactionState()` and the session document's `transaction`, plus the client's changes
+  in between: an explicit port 443 kept on plain HTTP, exact wide integers in JSON
+  parameters, and client-certificate sign-in through the client.
+
+- Faster remote throughput (warp-sql d25f797, warp-sql-adbc da6b4a6; docs/benchmarks.md,
+  2026-10-19): compressed results compress only the buffers a sample shows are worth it
+  and send the rest by reference; a split result's partition count follows its size; the
+  Go/Python driver decompresses batches in parallel, defaults to `auto` compression
+  (lz4_frame near, zstd far), up to 32 result partitions and `auto` ingest parts, and
+  uploads in 16,384-row slices.
+
+- Connections set TCP_NODELAY (warp-sql 58082fa): every small request (discovery, a status
+  poll, `SELECT 1`) waited ~40 ms on Linux for the client's delayed ACK.
+
+- `bench/remote/serve.sh` stops each server by the PID it recorded, never by pattern.
+  New: `run_cases.sh` (a list of cases against one system), `build-from-source.sh` (build
+  the server or driver on a benchmark VM), `midsize.py` (partition overhead on mid-sized
+  results).
+
+### Removed
+
+- The separate browser sign-in server and its port (`oauth_port`, default 31339), its
+  GizmoSQL 1.x routes (`/oauth/initiate`, `/oauth/start`, `/oauth/callback`,
+  `/oauth/token/<uuid>`) and `oauth_disable_tls` (`--oauth-port`, `--oauth-disable-tls`,
+  `HARDCHARGER_OAUTH_PORT`, `HARDCHARGER_OAUTH_DISABLE_TLS`). The client's `--oauth-port`,
+  `--oauth-base-url`, `HARDCHARGER_OAUTH_PORT` and `HARDCHARGER_OAUTH_BASE_URL` are gone too.
+  A redirect URI registered for the old port must be replaced (see above).
+
+### Fixed
+
+- A retained result that expires (`result_retention_seconds`) while a client is reading it
+  no longer cuts that read: the read gets every batch and the end of the stream, and only
+  reads that start afterwards get `410 result_expired`. The expiry sweep (every 5 s)
+  dropped the batches at once, so a read in progress ended without the end-of-stream
+  marker ("incomplete chunked read") for a statement that had succeeded; Windows CI hit it
+  in `test_result_retention_seconds_sets_expires_at_and_the_expiry`. The batches are now
+  freed when the last read that started before the expiry ends. Warp SQL SDK fix (the
+  `third_party/warp-sql` bump); `test_a_read_in_progress_when_the_result_expires_runs_to_the_end`
+  stalls a 64 MB read across the expiry.
+
+- The sensitive-path guard no longer refuses string literals with a `{`, such as
+  `SELECT '{"a": 1}'`, `regexp_matches(s, '^[0-9]{3}$')`, or views and masking policies
+  with such literals ("blocked access to ... (user credential store)"). It took `{` for a
+  glob wildcard reaching anything below the literal's directory, and a literal with no
+  directory part is relative to the working directory, so a server whose working
+  directory holds a protected path refused every one; that includes the Docker image,
+  whose working directory is its home, with `~/.ssh` in it. DuckDB's glob has no brace
+  expansion (its wildcards are `*`, `?` and `[`), so `{` is now an ordinary character, as
+  it is for DuckDB: `read_text('/etc/{passwd,hosts}')` names one file of that name, and a
+  braced path inside a protected directory, or with a real wildcard reaching one, is
+  still refused. `test_sensitive_path_guard.py` covers JSON and regex literals, views,
+  masking policies, the refusals, and that DuckDB still doesn't expand braces.
+
+- The `hardcharger` CLI exits when a script starts it in the background
+  (`hardcharger ... -c 'SELECT 1' &`). A non-interactive shell starts background jobs
+  with SIGINT ignored, and the client's Ctrl-C watcher was woken at exit by a SIGINT to
+  its own thread, which an ignored SIGINT never delivers: the client printed its result
+  and then waited forever. With SIGINT ignored from the start the client starts no
+  watcher (there is no Ctrl-C to take); if it is ignored later, shutdown restores the
+  default action for its one wake signal and then puts the ignore back. Ctrl-C still
+  cancels a running statement. `test_client_cli.py` runs a background job four ways
+  (plain, stdin from /dev/null, from a closed pipe, a script on a pipe), and two client
+  unit tests cover the watcher with SIGINT ignored.
+
+- CREATE VIEW in catalog `x` over a schema also named `x` (`CREATE VIEW x.x.v AS SELECT *
+  FROM x.x.t`) fails, as it does on plain DuckDB 2.0 (DuckDB 1.5 creates it): DuckDB drops
+  the view's own catalog from the names in its query and then finds `x.t` ambiguous.
+  Hardcharger's error now says what happens and what works (create the view in another
+  catalog, or rename the schema), where DuckDB's message said to qualify a name that
+  already was; `docs/migrating-from-gizmosql.md` documents it.
+  `test_view_catalog_schema_same_name.py` covers it with access control on and off.
+
+### Security
+
+- The private-file guard now also covers extensions that open files outside DuckDB's file
+  system. `sqlite_scanner` opens the file with SQLite's own library, so `ATTACH '<path>'
+  (TYPE sqlite)`, the `sqlite:` path prefix, and the `sqlite_scan` / `sqlite_query` /
+  `sqlite_attach` table functions bypassed the file-system guard; a SQLite file created
+  where the database's WAL goes made a committed INSERT vanish after a crash and restart.
+  These are refused at plan time, once the path is resolved, whenever it names one of the
+  server's own files or a sibling (the store, database, instrumentation and log files, with
+  their WAL and temporary siblings), by every spelling (computed, `..`, relative, symlink,
+  hard link, case, Windows 8.3). Attaching an unrelated SQLite file still works. DuckDB-
+  storage attaches are unchanged (the file-system guard already covers them). Tested as the
+  administrator and as a file-system-privileged user, each with a positive twin.
+
+### Documentation
+
+- README: "Why Hardcharger instead of Quack?", a feature comparison with DuckDB's Quack
+  extension (`e7a9be3f8c`, the commit DuckDB 2.0 pins), and docs/hardcharger-vs-quack.md with
+  the versions and the checks behind each row, run against live Quack and Hardcharger 0.3.0
+  servers. Features only, no throughput figures. The doc also shows DuckDB attaching
+  Hardcharger through an ADBC extension (Columnar's `adbc` or Query.Farm's `adbc_scanner`) with
+  hardcharger-adbc's driver library, with examples run against Hardcharger 0.3.0.
+- README: "Where Hardcharger is faster", under "Why Hardcharger instead of Quack?": the five
+  shapes of the 2026-10-19 benchmark where Hardcharger beat Quack (SF1 fetch and load over the
+  LAN and the WAN, SF10 fetch over plaintext), with the conditions, and a link to the full
+  results, including the shapes where Quack is faster. Each median recomputed from
+  `bench/remote/results/2026-10-19-throughput-2/`.
+
+- Bulk ingest answers `415 unsupported_arrow_type` (Warp SQL §8.1) for an Arrow type
+  DuckDB can't keep, where `decimal256` (any precision) and dense unions, also nested in a
+  list, struct or dictionary, were a `400 sql_error` from inside DuckDB. warp-sql e354e97:
+  the DuckDB backend lets through only the types DuckDB's Arrow scan reads and refuses
+  any other before a table is touched. `test_bulk_ingest.py` and the conformance suite's
+  two new ingest tests cover it.
+
+- `--metrics-port N` (or `HARDCHARGER_METRICS_PORT`, or `metrics_port` in the file)
+  without `--enable-metrics` served nothing, and the ready line said `metrics_port=`.
+  Saying where `/metrics` listens now turns metrics on: a `metrics_port` other than 0, or
+  a `metrics_bind_address`, sets `enable_metrics` unless it is set itself. An explicit
+  `enable_metrics` false still wins, and the startup log says the port is unused. The
+  ready line says `metrics_port=off` when metrics are off and `none` for metrics in SQL
+  only (`metrics_port` 0), and `oauth_port=off` without the OAuth server.
+  `test_metrics_configuration.py` covers each source and case.
+
+- A session has one id: the Warp SQL session id its client holds (`s_...`, from the
+  session document). `KILL SESSION '<id>'` with that id said "not found", because the
+  server kept a UUID of its own, which only `HARDCHARGER_CURRENT_SESSION()` showed.
+  `HARDCHARGER_CURRENT_SESSION()`, `hardcharger_sessions()`, `KILL SESSION`, the log
+  lines' `session_id`, the instrumentation tables (`sessions`, `sql_statements` and the
+  views over them) and the catalog log's `session_id` all carry the Warp SQL id now
+  (warp-sql e1775b3: the SDK hands it to the engine). Those `session_id` columns are
+  `VARCHAR`; an instrumentation or log table that Hardcharger 0.3.0 created with UUIDs is
+  refused at startup, saying to drop it or use a new database (its rows' ids match no
+  session anyone holds). `test_kill_session.py` checks one session's id in the session
+  document, `HARDCHARGER_CURRENT_SESSION()`, `hardcharger_sessions()`, the instrumentation
+  tables, the log and `KILL SESSION`.
+
+- No GizmoSQL-era (Flight SQL) names in logs or instrumentation: bulk-ingest log lines
+  carried `flight_method=ingest` beside `kind=ingest` (now only `kind`), and the
+  instrumentation table `sql_statements` named its column `flight_method`; it is
+  `statement_kind` (`statement` or `prepared`, the Warp SQL endpoint a statement came by).
+  A 0.3.0 instrumentation table is refused at startup in any case, as its session ids are
+  UUIDs (above: drop it); one whose `session_id` is already `VARCHAR` but still has
+  `flight_method` is refused with the `ALTER TABLE ... RENAME COLUMN` that fixes it. No
+  metric label had the name. `test_instrumentation.py`
+  and `test_bulk_ingest.py` cover it.
+
+- `INSTALL` works without `HOME` (services, containers): DuckDB keeps extensions and
+  persistent secrets under `HOME` and, without it, refused every `INSTALL` ("Can't find the
+  home directory at ''", a 500) and kept persistent secrets relative to the working
+  directory. With `HOME` unset, DuckDB's `home_directory` is now the account's home (the
+  password database, the home the sensitive-path guard already protects); with no
+  writable home at all (also `HOME=/` for a container run as a user the image has no
+  account for), `extension_directory` and `secret_directory` are `.duckdb/extensions` and
+  `.duckdb/stored_secrets` in the database file's directory (the working directory for an
+  in-memory database). The startup log says which, and warns when neither is writable.
+  `test_extension_directory.py` covers both cases with `HOME` unset or unusable.
+
+- `hardcharger`: after a `KILL SESSION` (or another `session_ended`), the statement it caught
+  printed the server's "Sign in again and open a new session to re-authenticate" right below
+  the client's "a new session is open". The client has done both by then; it now says "The
+  statement did not complete: its session ended (killed). It was not run again; run it again
+  to run it in the new session." `test_client_cli.py` checks the whole message.
+
+- Tests now pick listen ports collision-free across concurrent runs on one machine. Each
+  server's port was taken from a fixed range (20000+) split only between one run's
+  pytest-xdist workers, so a second run (another checkout, a non-xdist run) reused the same
+  ports: a bind failed with "Address already in use", or a client signed in to the other
+  run's server and got `invalid_credentials`. `free_port()` now holds a machine-wide
+  advisory lock on each port it hands out (a lock file named after the port, released when
+  the process exits) and still probes that nothing is bound, so two full suites run at once.
+  (The server also logs its bound port in its ready line, for a run that lets the OS choose.)
+
+- `lz4_frame` Arrow buffer compression beside `zstd` (Warp SQL §8.2, capability
+  `ipc_compression_lz4_frame`), with the client's codec preference list in
+  `Warp-IPC-Compression` (warp-sql d25f797).
+
 ## [0.3.0] - 2026-10-18
 
 A built-in web UI, client certificates as identity (mutual TLS), a DuckDB-file

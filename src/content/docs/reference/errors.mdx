@@ -17,11 +17,15 @@ Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem doc
 }
 ```
 
-**`code` is stable**: program against it. `detail` is for people and may change. `sqlstate` is the
+**`code` is stable**: program against it. `title` is a short summary of the code, the same for
+every error with that code, and `detail` says what happened this time; both are for people, and
+`detail` may change. `sqlstate` is the
 SQL standard's code when there is one. `request_id` is also in the server's logs (and the
 `Warp-Request-Id` header), so quote it when you report a problem. The drivers carry all of it:
 Python's exception message, JDBC's `SQLException` (`getSQLState()`, `WarpProblem.codeOf(e)`), Go's
-`warpsql.ErrorCode(err)`.
+`warpsql.ErrorCode(err)`. A code a client doesn't know is handled by its HTTP status: `4xx` means
+the request or its statement ended because of what it asked for, `5xx` that the server failed or
+can't serve now. A statement's own failure is never `5xx`.
 
 | Code | Status | Means | What to do |
 |---|---|---|---|
@@ -31,17 +35,18 @@ Python's exception message, JDBC's `SQLException` (`getSQLState()`, `WarpProblem
 | `invalid_return_to` | 400 | A [browser sign-in](/guides/sso/#browser-sign-in)'s `return_to` that isn't a path on the server itself (an absolute URL, `//host`, a backslash, a fragment, ...) | Send a path such as `/ui/` |
 | `invalid_credentials` | 401 | Sign-in failed. It never says which part was wrong. | Check the user, password or token; an identity-provider token may be expired, for the wrong audience, or for a user [not authorized](/guides/sso/#limit-who-may-sign-in) |
 | `invalid_token` | 401 | A missing, malformed, expired or foreign access token (another replica's, without `allow_cross_instance_tokens`); also a token whose user's password changed, or who was disabled or dropped, or a revoked scoped token. A token the server issued itself carries a `reason` ([below](#invalid_token-reasons)) | Sign in again; after `credentials_changed` or `principal_dropped`, the old password no longer works either |
-| `session_ended` | 401 | The server ended the session: an administrator killed it, or access control ended it; `reason` says which ([below](#session_ended-reasons)) | Sign in again, then open a new session |
+| `session_ended` | 401 | The server ended the session: an administrator killed it, or access control ended it; `reason` says which ([below](#session_ended-reasons)) | Open a new session; except after `killed`, sign in again first |
 | `unsupported_grant_type` | 400 | A sign-in grant the server doesn't offer, such as `client_certificate` without [certificate sign-in](/guides/tls/#signing-in-with-the-certificate) | Sign in another way |
-| `client_certificate_required` | 401 | Certificate sign-in on a connection without a client certificate (where certificates are optional) | Connect with the certificate |
+| `certificate_required` | 401 | Certificate sign-in on a connection without a client certificate (where certificates are optional) | Connect with the certificate |
 | `unknown_certificate_identity` | 401 | The certificate has no identity of the kind the server maps, several, or one that is no administrator identity and no enabled user | Check `--mtls-identity-source`; create the user |
 | `certificate_revoked` | 401 | The connection's certificate was revoked (or its CRL expired) after the connection was set up | Use a valid certificate |
 | `certificate_mismatch` | 401 | A token bound to a client certificate, on a connection without that certificate; or a session opened with another binding | Present the certificate the token was issued for |
 | `certificate_identity_mismatch` | 401 | With `--mtls-require-identity-match`: a password or token sign-in for another identity than the connection's certificate | Sign in as the certificate's identity |
 | `permission_denied` | 403 | The user lacks a privilege; also the guards (files, secrets, admin-only commands) | Ask for the grant; `detail` names it |
 | `read_only` | 403 | The server or session is read-only | Write elsewhere |
-| `session_not_found`, `statement_not_found`, `prepared_not_found`, `ingest_not_found` | 404 | No such handle, or not yours: evicted after `session_idle_timeout`, closed, server restarted | Open a new session (drivers do, and tell you) |
-| `not_found` | 404 | No such endpoint, partition, or a forgotten statement | Check the URL |
+| `session_not_found`, `statement_not_found`, `prepared_not_found`, `ingest_not_found` | 404 | No such handle, or not yours: evicted after `session_idle_timeout`, closed, server restarted; `statement_not_found` also for a statement the server has forgotten | Open a new session (drivers do, and tell you) |
+| `partition_not_found` | 404 | The result has no partition with that index | Read the partitions the statement document lists |
+| `not_found` | 404 | No such endpoint | Check the URL |
 | `flow_not_found` | 404 | No such browser sign-in, a wrong poll secret, or one already collected or expired (sign-ins last 10 minutes) | Start the sign-in again |
 | `method_not_allowed` | 405 | The endpoint exists, but not for this method | |
 | `result_not_ready` | 409 | The statement has no result schema yet | Retry |
@@ -57,15 +62,42 @@ Python's exception message, JDBC's `SQLException` (`getSQLState()`, `WarpProblem
 | `too_many_sessions` | 429 | Past [`max_sessions`](/reference/configuration/#max_sessions) | Close sessions, or retry later |
 | `rate_limited` | 429 | The [statement queue](/guides/statement-control/#the-statement-queue) is full, a statement waited longer than `max_queue_wait`, or more browser sign-ins are in progress than [`oauth_max_flows`](/reference/configuration/#oauth_max_flows) | Retry after `Retry-After` |
 | `result_quota_exceeded` | 429 | Too many retained results | Read and delete results |
-| `statement_timeout` | — | Inside a statement document: the statement ran past its timeout | Raise the timeout, or speed the query up |
-| `statement_cancelled` | — | Inside a statement document: cancelled (`cancel_reason`: `client`, `killed`, `privilege_revoked`, `server_shutdown`, ...) | |
-| `execution_error` | 500 | The statement failed while running | `detail` says why |
-| `server_draining` | 503 | The server is shutting down | Retry after `Retry-After`, elsewhere |
+| `statement_cancelled` | 409 | The statement was cancelled; `cancel_reason` says why (`client`, `killed`, `privilege_revoked`, `server_shutdown`, ...) | |
+| `statement_timeout` | 409 | The statement ran past its timeout and was cancelled (`cancel_reason: timeout`) | Raise the timeout, or speed the query up |
+| `execution_error` | 422 | The statement failed while running: a division by zero, a constraint, a conversion | `detail` says why |
+| `internal_error` | 500 | The server failed in a way that isn't the request's doing (a bug) | Report it with the `request_id` |
 | `not_implemented` | 501 | The server doesn't implement this operation, such as browser sign-in without `oauth_client_id` | |
+| `server_draining` | 503 | The server is shutting down | Retry after `Retry-After`, elsewhere |
+
+A statement that has failed, or was cancelled, by the time the server answers its submission
+gets one of these as an error response, with the statement's id in the `Warp-Statement-Id` header
+(and `cancel_reason` in the problem document of a cancelled one):
+
+```json
+{
+  "type": "urn:warp-sql:error:statement_cancelled",
+  "title": "Statement cancelled",
+  "status": 409,
+  "code": "statement_cancelled",
+  "detail": "the statement was cancelled (client)",
+  "request_id": "r_kdel…",
+  "sqlstate": "57014",
+  "cancel_reason": "client"
+}
+```
+
+A `failed` or `cancelled` statement document, from polling a statement or from a replay of an
+idempotent request (`200`), carries the same problem document in `error`: treat it as the
+statement's error whatever the status.
 
 A failed streamed result ends **without** Arrow's end-of-stream marker: the HTTP status was
 already `200`, so the cut stream is the error. Clients must treat it as failed and fetch the
 statement document for the reason. The drivers do.
+
+**Codes a client makes up** for a failure it found itself, with no problem document from the
+server (a broken connection, a response it can't read), begin with `client_`, such as the
+JavaScript client's `client_transport_error` and `client_protocol_error`. The server never
+sends a `client_` code.
 
 ## Browser sign-in failures
 
@@ -92,7 +124,11 @@ document's `reason` says why it stopped working:
 
 A token the server can't verify as its own (malformed, signed with another key, altered) gets
 `invalid_token` with no `reason`, whatever user it names: only the holder of a real token learns
-anything about that user. The same token never works again, so don't retry with it. The
+anything about that user. The same token never works again, so don't retry with it. A client
+that holds the credentials it signed in with may sign in again (once) after `token_expired`, no
+reason, or a reason it doesn't know; after `token_revoked`, `credentials_changed` or
+`principal_dropped` someone withdrew the access, or the old credentials fail too, so the drivers
+don't sign in again on their own and report the reason instead. The
 [`hardcharger` CLI](/clients/cli/) prints the reason ("The server no longer accepts this sign-in:
 the user's password or credentials changed (credentials_changed). Sign in again (.connect).").
 
@@ -109,8 +145,11 @@ the user's password or credentials changed (credentials_changed). Sign in again 
 A killed session answers `session_ended` at once, since its token still stands. When access
 control ends a session, the token that opened it stops working first, so its next request gets
 `invalid_token` with the same `reason`; after the client signs in again, the old session answers
-`session_ended` with the reason, and the client opens a new one. The drivers do both steps for
-you.
+`session_ended` with the reason. After `credentials_changed`, `principal_dropped`,
+`token_revoked` or `token_expired` a client needs a new token before it opens a new session;
+after `killed` (or a reason it doesn't know) it may open one with the token it has. The drivers
+renew a token and open a new session on their own only after `token_expired`, and report the
+other reasons. Any reason a client doesn't know is a generic one: the session is gone.
 
 ```console test profile=rbac
 $ export HARDCHARGER_PASSWORD='change-me'

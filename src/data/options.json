@@ -471,6 +471,16 @@
       "description": "seconds an idle session lives (0: forever)"
     },
     {
+      "name": "result_retention_seconds",
+      "group": "Sessions",
+      "flag": "--result-retention-seconds",
+      "env": "HARDCHARGER_RESULT_RETENTION_SECONDS",
+      "yaml_key": "result_retention_seconds",
+      "type": "integer",
+      "default": "3600",
+      "description": "seconds a retained result (resumable, readable again) is kept after its statement ends, from 1 to 2592000 (30 days); its statement document's expires_at says until when"
+    },
+    {
       "name": "query_timeout_seconds",
       "group": "Statements",
       "flag": "--query-timeout-seconds",
@@ -838,7 +848,7 @@
       "yaml_key": "enable_metrics",
       "type": "boolean",
       "default": "false",
-      "description": "collect runtime metrics and serve /metrics"
+      "description": "collect runtime metrics and serve /metrics (default: on when metrics_port or metrics_bind_address is set)"
     },
     {
       "name": "metrics_port",
@@ -848,7 +858,7 @@
       "yaml_key": "metrics_port",
       "type": "integer",
       "default": "9091",
-      "description": "port serving /metrics (0: none)"
+      "description": "port serving /metrics (0: none, metrics in SQL only); setting it turns metrics on"
     },
     {
       "name": "metrics_bind_address",
@@ -858,7 +868,7 @@
       "yaml_key": "metrics_bind_address",
       "type": "string",
       "default": "0.0.0.0",
-      "description": "address /metrics listens on"
+      "description": "address /metrics listens on; setting it turns metrics on"
     }
   ]
 }

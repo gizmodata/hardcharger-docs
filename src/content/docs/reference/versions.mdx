@@ -3,13 +3,15 @@ title: "Versions"
 description: "Which Hardcharger version these docs describe, how versions and compatibility work, and where to find what changed in each release."
 ---
 
-These docs describe **version 0.3.0** of Hardcharger, as built from its main branch. Every example runs
-against a server built from `main`.
+These docs describe **version 2.0.0-rc.1** of Hardcharger, the release candidate for 2.0.0, as
+built from its main branch. Every example runs against a server built from `main`.
 
 ## How versions work
 
-- Hardcharger follows [semantic versioning](https://semver.org). Before 1.0, a minor version
-  (`0.3` to `0.4`) may change options or behavior; a patch version only fixes things.
+- Hardcharger follows [semantic versioning](https://semver.org): a major version may change
+  options or behavior, a minor version adds to them, and a patch version only fixes things.
+- A release candidate (`2.0.0-rc.1`) comes before its release. It is a pre-release: its image
+  is tagged with its version (`:2.0.0-rc.1`), never `:latest`.
 - The server, the `hardcharger` CLI and the container image share one version. The drivers
   ([Python](/clients/python/), [Go](/clients/go/), [JDBC](/clients/jdbc/),
   [JavaScript](/clients/javascript/)) are versioned on their own and speak

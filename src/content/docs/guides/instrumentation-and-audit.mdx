@@ -14,9 +14,11 @@ record shows.
 
 Turn it on with [`--enable-instrumentation`](/reference/configuration/#enable_instrumentation).
 The tables go in a catalog named `_hardcharger_instr`: by default a DuckDB file next to the
-database (`hardcharger_instrumentation.db`), or, with
-[`--instrumentation-catalog`](/reference/configuration/#instrumentation_catalog), a DuckLake or
-PostgreSQL catalog that your init SQL attaches, so that every replica writes to one place.
+database (`hardcharger_instrumentation.db`), for development or a single server, or, with
+[`--instrumentation-catalog`](/reference/configuration/#instrumentation_catalog), a PostgreSQL
+catalog that your init SQL attaches, so that every replica writes to one place. Use PostgreSQL in
+production. A DuckLake catalog (or any catalog but PostgreSQL) stops the server at startup, with
+what to use instead.
 
 ```console test profile=instrumentation
 $ export HARDCHARGER_PASSWORD='change-me'

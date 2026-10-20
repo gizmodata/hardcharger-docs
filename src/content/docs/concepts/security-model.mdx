@@ -89,13 +89,16 @@ Some things are refused whatever the role, administrators included:
 ```console test exit=1
 $ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger \
     --command "SELECT * FROM read_text('/etc/passwd')"
-Error: Permission denied: Hardcharger blocked access to '/etc/passwd' (system account files). Hardcharger keeps credential and system files on the server host out of reach of SQL, whatever the role.
+Error: Permission Error: Permission denied: Hardcharger blocked access to '/etc/passwd' (system account files). Hardcharger keeps credential and system files on the server host out of reach of SQL, whatever the role.
+
+LINE 1: SELECT * FROM read_text('/etc/passwd')
+                      ^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
 - **Sensitive paths** ([`block_sensitive_paths`](/reference/configuration/#block_sensitive_paths), on
   by default): `/etc/shadow` and friends, `/proc`, mounted secrets, `~/.ssh`, `~/.aws`, `~/.kube`,
   DuckDB's stored secrets, the server's own TLS key, init SQL and config file, and anything in
-  [`sensitive_paths`](/reference/configuration/#sensitive_paths). From 0.4.0 the check sits in
+  [`sensitive_paths`](/reference/configuration/#sensitive_paths). The check sits in
   DuckDB's file system, so it sees the path DuckDB is about to open, list, write, move or remove,
   however the statement arrived at it: a concatenation, a variable, a prepared statement's
   parameter, `query('…')`, a macro or view, `file_search_path`, `~`, `..`, a symlink, a second hard

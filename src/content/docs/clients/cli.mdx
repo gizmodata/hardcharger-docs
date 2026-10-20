@@ -161,7 +161,7 @@ $ { echo "SELECT 1 AS before;"; sleep 2
 before
 1
 Warning: the server ended this session: an administrator ended it (killed); a new session is open. Temporary tables and session settings are gone.
-Error: This session has been killed by an administrator (reason: killed). Sign in again and open a new session to re-authenticate.
+Error: The statement did not complete: its session ended (killed). It was not run again; run it again to run it in the new session.
 again
 3
 exit status 1
@@ -231,16 +231,21 @@ Machine-readable modes print no row-count line into files and pipes, so `--json 
 ```console test
 $ export HARDCHARGER_PASSWORD='change-me'
 $ printf '.tables --flat\n.describe trips\n' | hardcharger --host localhost --tls=false --username hardcharger --quiet
-┌─────────────────────┬────────────────┬─────────────────────────────┬────────────┐
-│    catalog_name     │ db_schema_name │         table_name          │ table_type │
-│       varchar       │    varchar     │           varchar           │  varchar   │
-├─────────────────────┼────────────────┼─────────────────────────────┼────────────┤
-│ _hardcharger_system │ main           │ hardcharger_index_info      │ VIEW       │
-│ _hardcharger_system │ main           │ hardcharger_view_definition │ VIEW       │
-│ my                  │ main           │ trips                       │ BASE TABLE │
-├─────────────────────┴────────────────┴─────────────────────────────┴────────────┤
-│ 3 rows  4 columns                                                               │
-└─────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────┬─────────────────────────────┬────────────┐
+│    catalog_name     │         db_schema_name         │         table_name          │ table_type │
+│       varchar       │            varchar             │           varchar           │  varchar   │
+├─────────────────────┼────────────────────────────────┼─────────────────────────────┼────────────┤
+│ _hardcharger_system │ hardcharger_information_schema │ applicable_roles            │ VIEW       │
+│ _hardcharger_system │ hardcharger_information_schema │ column_privileges           │ VIEW       │
+│ _hardcharger_system │ hardcharger_information_schema │ enabled_roles               │ VIEW       │
+│ _hardcharger_system │ hardcharger_information_schema │ role_table_grants           │ VIEW       │
+│ _hardcharger_system │ hardcharger_information_schema │ table_privileges            │ VIEW       │
+│ _hardcharger_system │ main                           │ hardcharger_index_info      │ VIEW       │
+│ _hardcharger_system │ main                           │ hardcharger_view_definition │ VIEW       │
+│ my                  │ main                           │ trips                       │ BASE TABLE │
+├─────────────────────┴────────────────────────────────┴─────────────────────────────┴────────────┤
+│ 8 rows  4 columns                                                                               │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
 ┌─────────────┬──────────────┬─────────┬─────────┬─────────┬─────────┐
 │ column_name │ column_type  │  null   │   key   │ default │  extra  │
 │   varchar   │   varchar    │ varchar │ varchar │ varchar │ varchar │

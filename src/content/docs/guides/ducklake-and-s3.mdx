@@ -116,10 +116,13 @@ docker compose down
 - **Make it the default.** End the init SQL with `USE lake;` to make it every session's
   starting catalog, or set the session option `catalog` from the client.
 
-## Instrumentation and logs in DuckLake
+## Logs in DuckLake
 
-Hardcharger's [instrumentation](/guides/instrumentation-and-audit/) and catalog logs can go to a
-DuckLake (or PostgreSQL) catalog the init SQL attaches, so every replica writes to one place:
-`--enable-instrumentation --instrumentation-catalog lake` and
-`--enable-catalog-logging --log-catalog lake`. Writes that lose a commit race to another replica
-are retried.
+Hardcharger's catalog logs can go to a DuckLake (or PostgreSQL) catalog the init SQL attaches,
+so every replica writes to one place: `--enable-catalog-logging --log-catalog lake`. Writes that
+lose a commit race to another replica are retried.
+
+[Instrumentation](/guides/instrumentation-and-audit/) doesn't go to DuckLake: keep it in the
+DuckDB file next to the database, or, for several replicas, in a PostgreSQL catalog the init SQL
+attaches (`--instrumentation-catalog`). A DuckLake `--instrumentation-catalog` stops the server at
+startup.

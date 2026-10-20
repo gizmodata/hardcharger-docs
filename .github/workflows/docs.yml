@@ -166,9 +166,17 @@ jobs:
           done
 
       - name: Source repositories
+        env:
+          # The Python driver is the one released with the server under test (adbc-driver-hardcharger
+          # 0.1.0rc1, tag internal-0.1.0rc1: hardcharger-adbc main plus Warp SQL 1.0). hardcharger-adbc
+          # main still commits a partitioned ingest the draft way ({"parts": n}), which a Warp SQL 1.0
+          # server refuses. Set this back to main once main has Warp SQL 1.0.
+          HARDCHARGER_ADBC_REF: internal-0.1.0rc1
         run: |
           for repo in hardcharger warp-sql hardcharger-adbc hardcharger-jdbc warp-sql-js hardcharger-js; do
-            git clone --quiet --depth 1 --recurse-submodules --shallow-submodules \
+            ref=()
+            if [ "$repo" = hardcharger-adbc ]; then ref=(--branch "$HARDCHARGER_ADBC_REF"); fi
+            git clone --quiet --depth 1 "${ref[@]}" --recurse-submodules --shallow-submodules \
               "git@github.com:gizmodata/$repo.git" "$RUNNER_TEMP/src/$repo"
             echo "$repo at $(git -C "$RUNNER_TEMP/src/$repo" rev-parse --short HEAD)"
           done

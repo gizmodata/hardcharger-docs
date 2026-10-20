@@ -16,8 +16,8 @@ and CI fails when they drift.
 <SqlFunctions describe={{
   HARDCHARGER_USER: 'The user this session signed in as.',
   HARDCHARGER_ROLE: 'The session\'s role: <code>admin</code>, <code>user</code> or <code>readonly</code> (for store users under access control, their role in the server\'s sense).',
-  HARDCHARGER_VERSION: 'The server\'s version, such as <code>0.3.0</code> (as <code>--version</code> prints it).',
-  HARDCHARGER_CURRENT_SESSION: 'This session\'s id (a UUID), as <code>KILL SESSION</code> and instrumentation name it.',
+  HARDCHARGER_VERSION: 'The server\'s version, such as <code>2.0.0-rc.1</code> (as <code>--version</code> prints it).',
+  HARDCHARGER_CURRENT_SESSION: 'This session\'s id, its Warp SQL session id (<code>s_...</code>), as <code>KILL SESSION</code> and instrumentation name it.',
   HARDCHARGER_CURRENT_INSTANCE: 'This server process\'s id (a UUID), new at every start.',
   HARDCHARGER_CURRENT_CLUSTER: 'The <code>cluster_id</code> the replicas share, or NULL when unset.',
   HARDCHARGER_INSTRUMENTATION_ENABLED: 'Whether instrumentation is on.',
@@ -28,6 +28,12 @@ and CI fails when they drift.
   hardcharger_metrics: 'The runtime metrics <code>/metrics</code> serves, one row per sample. Needs <code>--enable-metrics</code>.',
   hardcharger_active_connections: 'A row per open session: who (user, role, tenant, how they signed in), from where (address, User-Agent, TLS, client certificate), what it runs (<code>state</code>, the statement, redacted as the log redacts it, since when) and its open result streams, partitions, uploads and retained results. Needs no instrumentation. Users see only their own sessions.',
   hardcharger_cancel: 'Stops what a session runs and keeps the session (its next statement runs as usual): its statement ends cancelled, result streams are cut off, uploads in flight are aborted. Returns whether there was anything to stop; a session can\'t cancel itself. <code>KILL SESSION</code> does the same, then ends the session.',
+  hardcharger_grants: 'Under <a href="/guides/access-control/">access control</a>, the grants in the store: who (<code>grantee</code>, a role or user), what (<code>privilege</code>, <code>object_type</code> and the object; <code>column_name</code> for a column grant), by whom and with grant option. The administrator sees all of them; a store user only grants to itself and to the roles it holds. No rows without access control.',
+  hardcharger_role_members: 'Under access control, who holds which role (a user or another role), with admin option and grantor. A store user sees only its own memberships.',
+  hardcharger_roles: 'Under access control, the roles (<code>PUBLIC</code> among them). A store user sees only the roles it holds.',
+  hardcharger_users: 'Under access control, the store users: enabled, whether they have a password, tenant and attributes. A store user sees only itself.',
+  hardcharger_policies: 'Under access control, the <a href="/guides/row-policies-and-masking/">row policies and column masks</a> on tables the caller can see, and whether each applies to the current user.',
+  hardcharger_effective_privileges: 'Under access control, what a user may do, directly or through its roles (<code>via</code>). Without an argument, the current user; with a user name, that user, for the administrator (or a tenant admin, for its own tenant\'s users).',
   hardcharger_server_info: 'One row: the versions, the instance and cluster ids, the start time and the uptime; for an administrator without <code>catalog_access</code> rules also the host, listen addresses and ports, TLS, the web UI, the access-control store and the session count (NULL for everyone else).',
 }} />
 

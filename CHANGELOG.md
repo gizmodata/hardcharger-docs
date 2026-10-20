@@ -8,6 +8,26 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Changed
 
+- Hardcharger 2.0.0-rc.1 (main feaa5d39, warp-sql e38b28e): the reference is regenerated from the
+  `:main` image (2.0.0-rc.1): the release notes' `[2.0.0-rc.1]` section, the Warp SQL 1.0.0
+  specification, the CLI's `--licenses`, the sensitive-path and instrumentation options' new
+  wording, and the access-control introspection functions (`hardcharger_grants()`,
+  `hardcharger_role_members()`, `hardcharger_roles()`, `hardcharger_users()`,
+  `hardcharger_policies()`, `hardcharger_effective_privileges()`), each described in the SQL
+  reference. The docs that rc.1 made wrong are corrected, each checked against an rc.1 server:
+  the browser sign-in, Warp SQL 1.0, API page, instrumentation id and sensitive-path guard pages
+  (from `docs/oauth-in-protocol`, `spec/v1.0`, `docs/ui-api-page`, `docs/instrumentation-ids` and
+  `docs/sensitive-paths-fs-layer`) and the no-version-history check (`docs/no-version-history`)
+  are merged; instrumentation no longer goes to DuckLake (a DuckLake `instrumentation_catalog`
+  stops the server; the DuckLake guide keeps catalog logs only); `HARDCHARGER_CURRENT_SESSION()`
+  is the `s_...` session id; discovery lists `openapi`; a blocked file read is a DuckDB
+  `Permission Error` with the statement's position; `.tables` lists
+  `hardcharger_information_schema`; a statement that meets a killed session says it wasn't run
+  again; the Versions page names 2.0.0-rc.1 and release candidates. Access control: "Seeing
+  grants" shows the introspection functions and the SQL standard's privilege views, with a tested
+  `hardcharger_effective_privileges()` example. CI builds the Python driver from the release that
+  speaks Warp SQL 1.0 (`internal-0.1.0rc1`), since hardcharger-adbc main still commits a
+  partitioned ingest the draft way.
 - The Hardcharger™ logo: the header shows the bull-head lockup (light and dark versions, it
   replaces the title text), the favicon is the bull head (SVG, with an ICO and an Apple touch
   icon), and the social card is the brand kit's 1200x630 share image. `scripts/brand_images.mjs`,
@@ -124,7 +144,7 @@ All notable changes to the Hardcharger documentation are recorded here. The form
   and which `invalid_token`/`session_ended` reasons a client signs in again after. Warp SQL in one
   page: `retained` (a server may decline), both split-result headers, `result_locations`, and the
   error statuses. Statement control: `Warp-Query-Tag`'s ASCII and 4,096-byte rule (tested).
-- Security model: the sensitive-path guard as Hardcharger 0.4.0 has it (hardcharger branch
+- Security model: the sensitive-path guard as Hardcharger 2.0.0-rc.1 has it (hardcharger branch
   `fix/sensitive-paths-in-fs-layer`): checked in DuckDB's file system, so computed paths,
   `query('…')`, macros, views and prepared parameters are covered and literals are no longer
   refused; globs from above leave protected matches out; the sqlite_scanner plan-time check; and

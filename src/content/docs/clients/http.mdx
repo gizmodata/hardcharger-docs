@@ -17,7 +17,7 @@ read Arrow; the [specification](/reference/warp-sql-protocol/) has every detail.
 
 ```console test
 $ curl -s localhost:31337/warp | jq -c '{server: .server.name, protocol_versions, capabilities}'
-{"server":"Hardcharger","protocol_versions":["1"],"capabilities":["prepared_statements","transactions","ingest","partitioned_ingest","long_poll","ipc_compression_zstd","ipc_compression_lz4_frame","result_partitions"]}
+{"server":"Hardcharger","protocol_versions":["1"],"capabilities":["prepared_statements","transactions","ingest","partitioned_ingest","long_poll","ipc_compression_zstd","ipc_compression_lz4_frame","result_partitions","openapi"]}
 ```
 
 A client uses only the optional features listed in `capabilities`, and ignores names it doesn't

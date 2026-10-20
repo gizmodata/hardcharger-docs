@@ -34,15 +34,63 @@
     "labels": []
   },
   {
+    "name": "hardcharger_duckdb_spill_bytes",
+    "type": "gauge",
+    "help": "Size of DuckDB's temporary (spill) files now.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_duckdb_spill_files",
+    "type": "gauge",
+    "help": "DuckDB's temporary (spill) files now.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_duckdb_temp_storage_bytes",
+    "type": "gauge",
+    "help": "Temporary storage DuckDB holds for evicted buffers, from duckdb_memory().",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_duckdb_threads",
+    "type": "gauge",
+    "help": "DuckDB threads setting.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_health_check_duration_seconds",
+    "type": "gauge",
+    "help": "How long the last health check took.",
+    "labels": []
+  },
+  {
     "name": "hardcharger_health_check_status",
     "type": "gauge",
     "help": "1 when the health check passes.",
     "labels": []
   },
   {
+    "name": "hardcharger_host_cpus",
+    "type": "gauge",
+    "help": "Logical CPUs of the host.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_host_memory_bytes",
+    "type": "gauge",
+    "help": "Physical memory of the host.",
+    "labels": []
+  },
+  {
     "name": "hardcharger_last_exit_unclean",
     "type": "gauge",
     "help": "1 if the last run on this database did not stop cleanly (NaN: unknown).",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_metrics_collection_duration_seconds",
+    "type": "gauge",
+    "help": "How long the last collection took.",
     "labels": []
   },
   {
@@ -144,9 +192,27 @@
     "labels": []
   },
   {
+    "name": "process_open_fds",
+    "type": "gauge",
+    "help": "Open file descriptors of the server process.",
+    "labels": []
+  },
+  {
     "name": "process_resident_memory_bytes",
     "type": "gauge",
     "help": "Resident memory of the server process.",
+    "labels": []
+  },
+  {
+    "name": "process_start_time_seconds",
+    "type": "gauge",
+    "help": "Unix time the server process started.",
+    "labels": []
+  },
+  {
+    "name": "process_threads",
+    "type": "gauge",
+    "help": "Operating-system threads of the server process.",
     "labels": []
   }
 ]

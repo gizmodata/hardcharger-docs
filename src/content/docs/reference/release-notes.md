@@ -13,6 +13,381 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-20
+
+The first general release of Hardcharger: a SQL server on DuckDB 2.0.0 that speaks Warp SQL
+1.0.1 over plain HTTP, with access control (users, roles, grants, catalog access, scoped
+tokens, sign-in through an identity provider or a client certificate), a web UI embedded in
+the server (query editor, results, schema browser, uploads, sessions, API page), the
+`hardcharger` command-line client, the Python package, Docker images, builds for Linux, macOS
+and Windows, and the app for iPhone and iPad. This section lists what changed since
+2.0.0-rc.1; the rc.1 section below has everything since 0.3.0.
+
+### Added
+
+- Server: a startup banner in a text log: the "Hardcharger" wordmark (plain ASCII), the
+  server's, Warp SQL's and DuckDB's versions, the web UI's address (or the Warp SQL endpoint's
+  without `--web-ui`) and the documentation's, within 80 columns. Never in a JSON log.
+  `--no-banner`, `--banner=false`, `HARDCHARGER_NO_BANNER=true`, `HARDCHARGER_BANNER=false` or
+  `banner: false` leaves it out; every boolean option now takes `--no-NAME`. The Warp SQL
+  version is the specification's (`info.version` of its OpenAPI document, read at configure
+  time). Tests: `test_startup_log.py` (the art byte for byte against
+  `tests/fixtures/banner-art.txt`, each way to turn it off, JSON), `startup_banner_test.cc`.
+- Server: `log_emoji` (`--log-emoji`, `HARDCHARGER_LOG_EMOJI`): `auto` (the default) marks
+  text log lines' levels with emoji only when the log goes to a terminal and the locale is
+  UTF-8 (on Windows, a UTF-8 console code page), `always`, or `never`; JSON lines never have
+  them. ✅ marks an outcome (ready, stopped), ⚠️ a warning, ❌ an error, 💥 the error that stops
+  the server; info and debug lines get none. Tests at a pty (auto with a UTF-8 locale, with
+  `C`, `never`, JSON) and in a file.
+- Client: `--no-tls` connects without TLS (plain HTTP), as `--tls=false` does; `--tls false`
+  (with a space) works too, as do `true`/`false`, `1`/`0`, `yes`/`no` and `on`/`off` after
+  `--tls` and `--tls=`. Only those words are taken after a space; anything else stays the
+  positional URI, and the error then names it (`--uri cannot be combined with --tls (the
+  argument 'maybe' is read as the URI)`). `--help` starts with examples, the TLS-off one among
+  them. In the shell, `.connect HOST PORT USERNAME [PASSWORD]` takes `--no-tls`, `--tls`,
+  `--tls=BOOL` or `--tls BOOL` (a URI says it itself and refuses them), and `.help` and the
+  "not connected" hint say so. Tests: `test_client_cli.py` (each spelling against a plain
+  server, and each spelling of on as its twin).
+
+- **Upload data** in the web UI: a CSV, TSV, Excel (.xlsx, .xls, .xlsb), Parquet, JSON lines /
+  JSON array or Arrow IPC file into a new or existing table, from the query toolbar's **Upload
+  data** button, the schema browser (its toolbar, and **Upload data…** on a catalog's or
+  schema's menu), or a file dropped anywhere on the page. The dialog follows GizmoData Cloud's
+  SQL editor (the same fields, labels, modes, table-name derivation and result message): File,
+  Catalog, Schema (or a new one), Table, **If the table…** (create, which fails if it exists;
+  append, with the file's columns matched to the table's by name and NULL for the ones it
+  lacks; replace, the table's columns and rows), Header row, and the CSV delimiter or the Excel
+  worksheet (a picker of the workbook's sheets). **Preview & column types**, folded away until
+  opened, shows the first 100 rows as they will load, with each column's inferred type to
+  change (VARCHAR, BIGINT, DOUBLE, DECIMAL(p,s), BOOLEAN, DATE, TIMESTAMP, TIMESTAMPTZ, TIME),
+  rename or skip; a value that wouldn't fit shows in red. An append warns where the file's
+  types differ from the table's, and stops before it starts when the file has a column the
+  table hasn't. The file is read and converted to Arrow in the browser, in a Web Worker (a
+  large or malformed file can't freeze the page), and sent over Warp SQL's bulk ingest in
+  pieces of about 8 MB, one request each, in one transaction of the upload's own session (as
+  the tab's **Run as** role): the server never stores the raw file, a progress bar counts
+  rows and bytes, **Cancel upload** rolls everything back, and a failed upload leaves the
+  table as it was. CSV, JSON lines, Parquet (row group by row group, with parquet-wasm) and
+  Arrow streams are read as they upload, at any size; Excel workbooks and JSON arrays are read
+  whole, up to 100 MB. CSV: the delimiter (`,` `;` tab `|`, or one typed, up to 4 characters),
+  quotes, line breaks inside quotes and the header row are detected; UTF-8, UTF-16 with a byte
+  order mark, and otherwise Windows-1252 with a note. A whole number with a leading zero
+  (`00123`) stays text. Excel: dates and times from the cells' number formats and the
+  workbook's own date system (1900 or 1904), a formula's saved value (none is calculated),
+  numbers, booleans, text (a "number stored as text" stays text), error cells as NULL, empty
+  rows left out and merged ranges' values in their first cell, each said in a note. A value
+  that doesn't convert fails the upload with its line or cell and column (`Cell C12, column
+  "amount": "n/a" is not a whole number`); the server's permission errors (CREATE, INSERT,
+  row policies) are shown as it words them. The result says the rows, mode, format and time,
+  lists the table's columns, refreshes the schema browser and autocomplete, and **Query this
+  table** opens a tab with `SELECT * … LIMIT 100`. Excel is read with SheetJS Community
+  Edition 0.20.3 (Apache-2.0), vendored from SheetJS's own CDN at a pinned SHA-256
+  (`ui/vendor/sheetjs.json`, checked by `npm run vendor:verify`), not npm's abandoned `xlsx`
+  0.18.5 (CVE-2023-30533, CVE-2024-22363): it reads .xlsx, .xls and .xlsb without running
+  macros or formulas and needs no change to the UI's Content-Security-Policy (no `eval`, no
+  workers of its own, nothing fetched). It and the converters load only when a file is read,
+  in the upload worker (SheetJS about 490 KB, the worker 230 KB, the dialog 33 KB; the main
+  bundle grows by about 3 KB).
+
+- `default_catalog` and `default_schema`: where every new session starts, unless the client's
+  own `catalog` / `schema` session options say otherwise. With neither set, an init SQL that
+  ends in `USE x.y` sets it, as in GizmoSQL 1.x (on rc.1 sessions ignored it and started in
+  the database's catalog), and the server logs that it did. Both are checked after the init
+  SQL: a catalog that isn't attached, a missing schema or one of the server's own catalogs
+  stops the server (exit 1). Under access control a session moves there only if its user's own
+  `USE` could; otherwise it starts where it would have, and a tenant's default catalog wins.
+  `hardcharger_server_info()` shows the administrator the effective defaults.
+- `rbac_store_timeout_seconds` (default 10): every access-control store round trip is
+  bounded. With PostgreSQL paused, a `CREATE TABLE` waited 152 s for the store; it now fails
+  with `access control store unavailable: timed out after 10 s`, and what it was doing is
+  rolled back once the store answers. PostgreSQL connection strings get libpq's
+  `connect_timeout`, TCP keepalives, `tcp_user_timeout` and a `statement_timeout`, each
+  unless they set it.
+- Store outages are visible: a warning when the store stops answering (then every 30 s,
+  with the snapshot's age), a line when it answers again, and the metrics
+  `hardcharger_rbac_store_up` and `hardcharger_rbac_snapshot_age_seconds`.
+  `rbac_max_snapshot_age_seconds` (default 0, no limit) refuses every principal but the
+  administrator once the store has not answered for longer (fail closed).
+- The access-control store belongs to one cluster: it records the first `cluster_id` that
+  opens it and refuses a server of another cluster (`the access control store belongs to
+  cluster ...`); `rbac_store_shared: true` shares users, roles and grants between clusters
+  on purpose. The store's schema version is checked too: a store a later version upgraded
+  is refused.
+
+- The engine, host and process gauges GizmoData Cloud's Engine Metrics page reads from
+  GizmoSQL 1.x, under `hardcharger_*` names with 1.x's meanings and units, in `/metrics` and
+  `hardcharger_metrics()`: `hardcharger_duckdb_threads`, `hardcharger_duckdb_temp_storage_bytes`
+  (from `duckdb_memory()`), `hardcharger_duckdb_spill_files` and `hardcharger_duckdb_spill_bytes`
+  (live files in `duckdb_temporary_files()`), `hardcharger_database_file_bytes` and
+  `hardcharger_wal_bytes` (the main database file DuckDB opened and its `.wal`; attached catalogs
+  don't count), `hardcharger_health_check_duration_seconds`,
+  `hardcharger_tls_certificate_expiry_seconds` (the serving certificate's notAfter as Unix time,
+  read again whenever a client CRL reload rebuilds the TLS context),
+  `hardcharger_metrics_collection_duration_seconds`, `hardcharger_host_memory_bytes`,
+  `hardcharger_host_cpus`, `hardcharger_cgroup_memory_limit_bytes` and
+  `hardcharger_cgroup_cpu_quota_cores` (cgroup v2, else v1, read on every collection so an
+  in-place pod resize shows), and the standard `process_start_time_seconds`, `process_open_fds`
+  and `process_threads` (Linux, macOS and Windows; Windows has no `process_open_fds`). As in 1.x,
+  a measurement that can't be taken is left out rather than reported as 0: no file sizes for an
+  in-memory or remote database, no certificate expiry without TLS, no cgroup gauges without a
+  limit.
+
+- **`trusted_proxies`** (`--trusted-proxies`, `HARDCHARGER_TRUSTED_PROXIES`): CIDRs or single
+  addresses (IPv4 and IPv6) of the reverse proxies whose `X-Forwarded-For` or RFC 7239
+  `Forwarded: for=` header names the client. From them, the client's address in the log, the
+  audit records, `hardcharger_active_connections()` and the per-address bound on browser
+  sign-ins is the rightmost forwarded hop that is not itself a trusted proxy (all trusted: the
+  leftmost); `X-Forwarded-For` wins over `Forwarded`, and an unknown, obfuscated or malformed
+  hop leaves the proxy's address. Behind an ingress these all showed the ingress's address
+  before. The default (empty) trusts no one, and another peer's headers are ignored. A bad CIDR stops the server at startup (exit 2) naming it. The forwarded address
+  is never used for authentication or TLS: client certificates and certificate-bound tokens
+  stay tied to the connection. `hardcharger_active_connections()` has a new `proxy_address`
+  column (the proxy's own `address:port` when the address was forwarded), and security log
+  and audit lines a `proxy` field. Warp SQL C++ SDK `ServerOptions::trusted_proxies`. Tests:
+  `test_trusted_proxies.py`, the SDK's `forwarded_test.cc`.
+
+- **Users from the identity provider are created on first sign-in**, when asked:
+  `token_auto_provision_users` (off by default; `token_auto_provision_issuer`, default
+  `token_allowed_issuer`). Under access control, a verified sign-in token from that issuer
+  (not an administrator's) whose user the store lacks creates the user, with no password and
+  no grants, and keeps the token's role in its `provisioned_role` attribute: a user
+  provisioned from a `readonly` token signs in readonly from then on until an administrator
+  removes the attribute. Existing users are never changed, so a disabled user stays disabled.
+  First sign-ins of one user on several replicas at once all succeed, and each creation is an
+  access-control audit record with the user, the issuer and the role. Startup refuses the
+  option without `rbac_store_uri`, without a way to verify tokens, or with an issuer other
+  than `token_allowed_issuer`. Off, nothing changes: such a sign-in is refused, saying an
+  administrator creates the user.
+
+- One `info` log line for each cancelled statement, `statement cancelled`, with its
+  `session_id`, `statement_id` (`q_…`), `user`, `reason` (Warp SQL's `cancel_reason`:
+  `client`, `timeout`, `killed`, `cancelled`, `session_closed`, `server_shutdown`) and
+  `duration` in seconds, whatever `print_queries` and `query_log_level` say (GizmoSQL 1.x
+  logged `SQL Statement was successfully canceled.`). A statement that ends on its own or
+  fails logs none. Tests: `test_statement_cancel_log.py`.
+
+- **Hardcharger™ for iPhone and iPad** (`ios/`, iOS 18 and later): the Hardcharger server
+  running on the device itself, its web UI and a native SQL console, and a client for
+  Hardcharger servers anywhere. The server is `hardcharger-server` itself, built into the
+  app as a library (`HARDCHARGER_EMBEDDED`, `server/embedded/hardcharger_embedded.h`) and
+  cross-compiled for iOS devices and the simulator with the same recipes, pins and patches
+  as every other platform (`ios/scripts/build-server-ios.sh`). The web UI opens signed in
+  (an administrator password and token key made on first launch, kept in the Keychain); the
+  console is the `hardcharger` client's own statement splitting, dot commands and output
+  formatting. Import CSV, TSV, JSON and Parquet from Files, the share sheet or a drop;
+  **Share on Local Network** (off by default) serves the database and web UI to computers on
+  the same Wi-Fi over TLS with a certificate the device makes, shown with a QR code and its
+  fingerprint; saved remote servers sign in with a password or the server's single sign-on.
+  Sidebar, keyboard shortcuts and multiple windows on iPad. See `ios/README.md`.
+- Web UI: on a touch-first device (a phone, a tablet without a mouse) the editor no longer
+  takes the focus by itself when a tab shows, which brought up the keyboard over the results
+  at the next tap; a tap on the editor still focuses it.
+- The `hardcharger` client reads dollar-quoted strings (`$$ … $$`, `$tag$ … $tag$`): a `;`
+  inside a function body no longer ends the statement.
+
+### Changed
+
+- An IPv6 client's address is written `[2001:db8::7]:51234` (it was `2001:db8::7:51234`,
+  which can't be told apart from an address without a port), in
+  `hardcharger_active_connections().client_address` and security events.
+
+- **The idle rule is documented exactly** (README, `--help` for `session_idle_timeout`): a
+  session is evicted within 5 s after `session_idle_timeout` seconds without a request, unless
+  a statement of it is running, an ingest is in progress, a result is being read, or it holds a
+  retained result that hasn't expired. That last one is Warp SQL §5.7's rule, kept: a session
+  whose statement ran in JSON mode lives up to `result_retention_seconds` after it ended. Set
+  `result_retention_seconds` no higher than `session_idle_timeout` to bound sessions by the idle
+  timeout alone.
+
+- CI (`server.yml`): an `ios` job (the app built for the simulator, its smoke test inside a
+  simulator, unit and UI tests) on `v*` tags and on manual runs with `ios: true` only; on
+  `v*` tags, `ios-archive` builds the signed App Store `.ipa` as the run's artifact and
+  uploads it to TestFlight (App Store Connect API key; the build number is the run number).
+- The server's log file is closed when logging is configured again (a server started again
+  in the same process, as in the app).
+
+### Fixed
+
+- Release CI now gates container publishing and the GitHub Release on the iOS simulator
+  tests, signed device build and TestFlight upload. A manual run with `ios` and `sign`
+  proves the signed device build before tagging, without uploading it. Trusted-proxy
+  parsing also refuses abbreviated IPv4 addresses and ports on Windows consistently
+  with Unix (Warp SQL SDK update).
+- Server: a text log line leaves out a field with no value (`health check passing` printed
+  an empty `error=`); JSON lines keep every key, and the passing health check's has no
+  `error` at all. A health check that fails from the start is now logged too (only changes
+  were). Tests: `test_startup_log.py`.
+- Server: the startup log printed `url=http://0.0.0.0:31337/ui/`, which a browser can't
+  open. On a wildcard bind (`0.0.0.0`, `::`) the `Hardcharger is ready` and `the web UI is
+  on` lines (and the banner) now give `http://localhost:<port>` as `url` and
+  `http://<host name>:<port>` as `also`; with TLS, the certificate's first DNS name that
+  isn't a wildcard (else the host name), and localhost too when the certificate names it.
+  `listen=` keeps the bind address. Unit tests for each case; `test_startup_log.py` for the
+  log text.
+- Client: a connection that fails says why. `--tls=false --port 9 -c "SELECT 1"` said only
+  "not connected to a server" (a port or TLS on the command line didn't count as asking for a
+  connection, so none was tried); it now connects and says `Could not connect to
+  http://localhost:9: connection refused. Is the server running on that port?`. A script run
+  without any connection options connects to the default at its first statement that needs
+  the server (a script that only runs `.connect` or `.help` still needs none). Plain HTTP to a
+  TLS server says to drop `--no-tls`; TLS to a plain-HTTP server names `--no-tls` (and
+  `--tls=false`, `?tls=false`, `.connect … --no-tls`).
+- Web UI: the editor's suggestion list showed empty rows (only the kind icons, no names) in
+  every browser. The app's stylesheet had a rule for a class named `main` (the page's main
+  area, `flex-direction: column`), and Monaco's suggestion rows have an element of that class
+  too, so each row's name and detail were laid out below its icon, outside the 20 px row, and
+  clipped. The app's generic class names that Monaco also uses (`main`, `tree`, `messages`,
+  `message`) are renamed (`app-main`, `side-tree`, `run-messages`, `run-message`), and a unit
+  test (`css-isolation.test.ts`) fails when a global rule names any class Monaco's stylesheets
+  use, unless the rule is a deliberate Monaco override. The e2e test types a table's and a
+  function's prefix and checks that each suggestion's label is drawn inside its row, is what
+  the browser shows at its place, and has a colour other than its background, in Chromium and
+  WebKit, before and after a visit to the API page. (The old tests checked only that rows
+  were there and held the text.)
+- Web UI: the API page's Swagger UI, with its stylesheet, now lives in a shadow root, so its
+  rules (for generic names such as `.main`, `.info`, `.btn`, `.tab`) can't reach the rest of
+  the app, and the app's (its `.btn`) don't reach Swagger UI. Before, Swagger UI's stylesheet
+  stayed in the page for good after the first visit to the API page. Its dark theme follows
+  the shadow host instead of a class on `<html>`. e2e: no rule of Swagger UI's in the page's
+  stylesheets, and Swagger UI's buttons don't take the app's button style.
+- Web UI: fast typing in the editor lost keys in Chromium (and moved the cursor to the start).
+  The editor's own text came back to it as its value after React rendered, and when a key was
+  pressed between that render and its effect, the older text was put back. The editor now
+  tells its own text coming back from a value set from outside (opening a saved query, Preview
+  data). e2e: a 93-character statement typed at script speed arrives whole (it lost keys in
+  every Chromium run before).
+- README: the web UI screenshots (the query view and the API page, light and dark) are
+  retaken with the new logo and the API page in the header (`ui/test/e2e/screenshots.spec.ts`).
+- Web UI: in a narrow side panel, a column's type now gives up its width before the column's
+  name (`l_orderkey  BIG…`, not `l_or…  BIGINT NOT NULL`); a name is shortened only once its
+  type is down to a few letters, and the row's tooltip has the whole name and type. A long
+  type no longer runs under the row's **…** button, and the button keeps clear of a scroll bar
+  drawn over the content (macOS). e2e in Chromium and WebKit at a narrow, scrolling panel.
+- Web UI, **About**: capabilities are chips that wrap between names, never inside one
+  (`ipc_compression_` / `zstd`); values wrap at spaces, and only one with none (an id) breaks
+  inside a word. Each fact is listed once: the summary, then only the server-info keys it
+  doesn't show (no second `server_name`, `server_version` or instance id), under a collapsed
+  **All server info**. The dialog fits the window: the logo and title stay at the top and the
+  notices at the bottom, and the details scroll between them (it was taller than a 900 px
+  window). e2e in Chromium and WebKit at 1280×800 and phone width, light and dark.
+- Web UI: SQL typed into the editor line by line was indented once more on every line (Enter
+  kept the line's indentation, and the text's own spaces went on top). Enter still keeps the
+  line's indentation (`autoIndent: "keep"`, no language rules), but indentation typed or
+  pasted right after it replaces it; pasted text goes in as it is (no format or re-indent on
+  paste). Enter after a word typed out in full is a new line, not that word's suggestion taken
+  again (`acceptSuggestionOnEnter: "smart"`; WebKit lost the line break). e2e in Chromium and
+  WebKit: a 4-line indented statement typed and pasted arrives byte for byte.
+- Web UI: closing, reloading or leaving the page left its Warp SQL sessions open on the server
+  until their idle timeout. It now ends them on `pagehide` (and on `beforeunload`, which some
+  browsers send alone) with keepalive `DELETE`s carrying the token; with a transaction open the
+  browser asks first, and the sessions stay if the user does. A page brought back from the
+  back/forward cache loads again, with new sessions. e2e in Chromium and WebKit: the server
+  lists none of the page's sessions within seconds of a close or a navigation, Back works, and
+  staying at the transaction prompt keeps them.
+- README: the `curl` example printed the statement's JSON metadata (`jq .result`), not the
+  answer. It now asks for the Arrow stream and reads it with pyarrow (`[{'answer': 42}]`, run
+  against a server), and says what the JSON document holds.
+- Docs: benchmark results follow the TPC's fair-use policy. The runs are described as derived
+  from TPC-H ("the 22 queries derived from TPC-H, SF10", "TPC-H-derived data"), never as TPC-H
+  results; README's Performance section, `docs/benchmarks.md` (which also lists how the runs
+  deviate from the specification), this changelog's benchmark entry and `bench/tpch.py` carry
+  the disclaimer once: derived from the TPC-H benchmark, not an official TPC-H result and not
+  comparable to published TPC-H results, and TPC-H™ a trademark of the Transaction Processing
+  Performance Council (TPC).
+
+- The web UI's JavaScript client (`ui/vendor`, gizmodata/warp-sql-js) moves to cb563f9, which
+  fixes two things the first browser upload found: bulk ingest (and Arrow parameters) failed in
+  any bundled app with `"throughDOM" not available in this environment` (apache-arrow installs
+  that only as a side effect its `"sideEffects": false` lets bundlers drop), and `close()` could
+  end a session before a statement's delete reached it, which the browser logged as a 404.
+
+- `LOAD iceberg` without the avro extension installed now says first what to run
+  (`INSTALL avro;`, then `LOAD iceberg` again); iceberg loads avro itself once it is
+  installed. The server never installs or loads extensions by itself, so DuckDB's own
+  reason was buried in a long initialization error. The same hint is given when init SQL
+  fails this way.
+
+- A DuckLake with a DuckDB metadata file stays readable by the DuckDB release that created
+  it. The bundled DuckLake extension attached an existing metadata file with
+  `STORAGE_VERSION 'latest'`, so the first write from Hardcharger upgraded the file, and
+  DuckDB 1.5 then refused it (`cannot initialize database with storage version 7 - which is
+  lower than what the database itself uses`). Our build of the extension now attaches an
+  existing file without a storage version, so it keeps its own; `META_STORAGE_VERSION
+  'latest'` in the `ATTACH` still upgrades it on purpose (it used to fail with a duplicate
+  option). A new metadata file gets `--storage-version` when that is set, and the latest
+  format otherwise, as before. `--storage-version` is now also the format of new files a
+  plain `ATTACH` creates, not just of the `--database` file. The patch is Hardcharger's own
+  (`server/scripts/extension-patches/ducklake/`), applied by the DuckDB build after DuckDB's
+  patches for the extension (`server/scripts/patch-duckdb-extensions.cmake`), and the build
+  fails if it didn't reach the extension's source. PostgreSQL metadata was never affected.
+
+- **A readonly session can't leave readonly through a scoped token.** Under access control, a
+  session signed in with a `readonly` token could run `CREATE SCOPED TOKEN`, and the token it
+  got signs in as a user, so it could write with the user's grants. A readonly session now runs
+  no access-control statement but `SHOW …` and `SET ROLE` (`permission_denied`, "has a readonly
+  session and cannot run CREATE SCOPED TOKEN").
+- **A slow download keeps its session.** The idle sweep evicted a session whose statement had
+  finished while the client was still reading its unretained result (up to 32 MB of it is
+  sent after the statement finishes), cutting the stream mid-body; a reader slower than
+  `session_idle_timeout` plus 5 s for that tail lost it. A read in progress now keeps the
+  session (the Warp SQL SDK; spec §5.7 says a request in progress counts as one).
+
+- A `readonly` session could write through a data-modifying CTE
+  (`WITH c AS (INSERT … RETURNING *) SELECT * FROM c`, also `UPDATE` / `DELETE`), which
+  DuckDB reports as a `SELECT`. DuckDB's own analysis of every statement a readonly session
+  prepares now decides, as in GizmoSQL 1.x: one that modifies any database (temp included)
+  or writes a file is refused before it runs, also inside a transaction, in a batch, under
+  `EXPLAIN ANALYZE` or as a prepared statement.
+- A `readonly` session can change its own session again, as in GizmoSQL 1.x: `BEGIN` /
+  `START TRANSACTION`, `COMMIT` / `END`, `ROLLBACK` / `ABORT`, `SET VARIABLE` /
+  `RESET VARIABLE`, `USE`, `SET` / `RESET` of a setting DuckDB keeps for the session
+  (`SET SESSION …`, or a plain `SET` of a session-scoped setting such as `TimeZone`), and the
+  `PRAGMA`s that read (`table_info`, `database_list`, `version`, ...). They were refused as
+  modifying state. `SET GLOBAL`, a plain `SET` of a setting whose default scope is global,
+  settings that reach the server (resources, extensions, secrets, files, the profiler, the
+  grammar), temporary tables, views and macros, and every other write stay refused. README:
+  "Read-only sessions". Tests: `test_readonly_session.py`.
+
+### Security
+
+- A session can no longer be used by a weaker token of the same user. Sessions (and their
+  statements, retained results, prepared statements and ingests) were bound to the user
+  name only, while a session's DuckDB connection is bound to the token that opened it. So
+  any token of that name could run statements through a stronger token's session, with
+  that token's privileges, by naming its id (as the ADBC driver's session attach does): a
+  readonly token through its user's session, a scoped token (`CREATE SCOPED TOKEN`)
+  through the session of the user who minted it, a token with `catalog_access` rules
+  through an unrestricted one's, an identity-provider token with other groups (and so
+  other mapped roles). Every request now also compares the token's authority, a SHA-256
+  of its role, scoped token, `catalog_access` rules, identity-provider issuer and groups,
+  and its store user and tenant (`AuthorityKey`, `server/src/auth.hpp`): any difference
+  gets `404 session_not_found` on every route, as another user's token would. A new
+  token of the same authority (signing in again, also after a password change, or
+  exchanging the same scoped token again) still reaches the session; the token's id,
+  times, password fingerprint and sign-in method are not part of it, and the certificate
+  binding is checked as before. A store user dropped and created again under the same
+  name no longer reaches the old user's sessions either. Warp SQL SDK
+  `Principal::authority_key` (warp-sql §9.2). Tests:
+  `server/tests/test_session_authority.py`, `server/unit/authority_key_test.cc`.
+- Access-control store errors no longer carry the store's connection string. While a
+  PostgreSQL store was unreachable, `CREATE USER`, `GRANT`, `REVOKE` and every other
+  access-control write answered the client, and logged, DuckDB's "Unable to connect to
+  Postgres at ..." with the full `postgresql://user:password@...` string. Every store error
+  is now redacted (the string as given and as the server rewrites it, a URL's
+  `user:password@`, libpq's `password=` and URL parameters such as `password=` and
+  `sslpassword=`), and so is a failing init SQL `ATTACH`, which stopped startup with the
+  password in its log line. One helper (`server/src/redact.cc`) does it for the store, init
+  SQL, the logs and the last-resort fatal line that stops the server (`main.cc`), which may
+  quote a database path or an `ATTACH` string. Test: `test_startup_log.py` (a `password=`
+  in a database path that DuckDB's open error quotes back).
+- DDL no longer runs when its owner can't be recorded. During a store outage an
+  administrator's (or a user's) `CREATE TABLE` / `CREATE VIEW` succeeded while its
+  ownership record was silently dropped, leaving an object with no owner (and any stale
+  record of an earlier object of that name in force). The owner is now recorded before the
+  statement runs; when the store can't take it, the statement fails with the store's error
+  and creates nothing, and a statement that fails after its owner was recorded puts the
+  previous record back.
+
 ## [2.0.0-rc.1] - 2026-10-20
 
 ### Added
@@ -1424,8 +1799,11 @@ See 0.1.2.
 - Tests (`server/tests`, 27) for all of the above.
 - Release artifacts: `hardcharger-linux-amd64`, `-linux-arm64` and `-macos-arm64`
   tarballs (server plus `libduckdb`), and the image `ghcr.io/gizmodata/hardcharger`.
-- A TPC-H SF10 benchmark (`bench/tpch.py`, results in `docs/benchmarks.md`): 1.44× faster
-  than GizmoSQL 1.41 over the 22 queries, and 1.6× faster at moving 10M rows.
+- A benchmark derived from TPC-H, the 22 queries at SF10 (`bench/tpch.py`, results in
+  `docs/benchmarks.md`): 1.44× faster than GizmoSQL 1.41 over the 22 queries, and 1.6× faster
+  at moving 10M rows. Derived from the TPC-H benchmark; not an official TPC-H result and not
+  comparable to published TPC-H results, as these results do not comply with the TPC-H
+  specification. TPC-H™ is a trademark of the Transaction Processing Performance Council (TPC).
 
 ### Known gaps
 

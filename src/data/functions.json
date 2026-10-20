@@ -87,6 +87,10 @@
         "type": "VARCHAR"
       },
       {
+        "name": "proxy_address",
+        "type": "VARCHAR"
+      },
+      {
         "name": "client_info",
         "type": "VARCHAR"
       },
@@ -534,6 +538,14 @@
       {
         "name": "session_count",
         "type": "INTEGER"
+      },
+      {
+        "name": "default_catalog",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "default_schema",
+        "type": "VARCHAR"
       },
       {
         "name": "instrumentation_queued",

@@ -1,5 +1,10 @@
 Usage: hardcharger [OPTIONS] [URI]
 
+Examples:
+  hardcharger --username admin             localhost:31337, over TLS (the default)
+  hardcharger --no-tls --username admin    a server without TLS (plain HTTP)
+  hardcharger hardcharger://db.example.com:31337 --username admin -c "SELECT 1"
+
 Hardcharger Client Options
 
 Connection:
@@ -10,7 +15,7 @@ Connection:
       --uri URI                 Connection URI: hardcharger://HOST[:PORT][/PREFIX][?tls=false], HTTPS unless it says ?tls=false, port 31337 by default; also warp://, https:// and http:// (also the one positional argument; not with --host, --port or --tls)
 
 TLS:
-      --tls[=BOOL]              TLS (HTTPS), on by default; --tls=false for plain HTTP to a server without TLS (env: HARDCHARGER_TLS=false; in a URI, ?tls=false)
+      --tls[=BOOL]              TLS (HTTPS), on by default; --no-tls (or --tls=false, --tls false) for plain HTTP to a server without TLS (env: HARDCHARGER_TLS=false; in a URI, ?tls=false)
       --tls-roots FILE          Trusted root certificates (PEM; default: the system's) (env: HARDCHARGER_TLS_ROOTS)
       --tls-skip-verify         Skip TLS server certificate verification (development only)
       --mtls-cert FILE          mTLS client certificate (PEM)

@@ -25,6 +25,8 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Changed
 
+- Regenerated the reference from the Hardcharger 2.0.0 candidate and Warp SQL 1.0.1:
+  configuration and CLI help, SQL functions, metrics, protocol and release notes.
 - Hardcharger 2.0.0-rc.1 (main feaa5d39, warp-sql e38b28e): the reference is regenerated from the
   `:main` image (2.0.0-rc.1): the release notes' `[2.0.0-rc.1]` section, the Warp SQL 1.0.0
   specification, the CLI's `--licenses`, the sensitive-path and instrumentation options' new

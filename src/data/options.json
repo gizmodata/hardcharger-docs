@@ -71,6 +71,16 @@
       "description": "serve the web UI at /ui on this port (a build that embeds it)"
     },
     {
+      "name": "trusted_proxies",
+      "group": "Listener",
+      "flag": "--trusted-proxies",
+      "env": "HARDCHARGER_TRUSTED_PROXIES",
+      "yaml_key": "trusted_proxies",
+      "type": "list",
+      "default": "",
+      "description": "reverse proxies (CIDRs such as 10.0.0.0/8 or fd00::/8, or single addresses) whose X-Forwarded-For or Forwarded header names the client; from them, the client's address in logs, audit, sessions and the per-address browser sign-in bound is the rightmost forwarded hop that is not itself a trusted proxy. Never used for authentication or TLS. Empty: trust none (the TCP peer is the client)"
+    },
+    {
       "name": "tls_cert",
       "group": "TLS",
       "flag": "--tls-cert",
@@ -241,6 +251,26 @@
       "description": "SQL file run at startup"
     },
     {
+      "name": "default_catalog",
+      "group": "Database",
+      "flag": "--default-catalog",
+      "env": "HARDCHARGER_DEFAULT_CATALOG",
+      "yaml_key": "default_catalog",
+      "type": "string",
+      "default": "",
+      "description": "the catalog every new session starts in, unless the client's session options name one (checked after the init SQL: the server refuses to start if it isn't attached). Unset, with default_schema unset too, an init SQL that ends in USE x or USE x.y sets where sessions start; else they start in the database's catalog. Under access control a user who may not see it starts where they would without it"
+    },
+    {
+      "name": "default_schema",
+      "group": "Database",
+      "flag": "--default-schema",
+      "env": "HARDCHARGER_DEFAULT_SCHEMA",
+      "yaml_key": "default_schema",
+      "type": "string",
+      "default": "",
+      "description": "the schema every new session starts in, in default_catalog (or, without it, in the database's catalog), unless the client's session options name one; the server refuses to start if it doesn't exist"
+    },
+    {
       "name": "result_batch_rows",
       "group": "Database",
       "flag": "--result-batch-rows",
@@ -371,6 +401,26 @@
       "description": "JWKS of the identity provider whose ID tokens sign users in"
     },
     {
+      "name": "token_auto_provision_users",
+      "group": "Authentication",
+      "flag": "--token-auto-provision-users",
+      "env": "HARDCHARGER_TOKEN_AUTO_PROVISION_USERS",
+      "yaml_key": "token_auto_provision_users",
+      "type": "boolean",
+      "default": "false",
+      "description": "under access control, a verified sign-in token from token_auto_provision_issuer whose user the store lacks creates it on first sign-in (no password, no grants; the token's role in its provisioned_role attribute, readonly staying readonly); admin tokens and existing users (a disabled one stays disabled) are unchanged"
+    },
+    {
+      "name": "token_auto_provision_issuer",
+      "group": "Authentication",
+      "flag": "--token-auto-provision-issuer",
+      "env": "HARDCHARGER_TOKEN_AUTO_PROVISION_ISSUER",
+      "yaml_key": "token_auto_provision_issuer",
+      "type": "string",
+      "default": "",
+      "description": "the issuer (iss) whose sign-in tokens token_auto_provision_users provisions users for (default: token_allowed_issuer)"
+    },
+    {
       "name": "oauth_client_id",
       "group": "Browser sign-in",
       "flag": "--oauth-client-id",
@@ -468,7 +518,7 @@
       "yaml_key": "session_idle_timeout",
       "type": "integer",
       "default": "900",
-      "description": "seconds an idle session lives (0: forever)"
+      "description": "a session is evicted within 5 s after this many seconds without requests (0: never), unless a statement of it is running, an ingest of it is in progress, a result of it is being read, or it holds a retained result that hasn't expired (result_retention_seconds)"
     },
     {
       "name": "result_retention_seconds",
@@ -529,6 +579,36 @@
       "type": "integer",
       "default": "2000",
       "description": "how long to wait for the policy service (no answer refuses)"
+    },
+    {
+      "name": "rbac_store_timeout_seconds",
+      "group": "Access control",
+      "flag": "--rbac-store-timeout-seconds",
+      "env": "HARDCHARGER_RBAC_STORE_TIMEOUT_SECONDS",
+      "yaml_key": "rbac_store_timeout_seconds",
+      "type": "integer",
+      "default": "10",
+      "description": "the longest one access-control store round trip may take, from 1 to 300: a store that does not answer in time fails the statement that needed it (access control store unavailable: timed out after N s) and what it was doing is rolled back. For PostgreSQL it also sets libpq's connect_timeout, TCP keepalives, tcp_user_timeout and the session's statement_timeout, each unless the connection string sets it"
+    },
+    {
+      "name": "rbac_max_snapshot_age_seconds",
+      "group": "Access control",
+      "flag": "--rbac-max-snapshot-age-seconds",
+      "env": "HARDCHARGER_RBAC_MAX_SNAPSHOT_AGE_SECONDS",
+      "yaml_key": "rbac_max_snapshot_age_seconds",
+      "type": "integer",
+      "default": "0",
+      "description": "while the store does not answer, sign-ins and statements go on with the last users, roles and grants it gave (a warning is logged, and hardcharger_rbac_snapshot_age_seconds says how old they are); past this many seconds every principal but the administrator is refused until it answers again (fail closed). 0: no limit (stay available)"
+    },
+    {
+      "name": "rbac_store_shared",
+      "group": "Access control",
+      "flag": "--rbac-store-shared",
+      "env": "HARDCHARGER_RBAC_STORE_SHARED",
+      "yaml_key": "rbac_store_shared",
+      "type": "boolean",
+      "default": "false",
+      "description": "let clusters with different cluster_ids share one store, and with it their users, roles and grants (grants name catalogs, so a grant on one cluster's catalog applies to another's catalog of that name). Off: the store records the first cluster_id that opens it and refuses any other"
     },
     {
       "name": "audit_chain_key",
@@ -649,6 +729,26 @@
       "type": "string",
       "default": "",
       "description": "log destination (empty: stderr; -: stdout)"
+    },
+    {
+      "name": "log_emoji",
+      "group": "Operations",
+      "flag": "--log-emoji",
+      "env": "HARDCHARGER_LOG_EMOJI",
+      "yaml_key": "log_emoji",
+      "type": "string",
+      "default": "auto",
+      "description": "mark text log lines' levels with emoji: auto (only on a UTF-8 terminal), always or never; JSON lines never have them"
+    },
+    {
+      "name": "banner",
+      "group": "Operations",
+      "flag": "--banner",
+      "env": "HARDCHARGER_BANNER",
+      "yaml_key": "banner",
+      "type": "boolean",
+      "default": "true",
+      "description": "print the startup banner (versions and URLs) in a text log; --no-banner or HARDCHARGER_NO_BANNER=true turns it off"
     },
     {
       "name": "query_log_level",

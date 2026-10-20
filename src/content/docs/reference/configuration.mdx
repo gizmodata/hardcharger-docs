@@ -33,7 +33,7 @@ Besides the options below, the server takes these command-line actions, which ru
 | `--verify-tls URL` | Fetch a URL over HTTPS with the system's CA bundle, then exit 0 or 1 |
 | `--verify-audit-log FILE [--verify-audit-log-partial]` | Check an [audit log](/guides/instrumentation-and-audit/#the-audit-log)'s hash chain |
 
-86 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
+96 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
 
 ## Listener
 
@@ -108,6 +108,18 @@ Serve the web UI at /ui on this port (a build that embeds it)
 | YAML | `web_ui: …` |
 | Type | boolean |
 | Default | `false` |
+
+### `trusted_proxies`
+
+Reverse proxies (CIDRs such as 10.0.0.0/8 or fd00::/8, or single addresses) whose X-Forwarded-For or Forwarded header names the client; from them, the client's address in logs, audit, sessions and the per-address browser sign-in bound is the rightmost forwarded hop that is not itself a trusted proxy. Never used for authentication or TLS. Empty: trust none (the TCP peer is the client)
+
+| | |
+|---|---|
+| Flag | `--trusted-proxies <a,b,...>` |
+| Environment | `HARDCHARGER_TRUSTED_PROXIES` |
+| YAML | `trusted_proxies: …` |
+| Type | list |
+| Default | `(empty)` |
 
 ## TLS
 
@@ -317,6 +329,30 @@ SQL file run at startup.
 | Type | string |
 | Default | `(empty)` |
 
+### `default_catalog`
+
+The catalog every new session starts in, unless the client's session options name one (checked after the init SQL: the server refuses to start if it isn't attached). Unset, with default_schema unset too, an init SQL that ends in USE x or USE x.y sets where sessions start; else they start in the database's catalog. Under access control a user who may not see it starts where they would without it.
+
+| | |
+|---|---|
+| Flag | `--default-catalog <value>` |
+| Environment | `HARDCHARGER_DEFAULT_CATALOG` |
+| YAML | `default_catalog: …` |
+| Type | string |
+| Default | `(empty)` |
+
+### `default_schema`
+
+The schema every new session starts in, in default_catalog (or, without it, in the database's catalog), unless the client's session options name one; the server refuses to start if it doesn't exist.
+
+| | |
+|---|---|
+| Flag | `--default-schema <value>` |
+| Environment | `HARDCHARGER_DEFAULT_SCHEMA` |
+| YAML | `default_schema: …` |
+| Type | string |
+| Default | `(empty)` |
+
 ### `result_batch_rows`
 
 Most rows per Arrow batch in a result.
@@ -475,6 +511,30 @@ JWKS of the identity provider whose ID tokens sign users in.
 | Type | string |
 | Default | `(empty)` |
 
+### `token_auto_provision_users`
+
+Under access control, a verified sign-in token from token_auto_provision_issuer whose user the store lacks creates it on first sign-in (no password, no grants; the token's role in its provisioned_role attribute, readonly staying readonly); admin tokens and existing users (a disabled one stays disabled) are unchanged.
+
+| | |
+|---|---|
+| Flag | `--token-auto-provision-users` |
+| Environment | `HARDCHARGER_TOKEN_AUTO_PROVISION_USERS` |
+| YAML | `token_auto_provision_users: …` |
+| Type | boolean |
+| Default | `false` |
+
+### `token_auto_provision_issuer`
+
+The issuer (iss) whose sign-in tokens token_auto_provision_users provisions users for (default: token_allowed_issuer)
+
+| | |
+|---|---|
+| Flag | `--token-auto-provision-issuer <value>` |
+| Environment | `HARDCHARGER_TOKEN_AUTO_PROVISION_ISSUER` |
+| YAML | `token_auto_provision_issuer: …` |
+| Type | string |
+| Default | `(empty)` |
+
 ## Browser sign-in
 
 ### `oauth_client_id`
@@ -589,7 +649,7 @@ Most non-admin sessions at once (0: unlimited)
 
 ### `session_idle_timeout`
 
-Seconds an idle session lives (0: forever)
+A session is evicted within 5 s after this many seconds without requests (0: never), unless a statement of it is running, an ingest of it is in progress, a result of it is being read, or it holds a retained result that hasn't expired (result_retention_seconds)
 
 | | |
 |---|---|
@@ -674,6 +734,42 @@ How long to wait for the policy service (no answer refuses)
 | YAML | `rbac_opa_timeout_ms: …` |
 | Type | integer |
 | Default | `2000` |
+
+### `rbac_store_timeout_seconds`
+
+The longest one access-control store round trip may take, from 1 to 300: a store that does not answer in time fails the statement that needed it (access control store unavailable: timed out after N s) and what it was doing is rolled back. For PostgreSQL it also sets libpq's connect_timeout, TCP keepalives, tcp_user_timeout and the session's statement_timeout, each unless the connection string sets it.
+
+| | |
+|---|---|
+| Flag | `--rbac-store-timeout-seconds <n>` |
+| Environment | `HARDCHARGER_RBAC_STORE_TIMEOUT_SECONDS` |
+| YAML | `rbac_store_timeout_seconds: …` |
+| Type | integer |
+| Default | `10` |
+
+### `rbac_max_snapshot_age_seconds`
+
+While the store does not answer, sign-ins and statements go on with the last users, roles and grants it gave (a warning is logged, and hardcharger_rbac_snapshot_age_seconds says how old they are); past this many seconds every principal but the administrator is refused until it answers again (fail closed). 0: no limit (stay available)
+
+| | |
+|---|---|
+| Flag | `--rbac-max-snapshot-age-seconds <n>` |
+| Environment | `HARDCHARGER_RBAC_MAX_SNAPSHOT_AGE_SECONDS` |
+| YAML | `rbac_max_snapshot_age_seconds: …` |
+| Type | integer |
+| Default | `0` |
+
+### `rbac_store_shared`
+
+Let clusters with different cluster_ids share one store, and with it their users, roles and grants (grants name catalogs, so a grant on one cluster's catalog applies to another's catalog of that name). Off: the store records the first cluster_id that opens it and refuses any other.
+
+| | |
+|---|---|
+| Flag | `--rbac-store-shared` |
+| Environment | `HARDCHARGER_RBAC_STORE_SHARED` |
+| YAML | `rbac_store_shared: …` |
+| Type | boolean |
+| Default | `false` |
 
 ### `audit_chain_key`
 
@@ -826,6 +922,30 @@ Log destination (empty: stderr; -: stdout)
 | YAML | `log_file: …` |
 | Type | string |
 | Default | `(empty)` |
+
+### `log_emoji`
+
+Mark text log lines' levels with emoji: auto (only on a UTF-8 terminal), always or never; JSON lines never have them.
+
+| | |
+|---|---|
+| Flag | `--log-emoji <value>` |
+| Environment | `HARDCHARGER_LOG_EMOJI` |
+| YAML | `log_emoji: …` |
+| Type | string |
+| Default | `auto` |
+
+### `banner`
+
+Print the startup banner (versions and URLs) in a text log; --no-banner or HARDCHARGER_NO_BANNER=true turns it off.
+
+| | |
+|---|---|
+| Flag | `--banner` |
+| Environment | `HARDCHARGER_BANNER` |
+| YAML | `banner: …` |
+| Type | boolean |
+| Default | `true` |
 
 ### `query_log_level`
 

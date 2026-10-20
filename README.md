@@ -26,7 +26,7 @@ The same source builds two sites, chosen by **one switch, `DOCS_GA`** (`src/comp
 | Banner, `noindex` | on every page | none |
 | Content | `<Preview>` blocks (tokens, internal packages) | `<Ga>` blocks (`pip install hardcharger`, the release jar, "version 2.0.0") |
 | Examples | the tested blocks inside `<Preview>` | the tested blocks inside `<Ga>` (`scripts/verify_examples.py`) |
-| External links | `github.com/gizmodata/` left out | checked |
+| External links | `github.com/gizmodata/` left out (also in a dry run with the **ga** input: the repositories are private until the flip) | checked |
 
 `<Preview>` and `<Ga>` are the MDX components in `src/components/`. Every push builds both
 variants and `scripts/check_ga_build.py` fails the **docs** workflow if the public build still

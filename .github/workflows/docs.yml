@@ -58,9 +58,8 @@ env:
   HARDCHARGER_IMAGE: ghcr.io/gizmodata/hardcharger:main
   # The one switch between the private preview and the public site (README, "Private preview
   # and GA"): the repository variable DOCS_GA, or the `ga` input of a run started by hand.
-  # With it the build has no preview banner, asides or noindex, sits at the custom domain, the
-  # examples inside <Ga> run and those inside <Preview> don't, and lychee checks
-  # github.com/gizmodata links (public at GA).
+  # With it the build has no preview banner, asides or noindex, sits at the custom domain, and
+  # the examples inside <Ga> run and those inside <Preview> don't.
   DOCS_GA: ${{ (inputs.ga || vars.DOCS_GA == 'true') && 'true' || 'false' }}
   DOCS_SITE: ${{ (inputs.ga || vars.DOCS_GA == 'true') && 'https://docs.hardcharger.gizmodata.com' || 'https://curly-adventure-gke7ezg.pages.github.io' }}
 
@@ -112,8 +111,9 @@ jobs:
         uses: lycheeverse/lychee-action@v2
         with:
           # gizmodata's repositories, packages and releases are internal until GA: an anonymous
-          # check gets 404, so their links are left out until the switch is on.
-          args: --config lychee.toml ${{ env.DOCS_GA != 'true' && '--exclude ^https://github.com/gizmodata/' || '' }} --root-dir "${{ github.workspace }}/dist" "dist/**/*.html"
+          # check gets 404 (96 links in a dry run), so they are left out until the repository
+          # variable is flipped; the `ga` input of a dry run doesn't change that.
+          args: --config lychee.toml ${{ vars.DOCS_GA != 'true' && '--exclude ^https://github.com/gizmodata/' || '' }} --root-dir "${{ github.workspace }}/dist" "dist/**/*.html"
           fail: true
 
   browsers:

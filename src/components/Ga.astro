@@ -1,0 +1,6 @@
+---
+// Content for the public site only (DOCS_GA=true): left out of the private preview. See Preview.astro.
+import { ga } from './ga.ts';
+---
+
+{ga && <slot />}

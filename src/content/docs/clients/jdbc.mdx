@@ -6,6 +6,8 @@ description: "Connect to Hardcharger from Java, DBeaver and other JDBC tools wit
 import { Aside, Steps } from '@astrojs/starlight/components';
 import HeroBanner from '../../../components/HeroBanner.astro';
 import banner from '../../../assets/banners/hardcharger-jdbc-banner.svg';
+import Preview from '../../../components/Preview.astro';
+import Ga from '../../../components/Ga.astro';
 
 <HeroBanner src={banner} alt="Hardcharger JDBC: the JDBC driver for Hardcharger, on Warp SQL" href="https://github.com/gizmodata/hardcharger-jdbc" />
 
@@ -13,12 +15,25 @@ import banner from '../../../assets/banners/hardcharger-jdbc-banner.svg';
 protobuf, and no `--add-opens` or other JVM options. It accepts `jdbc:hardcharger://` URLs and
 is a thin layer on the Warp SQL JDBC driver, which streams results batch by batch.
 
+<Preview>
+
 <Aside type="caution" title="Private preview">
 The jar isn't on Maven Central yet. Build it from
 [gizmodata/hardcharger-jdbc](https://github.com/gizmodata/hardcharger-jdbc)
 (`git clone --recurse-submodules`, then `mvn package`): `target/hardcharger-jdbc.jar` is the
 standalone jar, with every dependency inside.
 </Aside>
+
+</Preview>
+
+<Ga>
+
+Download `hardcharger-jdbc.jar`, the standalone jar with every dependency inside, from the
+[latest release](https://github.com/gizmodata/hardcharger-jdbc/releases/latest), or build it from
+[gizmodata/hardcharger-jdbc](https://github.com/gizmodata/hardcharger-jdbc)
+(`git clone --recurse-submodules`, then `mvn package`: `target/hardcharger-jdbc.jar`).
+
+</Ga>
 
 ## Connect
 

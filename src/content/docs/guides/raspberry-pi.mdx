@@ -4,6 +4,7 @@ description: "Run Hardcharger on a 64-bit Raspberry Pi 4 or 5, natively or in Do
 ---
 
 import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import Preview from '../../../components/Preview.astro';
 
 Hardcharger runs on a Raspberry Pi 4 or 5 with a **64-bit** operating system: the release has a
 `linux-arm64` build and the image has a `linux/arm64` variant. A Pi with 8 GB or 16 GB of memory
@@ -49,8 +50,12 @@ docker run -d --name hardcharger --restart unless-stopped -p 31337:31337 -p 3133
 </TabItem>
 </Tabs>
 
+<Preview>
+
 During the preview, the installer and the image need a GitHub token, as in the
 [quickstart](/get-started/quickstart/).
+
+</Preview>
 
 ## Settings for a Pi
 

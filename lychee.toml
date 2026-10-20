@@ -7,10 +7,8 @@ timeout = 30
 accept = ["200..=299", "403", "429"]   # some sites refuse bots (403) or rate-limit (429)
 
 exclude = [
-  # gizmodata's repositories, packages and releases are internal until launch: an anonymous
-  # check gets 404. Remove this line at launch (README: launch checklist).
-  '^https://github\.com/gizmodata/',
-  # The docs' own future address, and the private preview's.
+  # gizmodata's repositories are excluded by docs.yml while they are internal (DOCS_GA unset).
+  # The docs' own address, and the private preview's.
   '^https://docs\.hardcharger\.gizmodata\.com',
   '^https://curly-adventure-gke7ezg\.pages\.github\.io',
   # Example hosts in prose.

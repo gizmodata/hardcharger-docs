@@ -6,6 +6,7 @@ description: "Connect to Hardcharger from Python with adbc-driver-hardcharger - 
 import { Aside } from '@astrojs/starlight/components';
 import HeroBanner from '../../../components/HeroBanner.astro';
 import banner from '../../../assets/banners/hardcharger-adbc-banner.svg';
+import Preview from '../../../components/Preview.astro';
 
 <HeroBanner src={banner} alt="Hardcharger ADBC: the Python driver for Hardcharger, on Warp SQL" href="https://github.com/gizmodata/hardcharger-adbc" />
 
@@ -21,12 +22,16 @@ tags, `hardcharger.*` settings and browser sign-in.
 pip install adbc-driver-hardcharger
 ```
 
+<Preview>
+
 <Aside type="caution" title="Private preview">
 The driver isn't on PyPI yet. Until it is, build it from
 [gizmodata/hardcharger-adbc](https://github.com/gizmodata/hardcharger-adbc) (Go 1.27 and, on
 Linux, zig): `git clone --recurse-submodules`, then `scripts/build_warpsql_wheel.sh` and
 `uv pip install --override build/overrides.txt ./python`. The repository's README has the details.
 </Aside>
+
+</Preview>
 
 Python 3.10 or newer. It brings `pyarrow` and `adbc-driver-manager`.
 

@@ -6,6 +6,8 @@ description: "Query Hardcharger from Node.js, browsers, Deno, Bun and Workers wi
 import { Aside } from '@astrojs/starlight/components';
 import HeroBanner from '../../../components/HeroBanner.astro';
 import banner from '../../../assets/banners/hardcharger-js-banner.svg';
+import Preview from '../../../components/Preview.astro';
+import Ga from '../../../components/Ga.astro';
 
 <HeroBanner src={banner} alt="Hardcharger from JavaScript, by GizmoData" href="https://github.com/gizmodata/hardcharger-js" />
 
@@ -20,8 +22,19 @@ generic JavaScript client for any Warp SQL server, which it depends on and re-ex
 everything from `@gizmodata/hardcharger`.
 
 <Aside type="caution" title="Preview">
+<Preview>
+
 The client is internal and unreleased (0.1.0), and neither package is on npm yet. Until they are,
-build both: in [gizmodata/warp-sql-js](https://github.com/gizmodata/warp-sql-js),
+build both:
+
+</Preview>
+<Ga>
+
+The client is a preview (0.1.0), and neither package is on npm yet. Until they are, build both:
+
+</Ga>
+
+in [gizmodata/warp-sql-js](https://github.com/gizmodata/warp-sql-js),
 `npm ci && npm run build && npm pack`; in [gizmodata/hardcharger-js](https://github.com/gizmodata/hardcharger-js),
 `npm run warp-sql && npm ci && npm run build && npm pack`. Then
 `npm install apache-arrow ./gizmodata-warp-sql-0.1.0.tgz ./gizmodata-hardcharger-0.1.0.tgz`.

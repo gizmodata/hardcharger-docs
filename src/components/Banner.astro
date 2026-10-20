@@ -1,11 +1,11 @@
 ---
-// Every page says it is a private preview until launch (DOCS_INDEXABLE=true drops it).
+// Every page says it is a private preview until DOCS_GA=true (src/components/ga.ts).
 import Default from '@astrojs/starlight/components/Banner.astro';
-const preview = import.meta.env.DOCS_INDEXABLE !== 'true' && process.env.DOCS_INDEXABLE !== 'true';
+import { ga } from './ga.ts';
 ---
 
 {
-	preview ? (
+	!ga ? (
 		<div class="sl-banner hc-preview">
 			<strong>Private preview.</strong> These docs and Hardcharger's packages are internal to GizmoData until launch. Please don’t share links outside the company.
 		</div>

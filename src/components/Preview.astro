@@ -1,0 +1,15 @@
+---
+// Content for the private preview only: left out of the public site (DOCS_GA=true).
+// In MDX, wrap a paragraph, an Aside or a code block (blank lines around it keep it Markdown):
+//
+//   <Preview>
+//
+//   During the preview, pass a token.
+//
+//   </Preview>
+//
+// Its twin is <Ga>. scripts/verify_examples.py runs the tested blocks of whichever applies.
+import { ga } from './ga.ts';
+---
+
+{!ga && <slot />}

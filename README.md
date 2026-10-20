@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/status-private%20preview-f15a24.svg" alt="Private preview">
+  <img src="https://img.shields.io/badge/status-GA%20ready-f15a24.svg" alt="GA ready">
   <img src="https://img.shields.io/badge/built%20with-Astro%20Starlight-31a8db.svg?logo=astro&logoColor=white" alt="Astro Starlight">
   <img src="https://img.shields.io/badge/examples-run%20in%20CI-brightgreen.svg" alt="Every example runs in CI">
   <a href="https://github.com/gizmodata/hardcharger"><img src="https://img.shields.io/badge/docs%20for-Hardcharger-f15a24.svg" alt="Hardcharger"></a>
@@ -16,25 +16,37 @@
 
 ---
 
-## 🔒 Status: private preview
+## 🔒 Private preview and GA
 
-These docs are internal to GizmoData until Hardcharger launches. Their future home is
-`https://docs.hardcharger.gizmodata.com`; nothing is published there yet. Until launch:
+The same source builds two sites, chosen by **one switch, `DOCS_GA`** (`src/components/ga.ts`):
 
-- **Preview:** <https://curly-adventure-gke7ezg.pages.github.io/> (GitHub Pages with private
-  visibility: only members of the gizmodata organization can open it). It is deployed by a
-  release tag (`vX.Y.Z`) or by running **release** by hand on `main`, after every check passes.
-  **The preview appears after the first successful release run;** until then the link answers 404.
-- **Or locally:** download the `site` artifact of any **docs** run, or build it yourself:
+| | Private preview (`DOCS_GA` unset) | Public site (`DOCS_GA=true`) |
+|---|---|---|
+| Address | <https://curly-adventure-gke7ezg.pages.github.io/> (GitHub Pages, visible to the gizmodata organization only) | <https://docs.hardcharger.gizmodata.com/> (`public/CNAME`, DNS already points there) |
+| Banner, `noindex` | on every page | none |
+| Content | `<Preview>` blocks (tokens, internal packages) | `<Ga>` blocks (`pip install hardcharger`, the release jar, "version 2.0.0") |
+| Examples | the tested blocks inside `<Preview>` | the tested blocks inside `<Ga>` (`scripts/verify_examples.py`) |
+| External links | `github.com/gizmodata/` left out | checked |
 
-  ```bash
-  npm ci
-  npm run build && npm run preview     # http://localhost:4321
-  npm run dev                          # live reload while writing
-  ```
+`<Preview>` and `<Ga>` are the MDX components in `src/components/`. Every push builds both
+variants and `scripts/check_ga_build.py` fails the **docs** workflow if the public build still
+carries anything of the preview. A run started by hand with the **ga** input tests the public
+site end to end (examples included) without flipping anything.
 
-Every page shows a "Private preview" banner and tells search engines not to index it until
-`DOCS_INDEXABLE=true`.
+**The flip, when Hardcharger is public:** set the repository variable `DOCS_GA` to `true`
+(`gh variable set DOCS_GA --body true --repo gizmodata/hardcharger-docs`), then the Pages custom
+domain (below) and a **release** run. Both workflows read the variable; nothing else changes.
+
+The site is deployed by a release tag (`vX.Y.Z`) or by running **release** by hand on `main`,
+after every check passes. Or locally: download the `site` artifact of any **docs** run, or build it
+yourself:
+
+```bash
+npm ci
+npm run build && npm run preview     # http://localhost:4321, the preview
+DOCS_GA=true npm run build           # the public site, in dist/
+npm run dev                          # live reload while writing
+```
 
 ## 📚 What's inside
 
@@ -111,7 +123,7 @@ and fails when anything committed differs from what the server says.
 | Workflow | When | What |
 |---|---|---|
 | [docs](.github/workflows/docs.yml) | every push and pull request; called by release | build (internal links), external links (lychee), Chromium and WebKit in light and dark at desktop and phone width (console errors, sideways scrolling), every example, the reference check |
-| [release](.github/workflows/release.yml) | `vX.Y.Z` tags, or by hand | docs on the tagged commit, then a GitHub Release with the CHANGELOG section and the built site, and the GitHub Pages deployment |
+| [release](.github/workflows/release.yml) | `vX.Y.Z` tags, or by hand | docs on the tagged commit, then a GitHub Release with the CHANGELOG section and the built site, and the GitHub Pages deployment (the preview, or the public site when `DOCS_GA` is true) |
 
 While Hardcharger is internal, CI uses no personal token:
 
@@ -141,41 +153,34 @@ pages go in the sidebar in [`astro.config.mjs`](astro.config.mjs). Brand assets:
 (`public/og.png`) are files from the Hardcharger™ brand kit (`docs/assets/brand/` in the
 hardcharger repository), losslessly optimized, not drawn here.
 
-## 🚀 Launch checklist (docs.hardcharger.gizmodata.com)
+## 🚀 GA checklist
 
-Same pattern as [hardcharger-install](https://github.com/gizmodata/hardcharger-install): a private
-S3 bucket behind CloudFront, deployed from CI by GitHub OIDC, all of it in
-[gizmodata-infrastructure-terraform](https://github.com/gizmodata/gizmodata-infrastructure-terraform)
-(`aws/dns/`, next to `hardcharger_install.tf`). Don't create any of it before Philip says go.
+Done, ready for the flip:
 
-- [ ] Terraform (`aws/dns/hardcharger_docs.tf`), one reviewed plan with only additions:
-  - [ ] S3 bucket `gizmodata-hardcharger-docs`: public access blocked, bucket-owner-enforced,
-        SSE, versioning, a lifecycle rule for old versions, a policy that lets only the
-        distribution (OAC) read.
-  - [ ] ACM certificate for `docs.hardcharger.gizmodata.com` in us-east-1, DNS-validated.
-  - [ ] CloudFront distribution with OAC, HTTP/2 and HTTP/3, `redirect-to-https`, compression,
-        and a CloudFront Function that maps `/path/` to `/path/index.html` (S3 behind OAC has
-        no index documents) and serves `404.html` for misses.
-  - [ ] A response headers policy: HSTS, `X-Content-Type-Options: nosniff`, `Referrer-Policy`,
-        and a CSP that allows the site's own scripts and the shields.io badge images.
-  - [ ] Route53 A/AAAA alias records for `docs.hardcharger.gizmodata.com`.
-  - [ ] An IAM role trusted by GitHub OIDC for this repository's `refs/tags/v*` only, allowed to
-        write that bucket and invalidate that distribution.
-- [ ] `release.yml`: build with `DOCS_SITE=https://docs.hardcharger.gizmodata.com` and
-      `DOCS_INDEXABLE=true`, `aws s3 sync --delete` (HTML `no-cache`, `_astro/` immutable), invalidate,
-      then fetch the live pages and check they serve this commit. Keep the deployment record.
-- [ ] Drop the private-preview banner and `noindex` (`DOCS_INDEXABLE=true`), and the GitHub Pages
-      preview (or keep it for pull-request previews).
-- [ ] Remove the "private preview" asides: the installer, the image and the drivers without a
-      token; `pip install hardcharger` and `adbc-driver-hardcharger` from PyPI; the JDBC jar from
-      Maven Central or the releases.
-- [ ] Lychee: stop excluding `github.com/gizmodata/` once the repositories are public.
+- [x] DNS: `docs.hardcharger.gizmodata.com` is a `CNAME` to `gizmodata.github.io`
+      (gizmodata-infrastructure-terraform `aws/dns/gizmodata_com.tf`, applied 2026-10-20), and
+      gizmodata.com is a verified GitHub Pages domain of the organization.
+- [x] `public/CNAME`, the `DOCS_GA` switch, and the GA build checked on every push.
+
+At the flip (the repository public, Hardcharger 2.0.0 released):
+
+- [ ] `gh variable set DOCS_GA --body true --repo gizmodata/hardcharger-docs`.
+- [ ] Pages custom domain: `gh api -X PUT repos/gizmodata/hardcharger-docs/pages -f cname=docs.hardcharger.gizmodata.com`
+      (Settings → Pages → Custom domain). Wait for the DNS check and the certificate
+      (`gh api repos/gizmodata/hardcharger-docs/pages --jq '.https_certificate.state'` says
+      `approved`), then `gh api -X PUT repos/gizmodata/hardcharger-docs/pages -F https_enforced=true`.
+- [ ] Pin `HARDCHARGER_IMAGE` in `docs.yml` to the release (`ghcr.io/gizmodata/hardcharger:2.0.0`),
+      regenerate the reference from it (`scripts/gen_reference.py`: the `[2.0.0]` release notes, the
+      Warp SQL 1.0.1 protocol page, the CLI and configuration pages) and move
+      `HARDCHARGER_ADBC_REF` to `main` once the driver's main speaks Warp SQL 1.0.
+- [ ] Retire `scripts/check_no_version_history.py` and its step (2.0.0 is the first public release).
+- [ ] Run **release** (a `vX.Y.Z` tag or by hand) and open every page on the live domain in
+      Chromium and WebKit (CSP violations included); then link the docs from the READMEs,
+      gizmodata.com and the CLI's `.about`.
 - [ ] Search Console: add the domain and submit `sitemap-index.xml`.
 - [ ] Versioned docs: archive the launch version with
       [starlight-versions](https://github.com/HiDeoo/starlight-versions) and replace the header
       badge with its picker.
-- [ ] Check every page in Chromium and WebKit on the live domain (CSP violations included),
-      then link the docs from the READMEs, gizmodata.com and the CLI's `.about`.
 
 ## 📄 License
 

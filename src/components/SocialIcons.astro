@@ -1,12 +1,17 @@
 ---
 // The version these pages describe, ahead of Starlight's social links. Versioned docs
-// (starlight-versions) can replace this badge with a picker once 0.3.0 is archived.
+// (starlight-versions) can replace this badge with a picker once a version is archived.
+// The private preview describes the release candidate as built from main; the public site
+// (DOCS_GA=true, src/components/ga.ts) describes the release.
 import Default from '@astrojs/starlight/components/SocialIcons.astro';
+import { ga } from './ga.ts';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const version = ga ? '2.0.0' : '2.0.0-rc.1 · main';
+const title = ga ? 'These docs describe Hardcharger 2.0.0' : 'These docs describe Hardcharger 2.0.0-rc.1, as built from its main branch';
 ---
 
-<a class="hc-version" href={`${base}/reference/versions/`} title="These docs describe main (unreleased) and Hardcharger 0.2.0">
-	latest · main
+<a class="hc-version" href={`${base}/reference/versions/`} title={title}>
+	{version}
 </a>
 <Default />
 

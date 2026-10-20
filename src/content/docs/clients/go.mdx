@@ -6,6 +6,7 @@ description: "Query Hardcharger from Go with the native ADBC driver package - ha
 import { Aside } from '@astrojs/starlight/components';
 import HeroBanner from '../../../components/HeroBanner.astro';
 import banner from '../../../assets/banners/hardcharger-adbc-banner.svg';
+import Preview from '../../../components/Preview.astro';
 
 <HeroBanner src={banner} alt="Hardcharger ADBC: the driver for Hardcharger, on Warp SQL" href="https://github.com/gizmodata/hardcharger-adbc" />
 
@@ -16,11 +17,15 @@ with no driver manager and no cgo:
 go get github.com/gizmodata/hardcharger-adbc/go
 ```
 
+<Preview>
+
 <Aside type="caution" title="Private preview">
 The module and its dependency `github.com/gizmodata/warp-sql-adbc/go` are internal until launch.
 Set `GOPRIVATE=github.com/gizmodata/*` and give git access to GitHub (`gh auth setup-git`, or an
 SSH key) before `go get`.
 </Aside>
+
+</Preview>
 
 ## Query
 

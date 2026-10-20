@@ -35,6 +35,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      ga:
+        description: "Build and test the public site (as if the repository variable DOCS_GA were true)"
+        type: boolean
+        default: false
   workflow_call:
 
 permissions:
@@ -51,7 +56,13 @@ env:
   # The server the examples and the reference run against: Hardcharger's main branch, which
   # CI there publishes on every green push. Pin a :sha-<short> tag to reproduce an old run.
   HARDCHARGER_IMAGE: ghcr.io/gizmodata/hardcharger:main
-  DOCS_SITE: https://curly-adventure-gke7ezg.pages.github.io
+  # The one switch between the private preview and the public site (README, "Private preview
+  # and GA"): the repository variable DOCS_GA, or the `ga` input of a run started by hand.
+  # With it the build has no preview banner, asides or noindex, sits at the custom domain, the
+  # examples inside <Ga> run and those inside <Preview> don't, and lychee checks
+  # github.com/gizmodata links (public at GA).
+  DOCS_GA: ${{ (inputs.ga || vars.DOCS_GA == 'true') && 'true' || 'false' }}
+  DOCS_SITE: ${{ (inputs.ga || vars.DOCS_GA == 'true') && 'https://docs.hardcharger.gizmodata.com' || 'https://curly-adventure-gke7ezg.pages.github.io' }}
 
 jobs:
   build:
@@ -69,6 +80,19 @@ jobs:
         run: python3 scripts/check_no_version_history.py
       - name: Build (fails on broken internal links)
         run: npm run build
+      - name: The public site (DOCS_GA=true) has nothing of the preview left in it
+        env:
+          GA_SITE: https://docs.hardcharger.gizmodata.com
+        run: |
+          # Proves the switch on every push, before it is flipped: a second build with it on
+          # (or this build, when it is on already), checked by scripts/check_ga_build.py.
+          if [ "$DOCS_GA" = true ]; then
+            out=dist
+          else
+            out=dist-ga
+            DOCS_GA=true DOCS_SITE="$GA_SITE" npm run build -- --outDir "$out"
+          fi
+          python3 scripts/check_ga_build.py "$out"
       - uses: actions/upload-artifact@v7
         with:
           name: site
@@ -87,7 +111,9 @@ jobs:
       - name: External links
         uses: lycheeverse/lychee-action@v2
         with:
-          args: --config lychee.toml --root-dir "${{ github.workspace }}/dist" "dist/**/*.html"
+          # gizmodata's repositories, packages and releases are internal until GA: an anonymous
+          # check gets 404, so their links are left out until the switch is on.
+          args: --config lychee.toml ${{ env.DOCS_GA != 'true' && '--exclude ^https://github.com/gizmodata/' || '' }} --root-dir "${{ github.workspace }}/dist" "dist/**/*.html"
           fail: true
 
   browsers:

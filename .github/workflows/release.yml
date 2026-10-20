@@ -2,7 +2,8 @@ name: release
 
 # On a vX.Y.Z tag (or by hand): every check of docs.yml on the tagged commit, then a GitHub
 # Release with that version's CHANGELOG section and the built site, and the site deployed to
-# GitHub Pages (private to the organization until launch; see README).
+# GitHub Pages: the private preview, or, with the repository variable DOCS_GA set to true, the
+# public site at docs.hardcharger.gizmodata.com (README, "Private preview and GA").
 
 on:
   push:
@@ -29,7 +30,8 @@ jobs:
     needs: tests
     runs-on: ubuntu-24.04
     env:
-      DOCS_SITE: https://curly-adventure-gke7ezg.pages.github.io
+      DOCS_GA: ${{ vars.DOCS_GA == 'true' && 'true' || 'false' }}
+      DOCS_SITE: ${{ vars.DOCS_GA == 'true' && 'https://docs.hardcharger.gizmodata.com' || 'https://curly-adventure-gke7ezg.pages.github.io' }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

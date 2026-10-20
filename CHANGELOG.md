@@ -6,6 +6,23 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ## [Unreleased]
 
+### Added
+
+- **GA preparation.** One switch, `DOCS_GA` (`src/components/ga.ts`), chooses between the private
+  preview and the public site: with it there is no preview banner or `noindex`, the `<Preview>`
+  MDX blocks are left out and the `<Ga>` blocks shown (the quickstart's installer, image, binaries
+  and `pip install hardcharger` without a token, the Python and Go drivers from PyPI and the Go
+  proxy, the JDBC jar from the release, the JavaScript client's note without "internal", the
+  Raspberry Pi guide, and the Versions page and the header badge saying 2.0.0 instead of
+  2.0.0-rc.1 from main), `scripts/verify_examples.py` runs the tested blocks of the side that is
+  built, and lychee checks `github.com/gizmodata/` links. `public/CNAME` names
+  `docs.hardcharger.gizmodata.com`, whose DNS points at GitHub Pages. Both workflows read the
+  repository variable `DOCS_GA` (`DOCS_INDEXABLE` is gone); **docs** also takes it as the `ga`
+  input of a run started by hand, builds the public site on every push and fails if anything of
+  the preview is left in it (`scripts/check_ga_build.py`, which fails on a preview build). The
+  README's GA checklist has the flip-day steps. Merged: `docs/web-ui-parity`, `docs/ui-upload`,
+  `docs/tpch-fair-use` and `docs/home-sidebar`.
+
 ### Changed
 
 - Hardcharger 2.0.0-rc.1 (main feaa5d39, warp-sql e38b28e): the reference is regenerated from the

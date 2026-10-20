@@ -5,12 +5,13 @@ import mermaid from 'astro-mermaid';
 import starlightLinksValidator from 'starlight-links-validator';
 import starlightLlmsTxt from 'starlight-llms-txt';
 
-// The site's public address. Until launch the docs are a private preview: DOCS_SITE and
-// DOCS_BASE point the build at wherever the preview is served (GitHub Pages, localhost),
-// and every page says noindex unless DOCS_INDEXABLE=true.
+// The site's address. DOCS_SITE and DOCS_BASE point a build at wherever it is served (the
+// custom domain, the private preview on GitHub Pages, localhost). DOCS_GA=true is the one
+// switch between the private preview and the public site (README, "Private preview and GA"):
+// without it every page says noindex and carries the preview banner (src/components/ga.ts).
 const site = process.env.DOCS_SITE ?? 'https://docs.hardcharger.gizmodata.com';
 const base = process.env.DOCS_BASE ?? '/';
-const indexable = process.env.DOCS_INDEXABLE === 'true';
+const indexable = process.env.DOCS_GA === 'true';
 
 export default defineConfig({
 	site,

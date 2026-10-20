@@ -110,15 +110,32 @@ def parse_info(info: str) -> tuple[str, dict, set]:
     return lang, meta, words
 
 
+GA = os.environ.get("DOCS_GA") == "true"  # the one preview/GA switch (src/components/ga.ts)
+WRAPPER = re.compile(r"^\s*<(/?)(Preview|Ga)>\s*$")
+
+
 def extract(page: pathlib.Path) -> list[Block]:
     lines = page.read_text(encoding="utf-8").splitlines()
     blocks: list[Block] = []
     i = 0
     previous_tested: Block | None = None
+    # <Preview> ... </Preview> is built only without DOCS_GA, <Ga> ... </Ga> only with it (the
+    # Astro components of those names): the blocks of the side that isn't built aren't run.
+    hidden: list[str] = []
     while i < len(lines):
+        wrapper = WRAPPER.match(lines[i])
+        if wrapper:
+            closing, name = wrapper.group(1) == "/", wrapper.group(2)
+            if closing:
+                if hidden and hidden[-1] == name:
+                    hidden.pop()
+            elif (name == "Preview" and GA) or (name == "Ga" and not GA):
+                hidden.append(name)
+            i += 1
+            continue
         match = FENCE.match(lines[i])
-        if not match:
-            if lines[i].strip():
+        if not match or hidden:
+            if lines[i].strip() and not match:
                 previous_tested = None if not lines[i].strip().startswith(("<", "</")) else previous_tested
             i += 1
             continue

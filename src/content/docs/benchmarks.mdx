@@ -1,6 +1,6 @@
 ---
 title: "Benchmarks"
-description: "Hardcharger against GizmoSQL on TPC-H, bulk transfer, concurrency and over a real AWS network, with the method, every number, and where Hardcharger still loses."
+description: "Hardcharger against GizmoSQL on queries derived from TPC-H, bulk transfer, concurrency and over a real AWS network, with the method, every number, and where Hardcharger still loses."
 ---
 
 import { Aside } from '@astrojs/starlight/components';
@@ -15,13 +15,24 @@ Benchmarks measure one setup on one day. Spot instances vary, and so does your n
 method is here so you can run the same thing on yours.
 </Aside>
 
+<Aside type="caution" title="Derived from TPC-H">
+The workloads are derived from TPC-H: the 22 queries' text (`tpch_queries()`) and the data
+(`dbgen`, scale factor 1 or 10; `lineitem` alone for the transfer and load runs) come from
+DuckDB's `tpch` extension. They deviate from the TPC-H specification throughout: no refresh
+functions, no power or throughput test, no audit, the query text as DuckDB's extension has it
+(fixed substitution parameters), and timings that include moving every row to the client.
+Derived from the TPC-H benchmark; not an official TPC-H result and not comparable to published
+TPC-H results, as these results do not comply with the TPC-H specification. TPC-H™ is a
+trademark of the Transaction Processing Performance Council (TPC).
+</Aside>
+
 ## Summary
 
 On one machine (Apple M5 Max, loopback, no TLS):
 
 | Workload | Hardcharger | GizmoSQL 1.41 | |
 |---|---:|---:|---:|
-| TPC-H SF10, all 22 queries | **832 ms** | 1,201 ms | **1.44× faster** |
+| The 22 queries derived from TPC-H, SF10 | **832 ms** | 1,201 ms | **1.44× faster** |
 | Fetch 10M rows (1.73 GB of Arrow) | **0.83 s** | 1.32 s | **1.59× faster** |
 | 10 concurrent clients | **39.0 queries/s** | 21.9 queries/s | **1.8× the throughput** |
 | 10 concurrent clients, p95 latency | **471 ms** | 1,328 ms | **2.8× lower** |
@@ -30,8 +41,8 @@ Over a real network: two AWS c8gn.8xlarge machines, TLS on both servers, median 
 
 | Workload | Hardcharger | GizmoSQL 1.42 | |
 |---|---:|---:|---:|
-| Fetch TPC-H SF10 lineitem (60M rows, 10.5 GB of Arrow) | **0.97 s** | 15.2 s | **15.7× faster** |
-| Fetch TPC-H SF1 lineitem (6M rows) | **0.148 s** | 1.74 s | **11.7× faster** |
+| Fetch SF10 lineitem (60M rows, 10.5 GB of Arrow) | **0.97 s** | 15.2 s | **15.7× faster** |
+| Fetch SF1 lineitem (6M rows) | **0.148 s** | 1.74 s | **11.7× faster** |
 | Fetch 100M narrow rows | **0.45 s** | 5.43 s | **12.0× faster** |
 | Fetch SF1 lineitem across regions (46 ms away) | **1.96 s** | 12.26 s | **6.3× faster** |
 | Load SF10 lineitem (bulk ingest, 8 upload parts) | **3.00 s** | 9.44 s | **3.1× faster** |
@@ -41,13 +52,13 @@ The network fetches above read the result in partitions (32 on the LAN, 8 in ord
 regions) and the loads send 8 parts at once; [the performance model](/concepts/performance-model/)
 explains why that matters.
 
-## TPC-H SF10 on one machine
+## Queries derived from TPC-H at SF10, on one machine
 
-Same machine, same data, each server on loopback with no TLS. Each server loads the TPC-H SF10
-Parquet files (lineitem: 59,986,052 rows) into its own DuckDB file through init SQL. Every query
-runs once to warm up, then five times; the figure is the median, measured at the client from
-submit to the last row in a `pyarrow.Table`. Hardcharger 0.1.0 is called over Warp SQL's
-one-round-trip path; GizmoSQL 1.41.0 through `adbc-driver-gizmosql` 2.0.15. Script:
+Same machine, same data, each server on loopback with no TLS. Each server loads Parquet files of
+the TPC-H-derived data at SF10 (lineitem: 59,986,052 rows) into its own DuckDB file through init
+SQL. Every query runs once to warm up, then five times; the figure is the median, measured at the
+client from submit to the last row in a `pyarrow.Table`. Hardcharger 0.1.0 is called over Warp
+SQL's one-round-trip path; GizmoSQL 1.41.0 through `adbc-driver-gizmosql` 2.0.15. Script:
 `bench/tpch.py`.
 
 Machine: Apple M5 Max, 18 cores, 64 GB, macOS 27. Hardcharger on DuckDB v2.0.0-alpha48624,

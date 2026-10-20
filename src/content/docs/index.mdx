@@ -77,15 +77,18 @@ GizmoSQL 1.42 on the same data:
 
 | Workload | Hardcharger | GizmoSQL 1.42 | |
 |---|---:|---:|---:|
-| Fetch TPC-H SF10 lineitem (60M rows, 10.5 GB of Arrow) | **0.97 s** | 15.2 s | **15.7× faster** |
-| Fetch TPC-H SF1 lineitem (6M rows) | **0.148 s** | 1.74 s | **11.7× faster** |
+| Fetch SF10 lineitem (60M rows, 10.5 GB of Arrow) | **0.97 s** | 15.2 s | **15.7× faster** |
+| Fetch SF1 lineitem (6M rows) | **0.148 s** | 1.74 s | **11.7× faster** |
 | Fetch 100M narrow rows | **0.45 s** | 5.43 s | **12.0× faster** |
 | Fetch SF1 lineitem across regions (46 ms away) | **1.96 s** | 12.26 s | **6.3× faster** |
 | Load SF10 lineitem (bulk ingest, 8 upload parts) | **3.00 s** | 9.44 s | **3.1× faster** |
 | Load SF1 lineitem across regions (8 upload parts) | **2.91 s** | 13.94 s | **4.8× faster** |
 
-The method, every run and what Hardcharger doesn't win yet are on the
-[benchmarks page](/benchmarks/). How the pipeline works is in the
+The data is derived from TPC-H (DuckDB's `tpch` extension at scale factor 1 or 10). Derived from
+the TPC-H benchmark; not an official TPC-H result and not comparable to published TPC-H results,
+as these results do not comply with the TPC-H specification. TPC-H™ is a trademark of the
+Transaction Processing Performance Council (TPC). The method, every run and what Hardcharger
+doesn't win yet are on the [benchmarks page](/benchmarks/). How the pipeline works is in the
 [performance model](/concepts/performance-model/).
 
 ## 📦 Everything included

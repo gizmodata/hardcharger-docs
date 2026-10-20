@@ -28,6 +28,10 @@ All notable changes to the Hardcharger documentation are recorded here. The form
   `hardcharger_effective_privileges()` example. CI builds the Python driver from the release that
   speaks Warp SQL 1.0 (`internal-0.1.0rc1`), since hardcharger-adbc main still commits a
   partitioned ingest the draft way.
+- Instrumentation: the records are written in the background, in batches, so they appear a moment
+  after a statement ends; the guide says so, and its examples (and statement control's query-tag
+  example) wait for their row before reading it. Release run 39454484457 read
+  `execution_details` before the row was there.
 - The Hardcharger™ logo: the header shows the bull-head lockup (light and dark versions, it
   replaces the title text), the favicon is the bull head (SVG, with an ICO and an Apple touch
   icon), and the social card is the brand kit's 1200x630 share image. `scripts/brand_images.mjs`,

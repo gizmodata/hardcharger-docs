@@ -20,9 +20,15 @@ catalog that your init SQL attaches, so that every replica writes to one place. 
 production. A DuckLake catalog (or any catalog but PostgreSQL) stops the server at startup, with
 what to use instead.
 
+The server writes the records in the background, in batches: a statement never waits for its
+own, and its rows appear a moment after it ends. A script that reads back what it just ran waits
+for them first, as these examples do:
+
 ```console test profile=instrumentation
 $ export HARDCHARGER_PASSWORD='change-me'
 $ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "SELECT 42 AS answer" > /dev/null
+$ for i in $(seq 50); do [ "$(hardcharger --host localhost --tls=false --username hardcharger --quiet --csv \
+    --command "SELECT count(*) FROM _hardcharger_instr.execution_details WHERE sql_text = 'SELECT 42 AS answer' AND status = 'success'" | tail -1)" = 1 ] && break; sleep 0.1; done
 $ hardcharger --host localhost --tls=false --username hardcharger --csv --command \
     "SELECT username, sql_text, status, rows_fetched FROM _hardcharger_instr.execution_details WHERE sql_text = 'SELECT 42 AS answer'"
 username,sql_text,status,rows_fetched
@@ -75,6 +81,8 @@ from the id `hardcharger_active_connections()` shows for it:
 $ export HARDCHARGER_PASSWORD='change-me'
 $ q=$(hardcharger --host localhost --tls=false --username hardcharger --quiet --csv --command \
     "SELECT statement_id FROM hardcharger_active_connections() WHERE is_current" | tail -1)
+$ for i in $(seq 50); do [ "$(hardcharger --host localhost --tls=false --username hardcharger --quiet --csv \
+    --command "SELECT count(*) FROM _hardcharger_instr.execution_details WHERE execution_id = '$q' AND status = 'success'" | tail -1)" = 1 ] && break; sleep 0.1; done
 $ hardcharger --host localhost --tls=false --username hardcharger --csv --command \
     "SELECT execution_id = '$q' AS same_id, statement_id = '$q' AS one_statement, status FROM _hardcharger_instr.execution_details WHERE execution_id = '$q'"
 same_id,one_statement,status
@@ -97,6 +105,8 @@ $ hardcharger --host localhost --tls=false --username hardcharger --quiet > /dev
 SET hardcharger.capture_query_profile = 'standard';
 SELECT count(*) FROM range(1000000);
 SQL
+$ for i in $(seq 50); do [ "$(hardcharger --host localhost --tls=false --username hardcharger --quiet --csv \
+    --command "SELECT count(*) FROM _hardcharger_instr.execution_details WHERE sql_text = 'SELECT count(*) FROM range(1000000)' AND status = 'success'" | tail -1)" = 1 ] && break; sleep 0.1; done
 $ hardcharger --host localhost --tls=false --username hardcharger --csv --command \
     "SELECT query_profile IS NOT NULL AS has_profile FROM _hardcharger_instr.execution_details WHERE sql_text = 'SELECT count(*) FROM range(1000000)'"
 has_profile

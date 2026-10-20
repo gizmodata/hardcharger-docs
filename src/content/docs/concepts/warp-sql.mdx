@@ -21,6 +21,7 @@ explains how Hardcharger behaves on real networks. The full specification is in 
 | **Result** | Arrow record batches, in one or more **partitions** | `GET …/statements/{id}/result` |
 | **Prepared statement** | SQL parsed once, executed with Arrow parameter batches | `POST …/sessions/{id}/prepared` |
 | **Ingest** | An Arrow stream written into a table | `POST …/sessions/{id}/ingest` |
+| **API description** | The OpenAPI 3.1 document of every endpoint above | `GET /warp/v1/openapi.json` |
 
 Every handle (session, statement, prepared statement) belongs to the identity that created
 it, and the server checks that on every request. Another user's session id gets the same
@@ -194,6 +195,26 @@ new token before it opens a new session. The drivers sign in again by themselves
 expired; after `credentials_changed`, `principal_dropped` or `token_revoked` they report the
 reason, since signing in with the old credentials would fail or undo a revocation. A
 `GET` of the ended session answers the same way, so a liveness probe sees it as gone.
+
+## The API description
+
+The server describes its endpoints in [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.1.html)
+at `GET /warp/v1/openapi.json`: parameters, headers, request and response schemas, the problem
+document, and `bearerAuth` on every operation except discovery, health, sign-in and the
+document itself, which need no token. Discovery lists it as the capability `openapi`, with its
+path in `links`:
+
+```console test
+$ curl -s localhost:31337/warp | jq -c '{openapi: (.capabilities | index("openapi") != null), links}'
+{"openapi":true,"links":{"openapi":"/warp/v1/openapi.json"}}
+$ curl -s localhost:31337/warp/v1/openapi.json | jq -c '{openapi, title: .info.title}'
+{"openapi":"3.1.1","title":"Warp SQL"}
+```
+
+API tools and client generators can read it from there. The [web UI](/guides/web-ui/#the-api-page)'s
+**API** page shows it in Swagger UI, where you can try each request signed in as yourself. The
+[protocol reference](/reference/warp-sql-protocol/) remains the definition; where the two
+disagree, the document has a bug.
 
 ## Errors
 

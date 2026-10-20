@@ -192,3 +192,7 @@ Apache License 2.0, like Hardcharger.
   <a href="https://gizmodata.com"><img src="src/assets/gizmodata-logo.png" alt="GizmoData" width="56"></a><br>
   <sub>Built by <a href="https://gizmodata.com">GizmoData</a></sub>
 </p>
+
+---
+
+<p align="center"><sub>Hardcharger™ and GizmoData™ are trademarks of GizmoData LLC.</sub></p>

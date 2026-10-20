@@ -87,11 +87,11 @@ Every option also has a YAML key: the flag without its leading `--`, with `_` fo
 | `GIZMOSQL_OAUTH_CLIENT_ID` | `--oauth-client-id` | `HARDCHARGER_OAUTH_CLIENT_ID` |
 | `GIZMOSQL_OAUTH_CLIENT_SECRET` | `--oauth-client-secret` | `HARDCHARGER_OAUTH_CLIENT_SECRET` |
 | `GIZMOSQL_OAUTH_SCOPES` | `--oauth-scopes` | `HARDCHARGER_OAUTH_SCOPES` |
-| `GIZMOSQL_OAUTH_PORT` | `--oauth-port` | `HARDCHARGER_OAUTH_PORT` |
-| `GIZMOSQL_OAUTH_BASE_URL` | `--oauth-base-url` | `HARDCHARGER_OAUTH_BASE_URL` |
+| `GIZMOSQL_OAUTH_PORT` | (none: browser sign-in is on the server's own port) | (none) |
+| `GIZMOSQL_OAUTH_BASE_URL` | `--oauth-base-url` (now the server's public URL) | `HARDCHARGER_OAUTH_BASE_URL` |
 | `GIZMOSQL_OAUTH_REDIRECT_URI` | `--oauth-redirect-uri` | `HARDCHARGER_OAUTH_REDIRECT_URI` |
 | `GIZMOSQL_OAUTH_INSTANCE_ID` | `--oauth-instance-id` | `HARDCHARGER_OAUTH_INSTANCE_ID` |
-| `GIZMOSQL_OAUTH_DISABLE_TLS` | `--oauth-disable-tls` | `HARDCHARGER_OAUTH_DISABLE_TLS` |
+| `GIZMOSQL_OAUTH_DISABLE_TLS` | (none: there is no separate sign-in listener) | (none) |
 | `GIZMOSQL_MAX_SESSIONS` | `--max-sessions` | `HARDCHARGER_MAX_SESSIONS` |
 | `GIZMOSQL_SESSION_IDLE_TIMEOUT` | `--session-idle-timeout` | `HARDCHARGER_SESSION_IDLE_TIMEOUT` |
 | `GIZMOSQL_REJECT_UNKNOWN_SESSIONS` | (none: always so) | (none) |
@@ -136,6 +136,11 @@ Every option also has a YAML key: the flag without its leading `--`, with `_` fo
 | `TLS_ENABLED` | (none: `--tls-cert` and `--tls-key` turn TLS on) | (none) |
 | `--otel-enabled`, `GIZMOSQL_OTEL_*` | (none: no OpenTelemetry export yet) | (none) |
 
+Browser sign-in no longer has a port of its own: 1.x's OAuth server on port 31339 and its
+`/oauth/...` routes are gone, and sign-in runs on the server's own port as part of Warp SQL. **Re-register
+the redirect URI with your identity provider**: it is now `<oauth_base_url>/warp/v1/auth/oauth/callback`
+(see [Browser sign-in](/guides/sso/#browser-sign-in)), not `…:31339/oauth/callback`.
+
 Hardcharger 0.1.x's own `--username` / `--password` (`HARDCHARGER_USERNAME` /
 `HARDCHARGER_PASSWORD`) are `--admin-username` / `--admin-password` from 0.2.0.
 
@@ -156,9 +161,8 @@ files and URI scheme change. It reads no `GIZMOSQL_*` variable.
 | `--tls-roots` | `--tls-roots` | `GIZMOSQL_TLS_ROOTS` → `HARDCHARGER_TLS_ROOTS` |
 | `--tls-skip-verify` | `--tls-skip-verify` | |
 | `--mtls-cert`, `--mtls-key` | `--mtls-cert`, `--mtls-key` (also with `--tls-skip-verify`, which 1.x refused: Arrow Flight dropped the certificate then) | |
-| `--auth-type password\|external` | `--auth-type password\|external` (the server's browser sign-in, `--oauth-port` routes) | |
-| `--oauth-port` | `--oauth-port` (default 31339) | `GIZMOSQL_OAUTH_PORT` → `HARDCHARGER_OAUTH_PORT` |
-| (discovered over Flight) | `--oauth-base-url` (default `http(s)://HOST:OAUTH_PORT`) | `HARDCHARGER_OAUTH_BASE_URL` (the server's variable of the same meaning) |
+| `--auth-type password\|external` | `--auth-type password\|external` (the server's [browser sign-in](/guides/sso/#browser-sign-in), Warp SQL's `oauth_browser`, on the server's own port) | |
+| `--oauth-port` | (none: browser sign-in is on the server's own port) | (none) |
 | `--command`, `-c`; `--file`, `-f`; `--output`, `-o` | the same | |
 | `--init` (default `~/.gizmosqlrc`), `--no-init` | `--init` (default `~/.hardchargerrc`), `--no-init` | |
 | `--session-tag`, `--query-tag` | the same (sent as `SET hardcharger.session_tag` / `query_tag`) | `GIZMOSQL_SESSION_TAG`, `GIZMOSQL_QUERY_TAG` → `HARDCHARGER_SESSION_TAG`, `HARDCHARGER_QUERY_TAG` |

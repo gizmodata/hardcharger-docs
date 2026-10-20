@@ -253,7 +253,7 @@ def generate(out: pathlib.Path) -> None:
         "gizmodata/hardcharger CHANGELOG.md")
     files["src/content/docs/reference/warp-sql-protocol.md"] = vendored(
         warp_src / "spec" / "warp-sql.md", "Warp SQL protocol",
-        "The Warp SQL protocol specification (draft 0.1.0): SQL over HTTP with Arrow IPC results.",
+        "The Warp SQL protocol specification, version 1.0.0: SQL over HTTP with Arrow IPC results.",
         "gizmodata/warp-sql spec/warp-sql.md")
     for rel, text in files.items():
         if rel.endswith("/release-notes.md") or rel.endswith("/warp-sql-protocol.md"):

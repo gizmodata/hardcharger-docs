@@ -222,20 +222,62 @@ mappings; `DROP GROUP MAPPING 'okta-analysts' ISSUER '…'` removes one.
 
 ## Browser sign-in
 
-For people at a desktop (the CLI, DBeaver, a notebook), Hardcharger can run the OAuth
-authorization-code flow itself on a separate port, 31339 by default. Register Hardcharger as a
-confidential web client with your provider, with the redirect URI
-`https://<your server>:31339/oauth/callback`, then start the server with:
+For people at a desktop (the CLI, a notebook, a driver in a desktop tool) and for the
+[web UI](/guides/web-ui/), Hardcharger runs the OAuth authorization-code flow with your provider
+itself, as Warp SQL's browser sign-in (capability `oauth_browser`). It is part of the protocol, on
+the server's own port: there is no separate sign-in port.
 
-```bash
-hardcharger-server --token-allowed-issuer https://login.example.com \
-  --token-allowed-audience <client id> \
-  --oauth-client-id <client id> --oauth-client-secret "$OAUTH_CLIENT_SECRET"
+<Steps>
+
+1. Register Hardcharger with your provider as a **confidential web client** and register the
+   redirect URI `https://<your server>/warp/v1/auth/oauth/callback`: the server's public URL
+   ([`oauth_base_url`](/reference/configuration/#oauth_base_url)) followed by
+   `/warp/v1/auth/oauth/callback`, on the same port clients connect to.
+
+2. Start the server with the provider and the client:
+
+   ```bash
+   HARDCHARGER_OAUTH_CLIENT_SECRET='<client secret>' hardcharger-server \
+     --token-allowed-issuer https://login.example.com --token-allowed-audience <client id> \
+     --oauth-client-id <client id> --oauth-base-url https://db.example.com \
+     --oauth-provider-name Okta
+   ```
+
+</Steps>
+
+<Aside type="caution" title="Re-register the redirect URI">
+Earlier builds ran browser sign-in on a separate port (31339) with the redirect URI
+`…:31339/oauth/callback`. That port, its routes and the `oauth_port` and `oauth_disable_tls`
+options are gone. Register `<oauth_base_url>/warp/v1/auth/oauth/callback` with your identity
+provider (and remove the old URI), or sign-ins fail at the provider with a redirect URI mismatch.
+</Aside>
+
+How a sign-in runs:
+
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant B as Browser
+  participant I as Identity provider
+  participant H as Hardcharger
+  C->>H: POST /warp/v1/auth/oauth/flows
+  H-->>C: flow_id, poll_secret, authorize_url
+  C->>B: open authorize_url
+  B->>I: sign in (state, PKCE, nonce)
+  I-->>B: redirect to /warp/v1/auth/oauth/callback?code&state
+  B->>H: callback
+  H->>I: code + PKCE verifier + client secret
+  I-->>H: ID token
+  C->>H: POST /warp/v1/auth/oauth/flows/{flow_id}  {poll_secret}
+  H-->>C: Hardcharger access token (once)
 ```
 
-The client asks the server to start a sign-in (`GET /oauth/initiate`), opens the returned URL in
-the user's browser, polls `GET /oauth/token/<id>` until the sign-in completes, and signs in with
-the ID token it receives:
+The client never sees the provider's settings or tokens: the server exchanges the code (a
+confidential client, with PKCE), checks the ID token as it checks `token_exchange` sign-ins
+(signature, issuer, audience, expiry, the nonce, `token_authorized_emails`, and under access
+control the store user), and hands the client its own access token. Only the client that created
+the flow holds the poll secret, so whoever sees the sign-in URL can't collect the token. The
+callback page runs no script; the web UI is sent back to its own page instead.
 
 <Tabs syncKey="lang">
 <TabItem label="CLI">
@@ -243,6 +285,8 @@ the ID token it receives:
 ```bash
 hardcharger --host db.example.com --auth-type external
 ```
+
+The CLI opens your browser (`HARDCHARGER_BROWSER` names another command) and waits.
 
 </TabItem>
 <TabItem label="Python">
@@ -254,36 +298,47 @@ with hardcharger.connect(uri="hardcharger://db.example.com", auth_type="external
     print(conn.current_user())  # the e-mail address you signed in with
 ```
 
-`open_browser=False` prints the URL instead, for a remote shell.
+`open_browser=False` prints the URL instead, for a remote shell; `share_sign_in=True` shares
+one sign-in among a process's connections.
+
+</TabItem>
+<TabItem label="Web UI">
+
+The sign-in page shows **Sign in with Okta** (the
+[`oauth_provider_name`](/reference/configuration/#oauth_provider_name); "single sign-on" without
+one) beside the user name and password form.
 
 </TabItem>
 </Tabs>
+
+Other Warp SQL drivers call it `oauth_browser` (JDBC `authType=oauth_browser`, which also takes
+`external`).
 
 With the stand-in provider, the server's side of the flow can be checked (the stand-in has no
 login page, so the browser part stops there):
 
 ```bash test server=self background stop
-python3 idp.py serve & HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb \
-  --health-port 31338 --token-allowed-issuer http://127.0.0.1:8099 --token-allowed-audience hardcharger \
-  --oauth-client-id hardcharger --oauth-client-secret not-a-real-secret --oauth-disable-tls
+python3 idp.py serve & HARDCHARGER_ADMIN_PASSWORD='change-me' HARDCHARGER_OAUTH_CLIENT_SECRET='not-a-real-secret' \
+  hardcharger-server --database my.duckdb --health-port 31338 --token-allowed-issuer http://127.0.0.1:8099 \
+  --token-allowed-audience hardcharger --oauth-client-id hardcharger --oauth-provider-name 'Stand-in IdP'
 ```
 
 ```console test server=none
-$ curl -s localhost:31339/oauth/initiate | jq -r '.auth_url | split("?")[0]'
+$ curl -s localhost:31337/warp | jq -c .auth.oauth_browser
+{"provider":"Stand-in IdP"}
+$ curl -s -X POST localhost:31337/warp/v1/auth/oauth/flows | jq -r '.authorize_url | split("?")[0]'
 http://127.0.0.1:8099/authorize
 ```
 
 | Option | Meaning |
 |---|---|
-| `oauth_client_id`, `oauth_client_secret` | The client registered with the provider. Setting the id turns the sign-in server on. |
-| `oauth_port` | Its port (31339). |
-| `oauth_base_url` | Its public URL, if clients reach it through a proxy (default `http(s)://localhost:<port>`). |
-| `oauth_redirect_uri` | The redirect URI registered with the provider (default `<base URL>/oauth/callback`). |
+| `oauth_client_id`, `oauth_client_secret` | The client registered with the provider. Setting the id turns browser sign-in on. Prefer `HARDCHARGER_OAUTH_CLIENT_SECRET` to the flag. |
+| `oauth_base_url` | The server's public URL, as browsers reach it (default `http(s)://localhost:<port>`). The redirect URI is this followed by `/warp/v1/auth/oauth/callback`. |
+| `oauth_redirect_uri` | The redirect URI registered with the provider, given whole (overrides the one from `oauth_base_url`). |
 | `oauth_scopes` | Scopes requested (default `openid profile email`). |
-| `oauth_disable_tls` | Serve the sign-in port over plain HTTP even with TLS on: only behind a TLS-terminating proxy. |
-| `oauth_instance_id` | A prefix for the OAuth state, when several servers share one callback proxy. |
+| `oauth_provider_name` | The provider's name for people: "Sign in with *name*" in the web UI, and in the protocol's discovery document. |
+| `oauth_max_flows` | Sign-ins in progress at once (default 10000); beyond it new ones are refused until some finish or expire. |
+| `oauth_instance_id` | A prefix for the OAuth state, when several servers share one callback proxy that routes the provider's redirects by state. Set `oauth_base_url` too, so the web UI is sent back to this server. |
 
-<Aside type="note">
-Warp SQL also defines a browser sign-in flow in the protocol itself (`oauth_browser`); Hardcharger
-offers the routes above on `oauth_port` until the Warp SQL server SDK provides it.
-</Aside>
+A sign-in expires after 10 minutes. Only open sign-in links your own client opened: a sign-in
+someone else started and sent you gives them your token.

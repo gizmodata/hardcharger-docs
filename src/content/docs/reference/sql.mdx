@@ -26,6 +26,9 @@ and CI fails when they drift.
   hardcharger_settings: 'Every <code>hardcharger.*</code> setting with its current, session and global value, scope, flag, environment variable, default and description.',
   hardcharger_sessions: 'The open sessions. Administrators see all of them; other users only their own.',
   hardcharger_metrics: 'The runtime metrics <code>/metrics</code> serves, one row per sample. Needs <code>--enable-metrics</code>.',
+  hardcharger_active_connections: 'A row per open session: who (user, role, tenant, how they signed in), from where (address, User-Agent, TLS, client certificate), what it runs (<code>state</code>, the statement, redacted as the log redacts it, since when) and its open result streams, partitions, uploads and retained results. Needs no instrumentation. Users see only their own sessions.',
+  hardcharger_cancel: 'Stops what a session runs and keeps the session (its next statement runs as usual): its statement ends cancelled, result streams are cut off, uploads in flight are aborted. Returns whether there was anything to stop; a session can\'t cancel itself. <code>KILL SESSION</code> does the same, then ends the session.',
+  hardcharger_server_info: 'One row: the versions, the instance and cluster ids, the start time and the uptime; for an administrator without <code>catalog_access</code> rules also the host, listen addresses and ports, TLS, the web UI, the access-control store and the session count (NULL for everyone else).',
 }} />
 
 ## Settings
@@ -96,9 +99,9 @@ biggest
 
 Write `SET SESSION`: a plain `SET arrow_lossless_conversion` is DuckDB's global setting, which
 changes every session's results and needs an administrator (`MANAGE CONFIG` under access
-control). Over [plain HTTP](/clients/http/), the session option `arrow_lossless_conversion` does the
-same for one session. JSON bind parameters beyond the 64-bit range bind exactly as HUGEINT or
-UHUGEINT; wider ones are refused.
+control). Over [plain HTTP](/clients/http/), the Warp SQL session option
+`duckdb_arrow_lossless_conversion` does the same for one session. JSON bind parameters beyond the
+64-bit range bind exactly as HUGEINT or UHUGEINT; wider ones are refused.
 
 ## KILL SESSION
 

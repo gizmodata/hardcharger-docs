@@ -195,12 +195,18 @@ $ for part in 0 1 2 3; do
   done; wait
 $ jq -c . part0.json
 {"part":0,"rows_received":250000}
-$ curl -s $URL/ingests/$INGEST/commit -H "$AUTH" -H "$H" -d '{"parts": 4}'
+$ curl -s $URL/ingests/$INGEST/commit -H "$AUTH" -H "$H" -d '{"part_count": 4}'
 {"rows_ingested":1000000}
+$ curl -s $URL/ingests/$INGEST -H "$AUTH" | jq -c '{state, parts: (.parts | length), rows_ingested}'
+{"state":"committed","parts":4,"rows_ingested":1000000}
 ```
 
-A part whose answer was lost is safe to send again with the same `Idempotency-Key`;
-`DELETE …/ingests/{id}` aborts. While an ingest is open, its session runs nothing else.
+The commit names how many parts there are (`part_count`: parts 0 to n-1); if one hasn't finished,
+it answers `409 ingest_incomplete` and the ingest stays open. `GET …/ingests/{id}` is the ingest's
+document: its `state`, the finished `parts` with their `rows_received`, `rows_ingested` once
+committed, and `error` if it failed. A part whose answer was lost is safe to send again with the
+same `Idempotency-Key`; `DELETE …/ingests/{id}` aborts. While an ingest is open, its session runs
+nothing else.
 
 ## Speed
 

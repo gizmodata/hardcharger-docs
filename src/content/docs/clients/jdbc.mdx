@@ -76,6 +76,7 @@ Boston 12.5
 | `user`, `password` | | Password sign-in; any character is allowed in the password |
 | `token` | | A Hardcharger access token to send as is |
 | `subjectToken` | | An identity provider's token for the `token_exchange` grant ([SSO](/guides/sso/)) |
+| `authType` | `password` | `oauth_browser` (alias `external`): the server's [browser sign-in](/guides/sso/#browser-sign-in), which opens your browser and waits |
 | `catalog`, `schema` | server's | The session's starting catalog (also the URL path) and schema |
 | `useEncryption` | `true` | `false` for plain HTTP |
 | `tlsRootCerts` | | PEM file of CA certificates to trust |

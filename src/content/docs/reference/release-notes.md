@@ -13,8 +13,50 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+## [2.0.0-rc.1] - 2026-10-20
+
 ### Added
 
+- Third-party notices in everything that ships. `THIRD_PARTY_NOTICES.md` lists the 49
+  third-party components the binaries link statically, each with its version, licence, the
+  binaries and platforms it is in, and its full licence and NOTICE texts: DuckDB, the 31
+  libraries and data sets it vendors (Mbed TLS, RE2, Thrift, the Unicode data, jemalloc on
+  Linux, the TPC-H generator, ...), the httpfs, DuckLake and PostgreSQL extensions, Arrow and
+  what it bundles (zstd, LZ4, uriparser, xsimd), Boost, OpenSSL, jwt-cpp, yaml-cpp, zlib,
+  replxx, CRoaring, libpq and libcurl. It is generated
+  (`server/scripts/third-party-notices.py`) from `server/third-party-notices/`: each
+  component's reviewed version and its texts, fetched from the source at that version. CI
+  (`--check`, in every build job) fails when a recipe pins another version than the one the
+  notices were made for, when the build declares a dependency (FetchContent, a DuckDB
+  extension, an extension library, a vcpkg package) no component covers, or when the file is
+  stale. The web UI's build writes `third-party-notices.txt` (served at
+  `/ui/third-party-notices.txt`, linked from **About** as **Open-source licences**) from the
+  packages actually in the bundle, lazy chunks and the editor's worker included (15 today:
+  React, Monaco, Swagger UI, Apache Arrow, parquet-wasm, ...), with every licence and notice
+  file each ships (Monaco's `ThirdPartyNotices.txt`, Swagger UI's NOTICE and its bundle's
+  `swagger-ui-es-bundle.js.LICENSE.txt`), and fails when a bundled package declares no
+  licence, has no licence file, or has a licence outside the allow-list (MIT, ISC, BSD-2/3,
+  Apache-2.0, 0BSD, BlueOak, CC0, Unlicense, Python-2.0, MPL-2.0; Inter's OFL-1.1 by name).
+  The tarballs, the Windows zips (whose `THIRD_PARTY_NOTICES.md` ends with the versions and
+  copyright files of the libraries the Windows build links from vcpkg), the MSIs (installed
+  under Program Files\Hardcharger) and the container image (`/opt/hardcharger/` and
+  `/usr/share/doc/hardcharger/`) carry `THIRD_PARTY_NOTICES.md` and
+  `THIRD_PARTY_NOTICES-web-ui.txt`, and `hardcharger-server --licenses` and
+  `hardcharger --licenses` print them from the binary itself (the server's followed by its
+  embedded UI's). Tests: `test_server_cli.py`, `test_client_cli.py`, the unit test of the UI
+  file reader, `third-party-notices.test.ts` (the allow-list, module-to-package mapping, the
+  file's contents and its failures), `about.spec.ts` (Chromium and WebKit), the tarball smoke
+  test and the image smoke test.
+- Web UI, **API** page (`/ui/api`, next to Query and Sessions): the server's Warp SQL API in
+  Swagger UI (swagger-ui-dist 5.33.3, in the build, loaded only when the page is opened:
+  +1.7 MB, +435 KiB gzipped in the binary), from the OpenAPI 3.1 document the server now serves
+  at `GET /warp/v1/openapi.json` (no sign-in; discovery lists capability `openapi` and
+  `links.openapi`). Every request goes to the server's own origin (no server switcher, no
+  Authorize dialog); **Try it out** carries the signed-in user's token, added to each request
+  to this origin as it leaves and never to another origin, stored, or shown in the Curl box.
+  Arrow answers are offered as a download (`result.arrows`); the dark theme applies; a server
+  without the document gets a note. No change to the Content-Security-Policy. e2e:
+  `api.spec.ts` in Chromium and WebKit; unit: `apiDocs.test.ts`.
 - Web UI, the rest of the editor's behavior: **How the editor works** (the ? in the tab bar):
   sessions, with this server's idle timeout (the session document's `idle_timeout_s`),
   transactions, statements, results, and what stays in this browser; the Saved queries panel
@@ -129,8 +171,98 @@ own changelog in `python/CHANGELOG.md`.
   statement, ingest, option change, commit and rollback. `test_rbac_set_role.py` checks it
   for a store user through an allowed, a refused and a failed statement; the conformance
   suite's ten new session tests pass on this server.
+- Access-control introspection: table functions `hardcharger_grants()`,
+  `hardcharger_role_members()`, `hardcharger_roles()`, `hardcharger_users()`,
+  `hardcharger_policies()` and `hardcharger_effective_privileges([user_name])`, read from the
+  store snapshot the server holds (no store query per call), and the SQL standard's
+  `table_privileges`, `column_privileges`, `role_table_grants`, `applicable_roles` and
+  `enabled_roles` with the standard's columns, in
+  `_hardcharger_system.hardcharger_information_schema` (DuckDB's `information_schema` can't be
+  extended, and this name shadows nothing). The administrator sees everything; a store user
+  only grants to itself and the roles it holds, those memberships and roles, its own user
+  row and policies on tables it can see; a tenant admin also everything of its own tenant
+  (users, roles, memberships, grants, policies, its users' effective privileges) and nothing
+  of another's; an administrator token with `catalog_access` rules
+  only grants, ownerships and policies inside the catalogs its rules reach. Without an
+  access-control store, every function returns no rows. The store records no grant times, so
+  there is no `granted_at`. `test_rbac_introspection.py` (23 tests, PostgreSQL and DuckDB
+  stores) covers each visibility rule with its positive twin, counting and filtering for
+  another user's or another tenant's grants, and the standard views against the table functions.
+- Code-signed macOS and Windows releases. In `hardcharger-macos-arm64.tar.gz`,
+  `hardcharger-server` and `hardcharger` are signed with GizmoData's Developer ID (hardened
+  runtime, secure timestamp) and notarized by Apple, so Gatekeeper accepts them; the server's
+  only entitlement turns library validation off, so DuckDB can still load extensions a user
+  `INSTALL`s. On Windows, `hardcharger-server.exe` and `hardcharger.exe` in both zips, and both
+  MSIs, carry an Authenticode signature (SHA-256, RFC 3161 timestamp) from GizmoData's
+  code-signing certificate in Azure Key Vault. Every `v*` tag signs, and a manual
+  `server.yml` run with `sign` signs without publishing; the tests run on the unsigned
+  binaries, which are signed before they are packed, so the tarball, the zips, the MSIs and
+  `SHA256SUMS` all hold the signed files. Two jobs check the artifacts the release takes
+  (`codesign`, the notarization ticket and `spctl` on macOS; `Get-AuthenticodeSignature` and
+  `signtool verify /pa` on Windows on Arm, which also runs both platforms' signed
+  executables), each first shown to refuse a modified binary, and a tag publishes nothing,
+  and its release job fails, unless both pass. See "Code signing" in `docs/releasing.md`.
 
 ### Changed
+
+- **Instrumentation keeps up**: the writer records tens of thousands of statements a second
+  and stays as fast however large its tables grow. It wrote three statements per execution
+  (insert the statement, insert the execution, update it at the end), each its own
+  transaction, and each update scanned the whole `sql_executions` table, which has no index
+  in the DuckDB file: on a laptop it managed ~580 statements a second into an empty file and
+  ~250 with 5 million rows (a 100,000-statement run took 169 s after the clients finished),
+  and PostgreSQL, through the postgres extension, ~130 a second, ~24 with 2 million rows
+  (the extension read the table to find each row). Now it writes in
+  batches, one transaction each: every event queued since the last write, with an
+  execution that starts and ends within a batch folded into one row, rows of earlier
+  batches updated by one statement per table, and the rows travelling as one JSON literal.
+  In the DuckDB file each update reads only recent row groups (bounded by the start time);
+  PostgreSQL gets native SQL, one round trip per batch, that its keys serve. Measured with
+  `server/tests/bench_instrumentation.py` (16 sessions): the DuckDB file records every
+  statement as fast as the clients run them (~22,000 a second) with 5 million rows already
+  in the tables, and its writer alone does ~120,000 a second; PostgreSQL ~20,000 a second
+  with 2 million rows, also as fast as the clients ran (~29,000 for the writer alone); the
+  backlog is written within 0.2 s of the clients stopping. The DuckDB file gets no indexes: an ART key made inserts 2.5x
+  slower and holds memory, for no faster update.
+- Instrumentation's queue is bounded (128 MiB of records): past it, new records are dropped
+  rather than held, counted in `hardcharger_server_info()` (`instrumentation_queued`,
+  `instrumentation_dropped`, `instrumentation_failed`, administrators without
+  `catalog_access` rules) and on `/metrics` (`hardcharger_instrumentation_queue_depth`,
+  `hardcharger_instrumentation_dropped_total`, `hardcharger_instrumentation_failed_total`),
+  and logged at most once a minute. A statement never waits for its record. At shutdown
+  the backlog is written for up to 30 seconds; what is left then is dropped and counted,
+  and the instance's sessions and executions are closed in the tables all the same.
+- A batch that fails is retried in halves, so one bad record loses only itself; text that
+  isn't valid UTF-8 (a statement cut at 4,000 bytes can split a character) is stored with
+  U+FFFD instead of failing its row. In PostgreSQL, a statement or execution whose parent
+  row was never written (dropped from a full queue) is left out instead of failing its
+  batch on the foreign key.
+- A session's `stop_time` is when it ended, taken by the server, not when its row was
+  updated.
+
+- **One id everywhere, for statements too**: instrumentation keys statements and executions
+  by the Warp SQL ids clients hold, not by UUIDs of the server's own, so a `q_...` from
+  `Warp-Statement-Id`, an error response or `hardcharger_active_connections()` finds the
+  statement in `_hardcharger_instr`. `sql_executions.execution_id` is the id of the request
+  that ran it (`q_...`); `sql_statements.statement_id` is that same `q_...` for a submitted
+  statement (statement and execution share it) or the prepared statement's `p_...` (one row,
+  with an execution per execute request, each under its own `q_...`). A request carrying
+  several statements is one statement row (`q_...`) whose executions are numbered by place in
+  the script: `q_....1`, `q_....2`, ... (a `SET hardcharger.*` or `KILL SESSION` among them
+  takes its number but runs no execution); one statement alone has no suffix. Statements the
+  server runs for itself (init SQL, access-control internals, bookkeeping) are still not
+  recorded. The columns are `VARCHAR` (`instance_id` and `cluster_id` stay UUIDs), in the
+  DuckDB file, DuckLake and PostgreSQL schemas alike; a table with UUID statement or
+  execution ids is refused at startup with what to do (drop or rename the instrumentation
+  tables, or use a new instrumentation database). The query log's lines carry the same ids:
+  `statement_id` (`q_...`, or `q_....N`) on statement, success and failure lines, and
+  `prepared_id` (`p_...`) on prepare lines and on a prepared statement's executions. The SDK
+  tells the engine these ids (warp-sql `feat/instrumentation-warp-ids`:
+  `EngineSession::SetStatementId()`, and the prepared id is chosen before preparing).
+  `test_instrumentation.py` looks up a submitted statement, a prepared statement's three
+  executions, a three-statement script, failed, refused and cancelled statements and the log
+  lines by the ids the client got, and checks that both kinds of old table are refused; the
+  same tests fail against the previous server.
 
 - **Browser sign-in moved into the Warp SQL protocol, on the main port** (Warp SQL §4.3,
   capability `oauth_browser`; the SDK at warp-sql `feat/oauth-in-protocol`). Clients create a
@@ -202,6 +334,11 @@ own changelog in `python/CHANGELOG.md`.
 - An error a function raises while the rows are read, when it is DuckDB's `Permission
   Error`, is `permission_denied` (403), not `execution_error`.
 
+- Store users (tenant users included) read the views in `_hardcharger_system`
+  (`hardcharger_index_info`, `hardcharger_view_definition` and the new ones) without a grant:
+  the catalog is read-only and its views read with the reader's rights, so each lists only
+  what that user may see. They used to be refused (no SELECT privilege on the view), while
+  `catalog_access` principals could already read them.
 - The transaction a session reports (the session document, and the
   `hardcharger_sessions` metric's `idle_in_transaction` and `idle_in_transaction_aborted`
   states) is the one DuckDB has: a syntax error inside a transaction leaves it open
@@ -217,6 +354,17 @@ own changelog in `python/CHANGELOG.md`.
   `transactionState()` and the session document's `transaction`, plus the client's changes
   in between: an explicit port 443 kept on plain HTTP, exact wide integers in JSON
   parameters, and client-certificate sign-in through the client.
+- Releases take release-candidate tags, `vX.Y.Z-rc.N` (the next is `v2.0.0-rc.1`), as well as
+  `vX.Y.Z`. `server/CMakeLists.txt` holds the suffix in `HARDCHARGER_VERSION_SUFFIX`, and every
+  reported version (`--version` of the server and the client, `HARDCHARGER_VERSION()`, discovery,
+  server-info, instrumentation, the web UI and its tarball's name, the Windows version strings)
+  is the full `2.0.0-rc.1`; the MSI's numeric ProductVersion is `2.0.0.1`. A candidate is a GitHub
+  pre-release and pushes images `:X.Y.Z-rc.N` and `:sha-<short>`, never `:latest`; a release
+  still pushes `:X.Y.Z` and `:latest`. The release notes come from the CHANGELOG heading matched
+  as text, not as a regex (its dots used to match any character), and a tag whose version or
+  CHANGELOG section is wrong now fails in the workflow's first job instead of after the matrix.
+  The version arithmetic is `.github/scripts/release.sh`, tested by `test-release.sh` on every
+  run; docs/releasing.md describes the process.
 
 - Faster remote throughput (warp-sql d25f797, warp-sql-adbc da6b4a6; docs/benchmarks.md,
   2026-10-19): compressed results compress only the buffers a sample shows are worth it
@@ -233,7 +381,32 @@ own changelog in `python/CHANGELOG.md`.
   the server or driver on a benchmark VM), `midsize.py` (partition overhead on mid-sized
   results).
 
+- The Hardcharger™ bull logo. The brand kit (logos, wordmark, icons, social images; light and
+  dark variants) is in `docs/assets/brand/`. The README's banner is the horizontal mascot
+  lockup, light or dark to match the reader's GitHub theme (it was a drawn SVG card), and its
+  web UI screenshots are refreshed. The web UI shows the head lockup in its header and the
+  stacked mascot on the sign-in page and at the top of About (the original raster art, as
+  WebP; the server now serves `.webp` as `image/webp`), each in its light or dark variant to
+  match the theme; About also says "© <year> GizmoData LLC. All rights reserved.", with the
+  year of the build. Its icons are new (`favicon.ico`, `favicon.svg`, `apple-touch-icon.png`)
+  with a web app manifest (`manifest.json`, 192 and 512 px icons), in place of `favicon.png`.
+  The embedded UI grows by about 300 KiB gzipped. On Windows, `hardcharger-server.exe` and
+  `hardcharger.exe` carry the bull's head as their icon, and the MSI shows it in Installed apps
+  and in its dialogs' banner and welcome panel.
+
+- `KILL SESSION` naming the session that runs it is still refused, now with SQLSTATE `55000`
+  (object not in prerequisite state; it was `42P01`, undefined table) and "A session can't
+  kill itself; disconnect (or close the connection) instead." (it was "Cannot kill your own
+  session"). `test_admin_cannot_kill_own_session` checks both, and that the session still works.
+
 ### Removed
+
+- **DuckLake as an instrumentation backend.** Instrumentation has two backends: the DuckDB
+  file next to the database (the default, for development or a single server) and
+  PostgreSQL, recommended in production and for any cluster of more than one replica. An
+  `instrumentation_catalog` that names a DuckLake catalog (or any catalog but PostgreSQL)
+  now stops the server at startup with what to use instead. Catalog logging still writes to
+  DuckLake.
 
 - The separate browser sign-in server and its port (`oauth_port`, default 31339), its
   GizmoSQL 1.x routes (`/oauth/initiate`, `/oauth/start`, `/oauth/callback`,
@@ -244,6 +417,28 @@ own changelog in `python/CHANGELOG.md`.
 
 ### Fixed
 
+- `--licenses` on Windows prints the notices byte for byte, as on Linux and macOS: the Windows
+  checkout had turned `THIRD_PARTY_NOTICES.md` to CRLF line ends (git's `core.autocrlf`), so
+  the binaries embedded those, and stdout in text mode then wrote `\r\r\n`. A
+  `.gitattributes` keeps the file LF in every checkout, and both binaries write the notices
+  with stdout in binary mode.
+- The server builds with clang against libstdc++ 14 (Ubuntu 24.04's): warp-sql's build-time
+  OpenAPI tool instantiated a `std::pair` of an incomplete type, which libstdc++ 14 refuses
+  (warp-sql `0e8dc87`; the served document is unchanged).
+- From the warp-sql 1.0.0 release branch (`third_party/warp-sql` at `release/v1.0.0`): a
+  retained result is expired from its `expires_at` on (Warp SQL §6.5), where the SDK refused
+  new reads only after its next sweep, up to 5 seconds later; and an idempotent replay of a
+  submit or execute (§6.7) carries `Warp-Statement-Id`, as every statement response does.
+- Web UI: once the editor's tabs no longer fit, clicks on them and on **New tab** work in
+  Safari. The tab bar scrolled as a whole, and Safari's overlay scrollbar sat over the bottom
+  of the tabs and the bottom-aligned **New tab** button and took their clicks (the e2e "at most
+  20 tabs" test lost 1 or 2 tabs in about 40% of WebKit runs). Only the tabs scroll now, with
+  no visible scrollbar (a mouse wheel, a sideways swipe or keyboard focus scrolls them), the
+  shown tab is always scrolled into view, and **New tab** and the help button stay put after
+  them, outside the scrolling part (and outside the `tablist`, which now holds only tabs).
+- The Windows zips no longer carry jwt-cpp's headers (`include/jwt-cpp/`) and CMake package
+  files (`cmake/`): the package step took the whole `cmake --install` tree, which jwt-cpp's
+  install rules add to; it now copies the two executables, and checks the zip's top level.
 - A retained result that expires (`result_retention_seconds`) while a client is reading it
   no longer cuts that read: the read gets every batch and the end of the stream, and only
   reads that start afterwards get `410 result_expired`. The expiry sweep (every 5 s)
@@ -254,18 +449,16 @@ own changelog in `python/CHANGELOG.md`.
   `third_party/warp-sql` bump); `test_a_read_in_progress_when_the_result_expires_runs_to_the_end`
   stalls a 64 MB read across the expiry.
 
-- The sensitive-path guard no longer refuses string literals with a `{`, such as
-  `SELECT '{"a": 1}'`, `regexp_matches(s, '^[0-9]{3}$')`, or views and masking policies
-  with such literals ("blocked access to ... (user credential store)"). It took `{` for a
-  glob wildcard reaching anything below the literal's directory, and a literal with no
-  directory part is relative to the working directory, so a server whose working
-  directory holds a protected path refused every one; that includes the Docker image,
-  whose working directory is its home, with `~/.ssh` in it. DuckDB's glob has no brace
-  expansion (its wildcards are `*`, `?` and `[`), so `{` is now an ordinary character, as
-  it is for DuckDB: `read_text('/etc/{passwd,hosts}')` names one file of that name, and a
-  braced path inside a protected directory, or with a real wildcard reaching one, is
-  still refused. `test_sensitive_path_guard.py` covers JSON and regex literals, views,
-  masking policies, the refusals, and that DuckDB still doesn't expand braces.
+- The sensitive-path guard no longer refuses harmless string literals. It used to scan the
+  SQL text for literals that looked like paths, and a literal with no directory part is
+  relative to the working directory, so a server whose working directory holds a protected
+  path (the Docker image's is its home, with `~/.ssh` in it) refused, as "user credential
+  store", every literal with a `{` (JSON, regex quantifiers such as `'^[0-9]{3}$'` or
+  `'(\d{2})'`, `format('{:,}', n)`), `'*'` and `'.*'`, in queries, views and masking
+  policies alike. SQL text is no longer scanned for paths at all (see Security), so
+  literals, `'~/.ssh/id_rsa'` used as a value included, work as anywhere else.
+  `test_sensitive_path_fs_layer.py` and `test_sensitive_path_guard.py` cover them, with the
+  server's working directory a home holding `~/.ssh`.
 
 - The `hardcharger` CLI exits when a script starts it in the background
   (`hardcharger ... -c 'SELECT 1' &`). A non-interactive shell starts background jobs
@@ -288,6 +481,10 @@ own changelog in `python/CHANGELOG.md`.
 
 ### Security
 
+- A failed instrumentation or catalog-log write no longer logs the password of the
+  catalog's connection string: PostgreSQL's connection errors quote it
+  (`Unable to connect to Postgres at "host=... password=..."`), and the warning now masks
+  it as the query log does (`password=***`).
 - The private-file guard now also covers extensions that open files outside DuckDB's file
   system. `sqlite_scanner` opens the file with SQLite's own library, so `ATTACH '<path>'
   (TYPE sqlite)`, the `sqlite:` path prefix, and the `sqlite_scan` / `sqlite_query` /
@@ -299,6 +496,24 @@ own changelog in `python/CHANGELOG.md`.
   hard link, case, Windows 8.3). Attaching an unrelated SQLite file still works. DuckDB-
   storage attaches are unchanged (the file-system guard already covers them). Tested as the
   administrator and as a file-system-privileged user, each with a positive twin.
+- The sensitive-path guard (`block_sensitive_paths`, on by default) now checks every path
+  in DuckDB's file system, as GizmoSQL 1.x's does, instead of scanning the SQL text for
+  path literals. The text scan missed every path the statement computes: `query('…')`, a
+  table macro's or view's argument, a prepared statement's parameter, a variable, a
+  concatenation, `file_search_path`. So an administrator, whom the guard holds too, could
+  read `~/.ssh`, cloud CLI credentials, `/etc/shadow` or `/proc` by spelling the path
+  indirectly. Now every open, stat, listing, glob, copy, move, remove and
+  directory change is checked by the path DuckDB resolved, for every principal, after
+  `..`, `~`, symlinks, second hard links and case folding: a glob reaching into a protected
+  directory from above leaves those matches out, and one whose fixed part is protected is
+  refused. The `sqlite_scanner` plan-time guard also refuses protected paths (`ATTACH …
+  (TYPE sqlite)`, `sqlite:`, `sqlite_scan`, `sqlite_query`, `sqlite_attach`). `SET
+  secret_directory` stays refused after startup. Not checked, as before: the server's
+  startup and the operator's init SQL, and files `postgres_scanner`'s libpq reads itself
+  (`~/.pgpass`, `passfile=`, `sslkey=`); the README says so.
+  `test_sensitive_path_fs_layer.py` runs against a fake home of dummy credential files:
+  each way of reaching a file, as the administrator and as a file-system-privileged user,
+  is refused, and each has a twin on a server with the guard off that reads the file.
 
 ### Documentation
 
@@ -348,8 +563,8 @@ own changelog in `python/CHANGELOG.md`.
   instrumentation table `sql_statements` named its column `flight_method`; it is
   `statement_kind` (`statement` or `prepared`, the Warp SQL endpoint a statement came by).
   A 0.3.0 instrumentation table is refused at startup in any case, as its session ids are
-  UUIDs (above: drop it); one whose `session_id` is already `VARCHAR` but still has
-  `flight_method` is refused with the `ALTER TABLE ... RENAME COLUMN` that fixes it. No
+  UUIDs (above: drop it); so is one whose `session_id` is already `VARCHAR` but still has
+  `flight_method`, as its statement ids are UUIDs (Changed: one id everywhere). No
   metric label had the name. `test_instrumentation.py`
   and `test_bulk_ingest.py` cover it.
 

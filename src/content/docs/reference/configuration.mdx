@@ -741,7 +741,7 @@ Admin sessions skip the queue unless they SET hardcharger.bypass_queue = false.
 
 ### `block_sensitive_paths`
 
-Refuse SQL naming credential and system files.
+Keep credential and system files from every statement, admins' included.
 
 | | |
 |---|---|
@@ -753,7 +753,7 @@ Refuse SQL naming credential and system files.
 
 ### `sensitive_paths`
 
-More paths SQL may not name (comma-separated)
+More paths no statement may open, list or write (comma-separated)
 
 | | |
 |---|---|
@@ -951,7 +951,7 @@ Record sessions, statements and executions in SQL tables.
 
 ### `instrumentation_db_path`
 
-DuckDB file for the instrumentation tables (default: next to the database)
+DuckDB file for the instrumentation tables (default: next to the database), for development or a single server.
 
 | | |
 |---|---|
@@ -963,7 +963,7 @@ DuckDB file for the instrumentation tables (default: next to the database)
 
 ### `instrumentation_catalog`
 
-An attached catalog (DuckLake, PostgreSQL) for them instead.
+Keep them instead in this PostgreSQL catalog, which the init SQL attaches and several servers may share (DuckLake and other catalogs are refused). Use PostgreSQL in production.
 
 | | |
 |---|---|

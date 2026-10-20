@@ -588,7 +588,7 @@
       "yaml_key": "block_sensitive_paths",
       "type": "boolean",
       "default": "true",
-      "description": "refuse SQL naming credential and system files"
+      "description": "keep credential and system files from every statement, admins' included"
     },
     {
       "name": "sensitive_paths",
@@ -598,7 +598,7 @@
       "yaml_key": "sensitive_paths",
       "type": "list",
       "default": "",
-      "description": "more paths SQL may not name (comma-separated)"
+      "description": "more paths no statement may open, list or write (comma-separated)"
     },
     {
       "name": "block_unredacted_secrets",
@@ -758,7 +758,7 @@
       "yaml_key": "instrumentation_db_path",
       "type": "string",
       "default": "",
-      "description": "DuckDB file for the instrumentation tables (default: next to the database)"
+      "description": "DuckDB file for the instrumentation tables (default: next to the database), for development or a single server"
     },
     {
       "name": "instrumentation_catalog",
@@ -768,7 +768,7 @@
       "yaml_key": "instrumentation_catalog",
       "type": "string",
       "default": "",
-      "description": "an attached catalog (DuckLake, PostgreSQL) for them instead"
+      "description": "keep them instead in this PostgreSQL catalog, which the init SQL attaches and several servers may share (DuckLake and other catalogs are refused). Use PostgreSQL in production"
     },
     {
       "name": "instrumentation_schema",

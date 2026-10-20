@@ -177,6 +177,100 @@
     ]
   },
   {
+    "name": "hardcharger_effective_privileges",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "user_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "privilege",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "object_type",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "catalog_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "schema_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "object_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "column_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "via",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "with_grant_option",
+        "type": "BOOLEAN"
+      }
+    ]
+  },
+  {
+    "name": "hardcharger_grants",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "grantee",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "grantee_type",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "privilege",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "object_type",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "catalog_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "schema_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "object_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "column_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "grantor",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "with_grant_option",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "tenant",
+        "type": "VARCHAR"
+      }
+    ]
+  },
+  {
     "name": "hardcharger_metrics",
     "type": "table",
     "return_type": null,
@@ -192,6 +286,115 @@
       {
         "name": "labels",
         "type": "MAP(VARCHAR, VARCHAR)"
+      }
+    ]
+  },
+  {
+    "name": "hardcharger_policies",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "kind",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "catalog_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "schema_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "table_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "column_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "permissive",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "roles",
+        "type": "VARCHAR[]"
+      },
+      {
+        "name": "exempt_roles",
+        "type": "VARCHAR[]"
+      },
+      {
+        "name": "expression",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "applies_to_current_user",
+        "type": "BOOLEAN"
+      }
+    ]
+  },
+  {
+    "name": "hardcharger_role_members",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "role",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "member",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "member_type",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "admin_option",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "grantor",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "issuer",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "tenant",
+        "type": "VARCHAR"
+      }
+    ]
+  },
+  {
+    "name": "hardcharger_roles",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "builtin",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "tenant",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "is_active",
+        "type": "BOOLEAN"
       }
     ]
   },
@@ -331,6 +534,18 @@
       {
         "name": "session_count",
         "type": "INTEGER"
+      },
+      {
+        "name": "instrumentation_queued",
+        "type": "BIGINT"
+      },
+      {
+        "name": "instrumentation_dropped",
+        "type": "BIGINT"
+      },
+      {
+        "name": "instrumentation_failed",
+        "type": "BIGINT"
       }
     ]
   },
@@ -417,6 +632,37 @@
       {
         "name": "description",
         "type": "VARCHAR"
+      }
+    ]
+  },
+  {
+    "name": "hardcharger_users",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "enabled",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "has_password",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "tenant",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "attributes",
+        "type": "MAP(VARCHAR, VARCHAR)"
+      },
+      {
+        "name": "is_current",
+        "type": "BOOLEAN"
       }
     ]
   }

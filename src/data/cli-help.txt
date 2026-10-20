@@ -48,3 +48,4 @@ Display:
 Other:
   -?, --help                    Show this help message
   -v, --version                 Show version
+      --licenses                Show the third-party software in this program and their licences

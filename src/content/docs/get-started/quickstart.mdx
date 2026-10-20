@@ -29,18 +29,9 @@ prints one. After launch, no token is needed.
 macOS on Apple silicon and Linux (x86-64 or arm64, glibc 2.28 or newer: RHEL, Rocky and Alma Linux 8,
 Debian 10, Ubuntu 20.04, Amazon Linux 2023):
 
-<Preview>
-
-```console test server=none release
-$ curl https://install.hardcharger.gizmodata.com | HARDCHARGER_INSTALL_TOKEN="$(gh auth token)" sh
-…
-$ ~/.hardcharger/bin/hardcharger-server --version
-Hardcharger …
-```
-
-</Preview>
-
-<Ga>
+{/* The page's first code block stays outside <Preview>/<Ga>: Expressive Code puts its
+    stylesheet and script in the first block of a page, and a wrapper that drops it would
+    leave every block unstyled (scripts/check_ga_build.py checks for that). */}
 
 ```console test server=none release
 $ curl https://install.hardcharger.gizmodata.com | sh
@@ -49,7 +40,12 @@ $ ~/.hardcharger/bin/hardcharger-server --version
 Hardcharger …
 ```
 
-</Ga>
+<Preview>
+
+During the preview, the download needs the token: `curl https://install.hardcharger.gizmodata.com |
+HARDCHARGER_INSTALL_TOKEN="$(gh auth token)" sh`.
+
+</Preview>
 
 The installer puts every version under `~/.hardcharger/versions/` and links the current one
 into `~/.hardcharger/bin`; add that directory to your `PATH`. It checks each download against

@@ -9,6 +9,8 @@
 //   </Preview>
 //
 // Its twin is <Ga>. scripts/verify_examples.py runs the tested blocks of whichever applies.
+// Never wrap a page's FIRST code block: Expressive Code puts the page's stylesheet and script
+// in that block, and dropping it leaves every other block unstyled (quickstart, 2026-10-20).
 import { ga } from './ga.ts';
 ---
 

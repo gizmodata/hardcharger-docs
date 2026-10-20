@@ -8,3 +8,5 @@ test-results/
 playwright-report/
 screenshots/
 .idea/
+dist-ga/
+dist-*/

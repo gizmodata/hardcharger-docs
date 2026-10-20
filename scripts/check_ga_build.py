@@ -41,6 +41,9 @@ def main() -> int:
                 snippet = text[max(0, m.start() - 60):m.end() + 60].replace("\n", " ")
                 bad.append(f"{page.relative_to(out)}: /{pattern.pattern}/: …{snippet}…")
                 break
+        if 'class="expressive-code"' in text and "/_astro/ec." not in text:
+            bad.append(f"{page.relative_to(out)}: code blocks without Expressive Code's stylesheet: the page's "
+                       "first code block was inside <Preview> or <Ga> (see src/components/Preview.astro)")
     cname = out / "CNAME"
     if not cname.is_file() or cname.read_text(encoding="utf-8").strip() != DOMAIN:
         bad.append(f"{cname}: must contain exactly {DOMAIN}")

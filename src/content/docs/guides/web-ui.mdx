@@ -1,14 +1,13 @@
 ---
 title: "Web UI"
-description: "Hardcharger's built-in web UI: a SQL editor, results grid, schema browser and exports in the browser, served by the server itself at /ui. How to turn it on, and how it behaves with TLS, mutual TLS, its Content-Security-Policy and access control."
+description: "Hardcharger's built-in web UI: a SQL editor, results grid, schema browser, exports and file uploads in the browser, served by the server itself at /ui. How to turn it on, and how it behaves with TLS, mutual TLS, its Content-Security-Policy and access control."
 ---
 
 import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Hardcharger has a web UI compiled into `hardcharger-server`. There is nothing extra to install:
 the server serves it at `/ui` on its own port, with its own TLS certificate, and the page
-talks [Warp SQL](/concepts/warp-sql/) back to the same origin. It is off by default, and new in
-0.3.0.
+talks [Warp SQL](/concepts/warp-sql/) back to the same origin. It is off by default.
 
 ![The web UI in its dark theme: the schema browser, the SQL editor and a result](../../../assets/web-ui/query-dark.png)
 
@@ -19,6 +18,8 @@ talks [Warp SQL](/concepts/warp-sql/) back to the same origin. It is off by defa
 - **Schema browser**: catalogs, schemas, tables, views and columns with their types, filtered
   by access control. Preview a table in a new tab, or double-click a name to insert it.
 - **Exports** to CSV, TSV, JSON (numbers kept exact) and Parquet, written in the browser.
+- **Upload data**: a CSV, TSV, Excel, Parquet, JSON or Arrow file into a table, read in the
+  browser and sent over [bulk ingest](/guides/bulk-ingest/) ([below](#upload-data)).
 - **Sessions**: the sessions you may see, and, for an administrator, a button that ends one.
 - **About**: the server's version, protocol and capabilities, and when your sign-in expires.
 
@@ -166,12 +167,74 @@ $ curl -s --cacert ca.crt --cert client.crt --key client.key -X POST -H 'Content
 Bearer
 ```
 
+## Upload data
+
+**Upload data** loads a file into a table: the button in the query toolbar, the one in the
+schema browser's header (or **Upload data…** on a catalog's or schema's menu, which picks that
+catalog and schema), or a file dropped anywhere on the page. It reads:
+
+| Format | Extensions | Read |
+|---|---|---|
+| CSV, TSV | `.csv` `.tsv` `.tab` `.txt` | as it uploads, any size |
+| Excel | `.xlsx` `.xls` `.xlsb` | whole, up to 100 MB |
+| Parquet | `.parquet` `.pq` | as it uploads, row group by row group |
+| JSON | `.json` `.ndjson` `.jsonl` | JSON lines as it uploads; a JSON array whole, up to 100 MB |
+| Arrow IPC | `.arrows` `.arrow` `.feather` `.ipc` | a stream as it uploads; a file whole, up to 1 GB |
+
+![Upload data in the dark theme: an Excel workbook's columns and first rows, with their types](../../../assets/web-ui/upload-dark.png)
+
+The dialog asks for the **Catalog** and **Schema** (or **New schema…**), the **Table** (named
+after the file: `Sales Q3 2026.xlsx` becomes `sales_q3_2026`), and what to do **If the table…**:
+
+- **Create a new table (fails if it exists)**.
+- **Append to an existing table (columns matched by name)**: the file's columns go into the
+  table's columns of the same name, in any case and any order. A table column the file lacks
+  gets `NULL`; a file column the table lacks stops the upload before it starts (rename or skip
+  it). Each value is converted to its column's type; one that can't be fails the upload.
+- **Replace the table's contents**: the table takes the file's columns and rows.
+
+For CSV it detects the **Header row** and the **Delimiter** (comma, semicolon, tab or `|`; type
+another of up to four characters, or `\t` for a tab), quotes and line breaks inside quotes. The
+text is read as UTF-8, or UTF-16 with a byte order mark; a file that is neither is read as
+Windows-1252, and the dialog says so. For Excel, pick the **Worksheet** (the first by default)
+and the **Header row**. Dates and times come from the cells' number formats, in the workbook's
+own date system (1900, or 1904 for old Mac workbooks); a formula loads the value Excel saved
+with it (nothing is calculated, and no macro runs); error cells (`#N/A`, `#DIV/0!`) are `NULL`;
+empty rows are left out; a merged range's value is in its first cell. A number stored as text
+stays text, so `00123` keeps its zeros.
+
+**Preview & column types**, folded away until you open it, shows the first 100 rows as they
+will load, and each column's type, inferred from the first 20,480 rows: change it (VARCHAR,
+BIGINT, DOUBLE, DECIMAL(p,s), BOOLEAN, DATE, TIMESTAMP, TIMESTAMPTZ, TIME), rename the column,
+or skip it. A value that wouldn't fit its type is shown in red. Parquet and Arrow columns keep
+the file's own types.
+
+The upload runs as you, with the editor tab's **Run as** role, in a session of its own and
+**one transaction**: the file goes to the server in pieces of a few megabytes, one
+[bulk-ingest](/guides/bulk-ingest/) request each, in the file's order, and nobody sees the rows
+until it commits. **Cancel upload**, a value that doesn't convert, or a refusal from the server
+rolls everything back and leaves the table as it was. The server never stores the file: the
+browser reads it (in a Web Worker, so even a large or malformed file can't freeze the page) and
+sends Arrow. Errors say where: `Cell C12, column "amount": "n/a" is not a whole number`, or
+`Line 1,234 has 5 fields, but the file's first line has 4`. With access control, uploading
+needs the same privileges as SQL: `CREATE` on the schema for a new table, `INSERT` on the table
+to append, and [row policies](/guides/row-policies-and-masking/) apply. A refusal is shown as
+the server words it.
+
+When it's done, the dialog says how many rows went in, the mode, the format and how long it
+took, and lists the table's columns; **Query this table** opens a tab with
+`SELECT * FROM … LIMIT 100`, and the schema browser shows the table.
+
+Excel workbooks are read with [SheetJS Community Edition](https://git.sheetjs.com/sheetjs/sheetjs)
+(Apache-2.0), part of the UI's build like everything else on the page, and loaded only when a
+file is read.
+
 ## Content-Security-Policy
 
 Every answer under `/ui` carries a strict Content-Security-Policy and the usual security
-headers. Nothing loads from another origin: the scripts, the editor's worker, the styles, the
-fonts (Inter is part of the build) and the Parquet writer's WebAssembly are all files under
-`/ui/`, and the page talks only to its own origin.
+headers. Nothing loads from another origin: the scripts, the editor's and the upload's
+workers, the styles, the fonts (Inter is part of the build) and the Parquet reader's and
+writer's WebAssembly are all files under `/ui/`, and the page talks only to its own origin.
 
 ```bash test server=self background stop
 HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb --web-ui --health-port 31338
@@ -191,7 +254,7 @@ What the policy allows beyond `'self'`, and why:
 
 | Directive | Why |
 |---|---|
-| `script-src 'wasm-unsafe-eval'` | The Parquet export compiles WebAssembly. It allows WebAssembly only, never `eval` of JavaScript. |
+| `script-src 'wasm-unsafe-eval'` | The Parquet export and Parquet uploads compile WebAssembly. It allows WebAssembly only, never `eval` of JavaScript. |
 | `style-src 'unsafe-inline'` | The editor sets styles at run time (`<style>` elements and style attributes). |
 | `img-src data:` | Two small images in the editor's stylesheet. |
 

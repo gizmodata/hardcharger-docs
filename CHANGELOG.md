@@ -8,6 +8,14 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Added
 
+- Web UI: **Upload data** (hardcharger `feat/ui-upload`): what it reads (CSV, TSV, Excel
+  .xlsx/.xls/.xlsb, Parquet, JSON lines and arrays, Arrow IPC) and which formats stream or are read
+  whole (with their limits), the dialog's fields and its create / append (columns matched by name) /
+  replace modes, CSV and Excel detection (delimiter, header row, encodings, the 1904 date system,
+  formulas' saved values, error cells, empty rows, merged ranges), **Preview & column types**, the
+  one-transaction upload (cancel and failures leave the table unchanged), the privileges it needs
+  under access control, and a dark-theme screenshot. The Content-Security-Policy section names the
+  upload's worker and Parquet reader. The page no longer says which release brought the UI.
 - Hardcharger 0.3.0 (main 5983a6a, warp-sql a8d762a): the reference is regenerated from the
   `:main` image (`sha-5983a6a`), and the release notes show the `[0.3.0]` section. New:
   - Error codes: `invalid_token` reasons (`token_expired`, `token_revoked`, `credentials_changed`,

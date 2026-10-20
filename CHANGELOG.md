@@ -70,6 +70,14 @@ All notable changes to the Hardcharger documentation are recorded here. The form
   says about a table with UUID ids; with a tested example (a statement found by the id
   `hardcharger_active_connections()` shows). Coming from GizmoSQL: the UUID columns' row
   (hardcharger `feat/instrumentation-warp-ids`).
+- Web UI guide, the editor's full behavior (Hardcharger feat/ui-portal-parity): tabs with their
+  own sessions, Run all, transactions, the grid, the schema browser and autocomplete, saved
+  queries, Run as, every download format, resizing, the help, phone-sized screens; a section on
+  sessions and transactions (the session idle timeout, tested: `--session-idle-timeout 3600`
+  shows as the session document's `idle_timeout_s`) and a table of what the page keeps in the
+  browser. Fresh screenshots (the editor with tabs and a selection, saved queries with the
+  Download menu). The page's 18 examples pass against a server that embeds the UI (main
+  7a8c72f8); a changed expected value fails, as it should.
 - Hardcharger 0.3.0 (main 5983a6a, warp-sql a8d762a): the reference is regenerated from the
   `:main` image (`sha-5983a6a`), and the release notes show the `[0.3.0]` section. New:
   - Error codes: `invalid_token` reasons (`token_expired`, `token_revoked`, `credentials_changed`,

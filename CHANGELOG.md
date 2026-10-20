@@ -154,6 +154,9 @@ All notable changes to the Hardcharger documentation are recorded here. The form
   refused; globs from above leave protected matches out; the sqlite_scanner plan-time check; and
   the two limits (startup and init SQL, `postgres_scanner`'s libpq). The configuration reference's
   new `block_sensitive_paths` / `sensitive_paths` wording comes with the next regeneration.
+- The home page shows the sidebar (the table of contents) and "On this page", like every other page,
+  and on a phone the menu button: it used Starlight's `splash` template, which has neither, so the
+  contents appeared only after opening a section.
 - The CLI uses TLS by default (Hardcharger feat/cli-tls-default): every CLI example against a
   plain-HTTP server says `--tls=false`; the CLI page shows the hint a TLS connection to a
   plain-HTTP server prints, and its option table, the GizmoSQL mapping and the Docker guide say

@@ -51,8 +51,7 @@ see the credentials.
 
 2. Write the init SQL: a secret for each service, and the lake. DuckLake, PostgreSQL and S3
    (`ducklake`, `postgres`, `httpfs`) are built into the server, so there is nothing to `INSTALL`
-   and it works offline; `LOAD` of a built-in extension does nothing and is harmless. (0.2.0 has
-   them as downloads: begin with `INSTALL ducklake; INSTALL postgres; INSTALL httpfs;` there.)
+   and it works offline; `LOAD` of a built-in extension does nothing and is harmless.
 
    ```sql test file=lake.sql server=none
    LOAD ducklake; LOAD postgres; LOAD httpfs;

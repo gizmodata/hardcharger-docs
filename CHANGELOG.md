@@ -30,6 +30,7 @@ All notable changes to the Hardcharger documentation are recorded here. The form
   sign-in's codes, and the migration page the removed 1.x options. The configuration reference's
   browser sign-in group, the CLI help and the protocol page's §3.1, §4.3, §9.7 and §11 are
   regenerated from the new server and spec.
+- No version history in the docs: "New in" notes, "from 0.3.0" and "0.2.0 has" asides are gone, the Versions page says which version the docs describe and how versions work, and CI fails on such phrasing (`scripts/check_no_version_history.py`; the release notes are exempt).
 
 ### Added
 

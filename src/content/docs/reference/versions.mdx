@@ -1,56 +1,28 @@
 ---
 title: "Versions"
-description: "Which Hardcharger version these docs describe, what 0.3.0 changed since 0.2.0, and how older versions' docs will be kept."
+description: "Which Hardcharger version these docs describe, how versions and compatibility work, and where to find what changed in each release."
 ---
 
-These docs describe **Hardcharger 0.3.0**, the latest release, as built from its main branch.
-Every example runs against a server built from `main`.
+These docs describe **version 0.3.0** of Hardcharger, as built from its main branch. Every example runs
+against a server built from `main`.
 
-## What 0.3.0 changed since 0.2.0
+## How versions work
 
-If you still run 0.2.0, nearly everything here applies to it too. What 0.3.0 has and 0.2.0
-doesn't:
+- Hardcharger follows [semantic versioning](https://semver.org). Before 1.0, a minor version
+  (`0.3` to `0.4`) may change options or behavior; a patch version only fixes things.
+- The server, the `hardcharger` CLI and the container image share one version. The drivers
+  ([Python](/clients/python/), [Go](/clients/go/), [JDBC](/clients/jdbc/),
+  [JavaScript](/clients/javascript/)) are versioned on their own and speak
+  [Warp SQL](/concepts/warp-sql/), whose protocol version the server reports at `GET /warp`
+  (`protocol_versions`).
+- `HARDCHARGER_VERSION()` and `hardcharger-server --version` report the server's version.
+- [Upgrading](/guides/upgrading/) covers moving between versions and rolling back.
 
-- **[The built-in web UI](/guides/web-ui/)** at `/ui` (`--web-ui`).
-- **[The `hardcharger` CLI](/clients/cli/)**, TLS by default. 0.2.0's tarballs and image have only
-  `hardcharger-server`: use a [driver](/clients/python/) or [curl](/clients/http/) there.
-- **Partitioned results** (`max_result_partitions`, `Warp-Result-Partitions`), which the drivers and the
-  CLI use for large results by default, and **partitioned uploads** (Warp SQL §8.3), which the ADBC
-  drivers use for large loads by default.
-- **Refusals that say why**: `session_ended` and `invalid_token` carry a
-  [`reason`](/reference/errors/#invalid_token-reasons) (`killed`, `credentials_changed`,
-  `principal_dropped`, `token_revoked`, `token_expired`).
-- **Fixes**: `HARDCHARGER_VERSION()` says `0.3.0` (0.2.0 says `v0.2.0`), `hardcharger_settings()`
-  reports `max_queued_statements` as `-1` by default, and the server's table functions in a
-  prepared statement return fresh rows on every execution.
-- **Results in 122,880-row batches** by default (0.2.0: 2,048), and the transfer work behind the
-  [network benchmarks](/benchmarks/#over-a-real-network-aws-2026-10-17): the pipelined TLS stream
-  and parallel ingest. 0.2.0's TLS streams and ingest are several times slower.
-- **`--print-options-json`.**
-- **[Certificate sign-in](/guides/tls/#signing-in-with-the-certificate)** (`--mtls-certificate-sign-in`,
-  the `client_certificate` grant, certificate-bound tokens, CRLs). 0.2.0 uses client certificates
-  only to admit connections, and ignores `--mtls-ca-cert` without `--tls-cert`; 0.3.0 refuses to start.
-- **[Metadata follows privileges](/guides/access-control/#what-users-can-see)** table by table, and
-  `DESCRIBE` of a table you hold no privilege on is refused. 0.2.0 hides only other tenants' catalogs.
-- **[HUGEINT and UHUGEINT](/reference/sql/#hugeint-and-uhugeint)** values past 38 digits fail with a
-  conversion error (0.2.0 sends them wrong), and `arrow_lossless_conversion` set for a session stays in that session.
-- **`GET` of an ended session** answers `401 session_ended` (0.2.0: `200`).
-- **[A DuckDB file as the access-control store](/guides/access-control/)** for a single server,
-  and the server's own files (the store, the database, instrumentation and log files) out of reach
-  of SQL.
-- **`CREATE VIEW` needs `SELECT`** on what the view reads.
-- **Preparing a statement never runs it**, and a prepared `INSERT … RETURNING` describes its rows.
-- **A statement that has failed** when the server answers gets the error response, never `200`
-  with a `failed` document.
-- **A forced stop** during an upload finishes, and never aborts the server.
-- **Built-in extensions**: httpfs, ducklake, postgres, autocomplete and tpch, next to parquet, json
-  and icu, so DuckLake and S3 work offline; nothing installs or loads by itself.
-- **Linux builds for glibc 2.28** (0.2.0: 2.38), self-contained, with a `SHA256SUMS` file per
-  release; **Windows** x64 and arm64 zips and MSIs.
+## What changed in each release
 
-The [release notes](/reference/release-notes/) list every change.
+The [release notes](/reference/release-notes/) list every change, release by release.
 
 ## Older and newer versions
 
-From 0.3.0 on, each release's docs will be kept at their own path, next to `latest`, with a
-version picker in the header.
+Each release's docs will be kept at their own path, next to `latest`, with a version picker in the
+header.

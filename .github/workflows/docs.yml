@@ -3,7 +3,9 @@ name: docs
 # Every check, on every push and pull request; also the gate in front of a release
 # (release.yml calls it on the tagged commit):
 #   - build: Astro builds the site; starlight-links-validator fails on any broken internal
-#     link or anchor; Pagefind indexes it.
+#     link or anchor; Pagefind indexes it. Until Hardcharger 2.0.0 it also fails on
+#     "New in <version>" / "since <version>" phrasing outside the release notes
+#     (scripts/check_no_version_history.py; retire it at 2.0.0).
 #   - links: lychee checks the external links in the built site.
 #   - browsers: Chromium and WebKit, light and dark, desktop and phone: no console errors and
 #     no page that scrolls sideways on a phone.
@@ -61,6 +63,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # Remove this step and scripts/check_no_version_history.py at Hardcharger 2.0.0: until then
+      # the docs describe the product as it is, with no "New in <version>" notes.
+      - name: No version history in the hand-written docs
+        run: python3 scripts/check_no_version_history.py
       - name: Build (fails on broken internal links)
         run: npm run build
       - uses: actions/upload-artifact@v7

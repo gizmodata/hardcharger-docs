@@ -157,6 +157,15 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 - The home page shows the sidebar (the table of contents) and "On this page", like every other page,
   and on a phone the menu button: it used Starlight's `splash` template, which has neither, so the
   contents appeared only after opening a section.
+- Benchmark results follow the TPC's fair-use policy: the runs are described as derived from
+  TPC-H ("the 22 queries derived from TPC-H, SF10", "TPC-H-derived data"), never as TPC-H
+  results. The benchmarks page says how the runs deviate from the specification and carries the
+  disclaimer (derived from the TPC-H benchmark, not an official TPC-H result and not comparable
+  to published TPC-H results; TPC-H™ a trademark of the Transaction Processing Performance
+  Council), as do the home page under its results table and the performance model and bulk
+  ingest pages (a footnote). The benchmarks page's SF10 section is now "Queries derived from
+  TPC-H at SF10, on one machine". The release notes follow when they are regenerated from
+  hardcharger's changelog, which has the same change.
 - The CLI uses TLS by default (Hardcharger feat/cli-tls-default): every CLI example against a
   plain-HTTP server says `--tls=false`; the CLI page shows the hint a TLS connection to a
   plain-HTTP server prints, and its option table, the GizmoSQL mapping and the Docker guide say

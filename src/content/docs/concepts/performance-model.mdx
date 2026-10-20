@@ -5,8 +5,8 @@ description: "How Hardcharger moves results fast without trading away correctnes
 
 import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
 
-Hardcharger is fast for two reasons. DuckDB 2.0 runs the query, and on TPC-H it beats DuckDB
-1.5 in-process before any network is involved. Then the result travels through an
+Hardcharger is fast for two reasons. DuckDB 2.0 runs the query, and on the queries derived from TPC-H[^tpch] it beats
+DuckDB 1.5 in-process before any network is involved. Then the result travels through an
 **asynchronous pipeline** in which no stage waits for another unless a queue is full.
 
 ## The result pipeline
@@ -88,3 +88,5 @@ These are measured, not guessed: see [Benchmarks](/benchmarks/#where-hardcharger
 - **One stream over a long link** is limited by TCP buffers (about 85 MB/s at 46 ms with Linux's
   default 4 MiB send buffer). Partitions avoid it.
 - **zstd on fast links** costs time in the client, which compresses or decompresses on one core.
+
+[^tpch]: Derived from the TPC-H benchmark; not an official TPC-H result and not comparable to published TPC-H results, as these results do not comply with the TPC-H specification. TPC-H™ is a trademark of the Transaction Processing Performance Council (TPC). See the [benchmarks](/benchmarks/).

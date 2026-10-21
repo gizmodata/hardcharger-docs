@@ -6,6 +6,8 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-21
+
 ### Fixed
 
 - Match the CLI's current TLS hint and explain that password credentials cannot inspect a

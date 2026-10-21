@@ -8,6 +8,8 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ## [2.0.0] - 2026-10-21
 
+- Refresh every Web UI screenshot from the signed 2.0.0 release test artifacts, including sign-in, SQL results, saved queries, API requests and Excel uploads.
+
 ### Fixed
 
 - Match the CLI's current TLS hint and explain that password credentials cannot inspect a

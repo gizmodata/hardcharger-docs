@@ -1,0 +1,29 @@
+{
+  "server_version": "2.0.0",
+  "duckdb_version": "2.0.0",
+  "commit": "f43b705730d5ad69d0c7a8b7d94487c11d8e5f10",
+  "release_run": 39539252886,
+  "artifact": "ui-e2e-chromium",
+  "screenshots": {
+    "query-dark.png": {
+      "artifact_path": "test-results/screenshots-screenshots-of-the-main-views-chromium/query-dark.png",
+      "sha256": "e5aa2f631a68ccf2e3e49f4f559ad1e76f7859262f656a6513dbbee352b3ae45"
+    },
+    "sign-in-dark.png": {
+      "artifact_path": "test-results/screenshots-screenshots-of-the-main-views-chromium/sign-in-dark.png",
+      "sha256": "91b2be0e974c60ad960d08f7d7cc4a89d3abb0b6806804c77f94e8f8014e1dbb"
+    },
+    "saved-dark.png": {
+      "artifact_path": "test-results/screenshots-screenshots-of-the-main-views-chromium/saved-dark.png",
+      "sha256": "1009f782c853e4c25ce956952b9bf9516f0a89bedcec6b104c192525af35e1b3"
+    },
+    "api-dark.png": {
+      "artifact_path": "test-results/screenshots-screenshots-of-the-API-page-chromium/api-try-dark.png",
+      "sha256": "cfb0e243f47105dd88ba3b36f7b66fb61ed3b43fd088d7aedcaa39913d2bb0a1"
+    },
+    "upload-dark.png": {
+      "artifact_path": "test-results/upload-screenshots-of-the-upload-dialog-light-and-dark-chromium/upload-preview-dark.png",
+      "sha256": "cef74e72a7d41492a15e1dd3a78e5df53aae8fc0c57596e90e8c78d85ba27a33"
+    }
+  }
+}

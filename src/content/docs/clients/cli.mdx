@@ -46,7 +46,7 @@ stops, sends nothing in plaintext, and says what to add:
 
 ```console test exit=1
 $ hardcharger --host localhost --username hardcharger --command "SELECT 1"
-Error: The server at localhost:31337 speaks plain HTTP, not TLS. Add --tls=false (or ?tls=false in a hardcharger:// URI) to connect without encryption.
+Error: The server at localhost:31337 speaks plain HTTP, not TLS. Add --no-tls (or --tls=false; in a hardcharger:// URI ?tls=false; after .connect HOST PORT USERNAME, --no-tls) to connect without encryption.
 ```
 
 ## The interactive shell

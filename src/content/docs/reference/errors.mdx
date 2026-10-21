@@ -182,8 +182,10 @@ $ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer ${
 {"code":"invalid_token","reason":null}
 ```
 
-A session opened with a scoped token ends when the token expires. Its token gets `token_expired`,
-and the session answers `session_ended` with the same reason to the user's next sign-in:
+A session opened with a scoped token ends when the token expires. Its token gets `token_expired`.
+A new password sign-in has different authority from the scoped token, so it cannot access that
+token's session: it gets `session_not_found`. Sessions belong to both the user and the credential's
+authority, preventing credentials with different permissions from sharing a session.
 
 ```console test profile=rbac
 $ SHORT=$(HARDCHARGER_PASSWORD='new-secret' hardcharger --host localhost --tls=false --username joe --quiet --csv \
@@ -196,5 +198,5 @@ $ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $S
 $ JOE=$(curl -s localhost:31337/warp/v1/auth/token -H 'Content-Type: application/json' \
     -d '{"grant_type": "password", "username": "joe", "password": "new-secret"}' | jq -r .access_token)
 $ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $JOE" | jq -c '{code, reason}'
-{"code":"session_ended","reason":"token_expired"}
+{"code":"session_not_found","reason":null}
 ```

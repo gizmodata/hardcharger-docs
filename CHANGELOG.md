@@ -6,6 +6,11 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ## [Unreleased]
 
+### Fixed
+
+- Match the CLI's current TLS hint and explain that password credentials cannot inspect a
+  scoped token's expired session because the credentials have different authority.
+
 ### Added
 
 - **GA preparation.** One switch, `DOCS_GA` (`src/components/ga.ts`), chooses between the private

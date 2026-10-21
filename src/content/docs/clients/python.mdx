@@ -27,13 +27,14 @@ pip install adbc-driver-hardcharger
 <Aside type="caution" title="Private preview">
 The driver isn't on PyPI yet. Until it is, build it from
 [gizmodata/hardcharger-adbc](https://github.com/gizmodata/hardcharger-adbc) (Go 1.27 and, on
-Linux, zig): `git clone --recurse-submodules`, then `scripts/build_warpsql_wheel.sh` and
-`uv pip install --override build/overrides.txt ./python`. The repository's README has the details.
+Linux, zig): `git clone`, then `scripts/build_lib.sh`, copy the built shared library from
+`go/build/` into `python/src/adbc_driver_hardcharger/`, and `pip install ./python`.
+The repository's README has the details.
 </Aside>
 
 </Preview>
 
-Python 3.10 or newer. It brings `pyarrow` and `adbc-driver-manager`.
+Python 3.11 or newer. It brings `pyarrow` and `adbc-driver-manager`.
 
 ## Connect and query
 
@@ -75,6 +76,36 @@ with hardcharger.connect(uri="hardcharger://localhost?tls=false",
 
 Credentials never go in the URI. `connect()` also takes `catalog=` and `db_schema=` for the
 session's starting point.
+
+## Connection profiles
+
+ADBC connection profiles keep reusable connection options in TOML. First register the library
+installed by this Python environment so a profile's `driver = "hardcharger"` can find it:
+
+```bash
+python -m adbc_driver_hardcharger.manifest
+```
+
+Save a profile as `prod.toml` in a directory listed in `ADBC_PROFILE_PATH`:
+
+```toml
+driver = "hardcharger"
+uri = "hardcharger://db.example.com:443"
+username = "analyst"
+password = { env = "HARDCHARGER_PASSWORD" }
+```
+
+Set `HARDCHARGER_PASSWORD` in your environment, then connect by name or absolute file path:
+
+```python
+with hardcharger.connect(profile="prod") as conn:
+    with conn.cursor() as cur:
+        cur.execute(operation="SELECT 42")
+        print(cur.fetchone())
+```
+
+`uri="profile://prod"` also works. Explicit connection arguments override profile options.
+Profiles are resolved by the ADBC driver manager; the native Go driver does not read TOML itself.
 
 ## TLS
 

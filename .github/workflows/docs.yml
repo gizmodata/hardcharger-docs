@@ -193,11 +193,10 @@ jobs:
 
       - name: Source repositories
         env:
-          # The Python driver is the one released with the server under test (adbc-driver-hardcharger
-          # 0.1.0rc1, tag internal-0.1.0rc1: hardcharger-adbc main plus Warp SQL 1.0). hardcharger-adbc
-          # main still commits a partitioned ingest the draft way ({"parts": n}), which a Warp SQL 1.0
-          # server refuses. Set this back to main once main has Warp SQL 1.0.
-          HARDCHARGER_ADBC_REF: internal-0.1.0rc1
+          # Main now contains the 2.0 driver, including Warp SQL 1.0 partitioned ingest,
+          # connection profiles and session handoff, tested against the server's main image.
+          # Switch to the published wheel at the public release.
+          HARDCHARGER_ADBC_REF: main
         run: |
           for repo in hardcharger warp-sql hardcharger-adbc hardcharger-jdbc warp-sql-js hardcharger-js; do
             ref=()

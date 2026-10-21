@@ -25,6 +25,9 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Changed
 
+- Document connection profiles and their driver manifest, Python 3.11 minimum, and the native
+  library build. Test examples with the 2.0 driver on main instead of the old internal RC pin.
+- Refresh release notes from the tested f43b705 server, including ADBC images and Web UI fixes.
 - Regenerated the reference from the Hardcharger 2.0.0 candidate and Warp SQL 1.0.1:
   configuration and CLI help, SQL functions, metrics, protocol and release notes.
 - Hardcharger 2.0.0-rc.1 (main feaa5d39, warp-sql e38b28e): the reference is regenerated from the

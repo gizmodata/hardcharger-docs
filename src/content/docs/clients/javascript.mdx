@@ -1,17 +1,14 @@
 ---
 title: "JavaScript"
-description: "Query Hardcharger from Node.js, browsers, Deno, Bun and Workers with @gizmodata/hardcharger (preview): hardcharger:// URLs, Arrow tables and streams, parameters, ingest, prepared statements, cancel."
+description: "Query Hardcharger from Node.js, browsers, Deno, Bun and Workers with @gizmodata/hardcharger from npm: hardcharger:// URLs, Arrow tables and streams, parameters, ingest, prepared statements, cancel."
 ---
 
-import { Aside } from '@astrojs/starlight/components';
 import HeroBanner from '../../../components/HeroBanner.astro';
 import banner from '../../../assets/banners/hardcharger-js-banner.svg';
-import Preview from '../../../components/Preview.astro';
-import Ga from '../../../components/Ga.astro';
 
 <HeroBanner src={banner} alt="Hardcharger from JavaScript, by GizmoData" href="https://github.com/gizmodata/hardcharger-js" />
 
-[`@gizmodata/hardcharger`](https://github.com/gizmodata/hardcharger-js) is the TypeScript client
+[`@gizmodata/hardcharger`](https://www.npmjs.com/package/@gizmodata/hardcharger) is the TypeScript client
 for Hardcharger™. It runs wherever `fetch` does (Node, browsers, Deno, Bun, Cloudflare Workers)
 with no native code, takes the same `hardcharger://` URLs as the [Python](/clients/python/) and
 [Go](/clients/go/) drivers, and returns [`apache-arrow`](https://arrow.apache.org/docs/js/) Tables
@@ -21,24 +18,14 @@ It is a thin layer on [`@gizmodata/warp-sql`](https://github.com/gizmodata/warp-
 generic JavaScript client for any Warp SQL server, which it depends on and re-exports: import
 everything from `@gizmodata/hardcharger`.
 
-<Aside type="caution" title="Preview">
-<Preview>
+## Install
 
-The client is internal and unreleased (0.1.0), and neither package is on npm yet. Until they are,
-build both:
+```bash
+npm install @gizmodata/hardcharger apache-arrow
+```
 
-</Preview>
-<Ga>
-
-The client is a preview (0.1.0), and neither package is on npm yet. Until they are, build both:
-
-</Ga>
-
-in [gizmodata/warp-sql-js](https://github.com/gizmodata/warp-sql-js),
-`npm ci && npm run build && npm pack`; in [gizmodata/hardcharger-js](https://github.com/gizmodata/hardcharger-js),
-`npm run warp-sql && npm ci && npm run build && npm pack`. Then
-`npm install apache-arrow ./gizmodata-warp-sql-0.1.0.tgz ./gizmodata-hardcharger-0.1.0.tgz`.
-</Aside>
+For Node.js, use 22.19 or later. `apache-arrow` 21.2 or later is a peer dependency;
+`@gizmodata/warp-sql` is installed automatically. No source build is required.
 
 ## Query, stream, ingest
 
@@ -111,7 +98,7 @@ marker throws: a short table is never taken for a complete one.
 | `warp://…`, `https://…`, `http://…` | The Warp SQL client's own spellings |
 
 `hardcharger+http://`, credentials in the URL and unknown parameters (`useEncryption` included)
-are refused before anything is sent, with an `invalid_argument` error that says what to write.
+are refused before anything is sent, with a `client_invalid_argument` error that says what to write.
 
 ## TLS
 
@@ -145,5 +132,5 @@ no CORS headers: the browser refuses
 
 ## Without the client
 
-Warp SQL is plain HTTP, so `fetch` and `apache-arrow` alone work too, as in
-[your first query](/get-started/first-query/) and the [plain HTTP page](/clients/http/).
+Warp SQL is plain HTTP, so `fetch` and `apache-arrow` alone work too. See the
+[plain HTTP page](/clients/http/) for the protocol and examples.

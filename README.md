@@ -55,7 +55,7 @@ npm run dev                          # live reload while writing
 | Get started | quickstart, your first query (Python, Go, Java, JavaScript, CLI, curl), coming from GizmoSQL |
 | Concepts | Warp SQL in one page, security model, performance model |
 | Guides | TLS and mTLS; users, roles and grants; row policies, masking, tenants, scoped tokens; catalog access rules; SSO; DuckLake and S3; bulk ingest; configuration; statement control; instrumentation and the audit log; Prometheus metrics; Docker and Kubernetes; load balancers; Raspberry Pi; upgrading |
-| Clients | Python, Go, C/C++/R/Rust, JDBC and DBeaver, JavaScript (preview), the `hardcharger` CLI, plain HTTP |
+| Clients | Python, Go, C/C++/R/Rust, JDBC and DBeaver, JavaScript (`@gizmodata/hardcharger` on npm), the `hardcharger` CLI, plain HTTP |
 | Reference | server configuration, SQL functions and settings, error codes, CLI, the Warp SQL protocol, release notes, versions |
 | Benchmarks | method, every number, and where Hardcharger still loses |
 
@@ -132,9 +132,9 @@ While Hardcharger is internal, CI uses no personal token:
    repository read access (package settings, **Manage Actions access**).
 2. **Read-only deploy keys**, one per internal repository, stored here as secrets:
    `DEPLOY_KEY_HARDCHARGER`, `DEPLOY_KEY_WARP_SQL`, `DEPLOY_KEY_HARDCHARGER_ADBC`,
-   `DEPLOY_KEY_WARP_SQL_ADBC`, `DEPLOY_KEY_HARDCHARGER_JDBC`, `DEPLOY_KEY_WARP_SQL_JDBC`,
-   `DEPLOY_KEY_WARP_SQL_JS`. Each repository has the matching public key as a read-only deploy
-   key titled "hardcharger-docs CI (read-only)".
+   `DEPLOY_KEY_WARP_SQL_ADBC`, `DEPLOY_KEY_HARDCHARGER_JDBC`, `DEPLOY_KEY_WARP_SQL_JDBC`.
+   Each source repository has the matching public key as a read-only deploy key titled
+   "hardcharger-docs CI (read-only)". The JavaScript driver is installed from npm.
 3. **No release downloads.** Examples that download a release (the installer, tarballs, the
    Python package's server) run against a release mirror made from the `:main` image, with the
    real installer script and the real package.

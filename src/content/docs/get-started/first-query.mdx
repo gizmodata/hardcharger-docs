@@ -123,36 +123,35 @@ try (Connection connection = DriverManager.getConnection("jdbc:hardcharger://loc
 </TabItem>
 <TabItem label="JavaScript">
 
+Install the [Hardcharger JavaScript driver](https://www.npmjs.com/package/@gizmodata/hardcharger)
+and its Apache Arrow peer dependency:
+
+```bash
+npm install @gizmodata/hardcharger apache-arrow
+```
+
 ```js test
-import { tableFromIPC } from 'apache-arrow';
+import { connect } from '@gizmodata/hardcharger';
 
-const base = 'http://localhost:31337/warp/v1';
-const json = { 'Content-Type': 'application/json' };
-
-const { access_token } = await (await fetch(`${base}/auth/token`, {
-  method: 'POST',
-  headers: json,
-  body: JSON.stringify({ grant_type: 'password', username: 'hardcharger', password: 'change-me' }),
-})).json();
-const auth = { ...json, Authorization: `Bearer ${access_token}` };
-const { session_id } = await (await fetch(`${base}/sessions`, { method: 'POST', headers: auth, body: '{}' })).json();
-
-const response = await fetch(`${base}/sessions/${session_id}/statements`, {
-  method: 'POST',
-  headers: { ...auth, Accept: 'application/vnd.apache.arrow.stream' },
-  body: JSON.stringify({ sql: 'SELECT 42 AS answer, ? AS greeting', parameters: ['hello'] }),
+const conn = await connect({
+  url: 'hardcharger://localhost?tls=false',
+  username: 'hardcharger',
+  password: 'change-me',
 });
-const table = tableFromIPC(new Uint8Array(await response.arrayBuffer()));
-console.log(table.toArray().map((row) => row.toJSON()));
+try {
+  const table = await conn.query('SELECT 42 AS answer, ?::VARCHAR AS greeting', ['hello']);
+  console.log(table.toArray().map((row) => row.toJSON()));
+} finally {
+  await conn.close();
+}
 ```
 
 ```text output
 [ { answer: 42, greeting: 'hello' } ]
 ```
 
-Node.js 22 or newer and [`apache-arrow`](https://www.npmjs.com/package/apache-arrow) from npm.
-A JavaScript client library is [in preview](/clients/javascript/); until then, Warp SQL's plain
-HTTP is all you need.
+Use Node.js 22.19 or later. The driver handles authentication, sessions and Arrow results.
+See [JavaScript](/clients/javascript/) for streaming, ingest, transactions and browser use.
 
 </TabItem>
 <TabItem label="CLI">

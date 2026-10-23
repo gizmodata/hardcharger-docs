@@ -6,6 +6,16 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-10-22
+
+### Fixed
+
+- Document the published `@gizmodata/hardcharger` npm package, its installation and Node.js
+  requirement, and remove the JavaScript preview labels and source-build instructions.
+- Use the Hardcharger JavaScript driver for the first-query example, including session cleanup.
+- Run JavaScript examples against the npm package pinned in the lockfile instead of building
+  unpublished driver tarballs in CI.
+
 ## [2.0.0] - 2026-10-21
 
 - Refresh every Web UI screenshot from the signed 2.0.0 release test artifacts, including sign-in, SQL results, saved queries, API requests and Excel uploads.

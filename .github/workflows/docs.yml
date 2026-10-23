@@ -24,9 +24,8 @@ name: docs
 #     here as a secret: DEPLOY_KEY_HARDCHARGER (CHANGELOG, the Python server package),
 #     DEPLOY_KEY_WARP_SQL (the spec), DEPLOY_KEY_HARDCHARGER_ADBC and DEPLOY_KEY_WARP_SQL_ADBC
 #     (the Python and Go driver; Go fetches both modules), DEPLOY_KEY_HARDCHARGER_JDBC and
-#     DEPLOY_KEY_WARP_SQL_JDBC (the JDBC driver and its submodule), DEPLOY_KEY_WARP_SQL_JS and
-#     DEPLOY_KEY_HARDCHARGER_JS (the JavaScript client, @gizmodata/hardcharger, and the Warp SQL
-#     client it is built on).
+#     DEPLOY_KEY_WARP_SQL_JDBC (the JDBC driver and its submodule). The JavaScript driver is
+#     installed from npm at the version pinned in package-lock.json.
 #   - Release downloads (the installer, tarballs, the Python package's server) are exercised
 #     against a release mirror made from the :main image (verify_examples.py, `release`).
 
@@ -167,8 +166,6 @@ jobs:
           DEPLOY_KEY_WARP_SQL_ADBC: ${{ secrets.DEPLOY_KEY_WARP_SQL_ADBC }}
           DEPLOY_KEY_HARDCHARGER_JDBC: ${{ secrets.DEPLOY_KEY_HARDCHARGER_JDBC }}
           DEPLOY_KEY_WARP_SQL_JDBC: ${{ secrets.DEPLOY_KEY_WARP_SQL_JDBC }}
-          DEPLOY_KEY_WARP_SQL_JS: ${{ secrets.DEPLOY_KEY_WARP_SQL_JS }}
-          DEPLOY_KEY_HARDCHARGER_JS: ${{ secrets.DEPLOY_KEY_HARDCHARGER_JS }}
         run: |
           # One SSH host alias per repository, each with its own key, and git rewrites every
           # spelling of that repository's URL (https, ssh, scp-like) to its alias. Go's module
@@ -177,7 +174,7 @@ jobs:
           # "hardcharger-docs".
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
-          for repo in hardcharger warp-sql hardcharger-adbc warp-sql-adbc hardcharger-jdbc warp-sql-jdbc warp-sql-js hardcharger-js; do
+          for repo in hardcharger warp-sql hardcharger-adbc warp-sql-adbc hardcharger-jdbc warp-sql-jdbc; do
             var="DEPLOY_KEY_$(echo "$repo" | tr 'a-z-' 'A-Z_')"
             key="${!var}"
             if [ -z "$key" ]; then
@@ -198,7 +195,7 @@ jobs:
           # Switch to the published wheel at the public release.
           HARDCHARGER_ADBC_REF: main
         run: |
-          for repo in hardcharger warp-sql hardcharger-adbc hardcharger-jdbc warp-sql-js hardcharger-js; do
+          for repo in hardcharger warp-sql hardcharger-adbc hardcharger-jdbc; do
             ref=()
             if [ "$repo" = hardcharger-adbc ]; then ref=(--branch "$HARDCHARGER_ADBC_REF"); fi
             git clone --quiet --depth 1 "${ref[@]}" --recurse-submodules --shallow-submodules \
@@ -264,17 +261,9 @@ jobs:
           .venv/bin/pip install -q "$adbc/python" "$RUNNER_TEMP/src/hardcharger/python" \
             pyyaml pexpect pyjwt cryptography
 
-      # @gizmodata/hardcharger depends on @gizmodata/warp-sql; until both are on npm, its lock
-      # resolves that dependency to .warp-sql/gizmodata-warp-sql-<version>.tgz, which gets the
-      # tarball built here.
-      - name: The JavaScript client (@gizmodata/hardcharger on @gizmodata/warp-sql, not on npm yet)
+      - name: The published JavaScript driver (installed by npm ci)
         run: |
-          js="$RUNNER_TEMP/src/warp-sql-js"
-          (cd "$js" && npm ci --silent && npm run build --silent && npm pack --silent --pack-destination "$RUNNER_TEMP")
-          hc="$RUNNER_TEMP/src/hardcharger-js"
-          mkdir -p "$hc/.warp-sql" && cp "$RUNNER_TEMP"/gizmodata-warp-sql-*.tgz "$hc/.warp-sql/"
-          (cd "$hc" && npm ci --silent && npm run build --silent && npm pack --silent --pack-destination "$RUNNER_TEMP")
-          npm install --no-save "$RUNNER_TEMP"/gizmodata-warp-sql-*.tgz "$RUNNER_TEMP"/gizmodata-hardcharger-*.tgz
+          npm ls @gizmodata/hardcharger @gizmodata/warp-sql apache-arrow
           node --input-type=module -e 'import { parseUrl } from "@gizmodata/hardcharger"; console.log(parseUrl("hardcharger://localhost").href)'
 
       - name: The JDBC driver (hardcharger-jdbc.jar)

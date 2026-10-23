@@ -129,7 +129,7 @@ export default defineConfig({
 						{ label: 'Go (ADBC)', slug: 'clients/go' },
 						{ label: 'C, C++, R, Rust (ADBC)', slug: 'clients/adbc-driver-manager' },
 						{ label: 'Java (JDBC) and DBeaver', slug: 'clients/jdbc' },
-						{ label: 'JavaScript', slug: 'clients/javascript', badge: { text: 'Preview', variant: 'caution' } },
+						{ label: 'JavaScript', slug: 'clients/javascript' },
 						{ label: 'The hardcharger CLI', slug: 'clients/cli' },
 						{ label: 'Plain HTTP', slug: 'clients/http' },
 					],

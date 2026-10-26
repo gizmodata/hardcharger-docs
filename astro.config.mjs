@@ -75,6 +75,7 @@ export default defineConfig({
 					items: [
 						{ label: 'Quickstart', slug: 'get-started/quickstart' },
 						{ label: 'Your first query', slug: 'get-started/first-query' },
+						{ label: 'Desktop app (v2.1.0+)', slug: 'guides/desktop-app' },
 						{ label: 'Web UI', slug: 'guides/web-ui' },
 						{ label: 'Coming from GizmoSQL', slug: 'get-started/coming-from-gizmosql' },
 					],
@@ -111,6 +112,8 @@ export default defineConfig({
 							label: 'Operations',
 							items: [
 								{ label: 'Configuration (YAML, env, flags)', slug: 'guides/configuration' },
+								{ label: 'SQL Monitor', slug: 'guides/sql-monitor' },
+								{ label: 'Server Configuration tab', slug: 'guides/server-configuration' },
 								{ label: 'Statement control', slug: 'guides/statement-control' },
 								{ label: 'Instrumentation and audit log', slug: 'guides/instrumentation-and-audit' },
 								{ label: 'Prometheus metrics', slug: 'guides/metrics' },

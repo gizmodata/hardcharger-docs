@@ -12,6 +12,11 @@ record shows.
 
 ## Instrumentation
 
+In **v2.1.0+**, unrestricted administrators can use the SQL Editor's
+[SQL Monitor tab](/guides/sql-monitor/) to follow active work, recent outcomes and timeouts,
+inspect captured profiles, and cancel work or end a session with confirmation. It is available
+in the server's `--web-ui` and the desktop SQL workspace when instrumentation is enabled.
+
 Turn it on with [`--enable-instrumentation`](/reference/configuration/#enable_instrumentation).
 The tables go in a catalog named `_hardcharger_instr`: by default a DuckDB file next to the
 database (`hardcharger_instrumentation.db`), for development or a single server, or, with

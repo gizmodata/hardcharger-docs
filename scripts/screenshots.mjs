@@ -10,6 +10,10 @@ fs.mkdirSync(out, { recursive: true });
 const shots = [
 	{ name: 'landing', path: '/' },
 	{ name: 'guide-tls', path: '/guides/tls/' },
+	{ name: 'desktop-app', path: '/guides/desktop-app/' },
+	{ name: 'sql-monitor', path: '/guides/sql-monitor/' },
+	{ name: 'server-configuration', path: '/guides/server-configuration/' },
+	{ name: 'web-ui', path: '/guides/web-ui/' },
 ];
 const sizes = { desktop: { width: 1440, height: 900 }, phone: { width: 390, height: 844 } };
 const pages = fs

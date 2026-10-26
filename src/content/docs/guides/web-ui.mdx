@@ -31,6 +31,14 @@ talks [Warp SQL](/concepts/warp-sql/) back to the same origin. It is off by defa
 - **Upload data**: a CSV, TSV, Excel, Parquet, JSON or Arrow file into a table, read in the
   browser and sent over [bulk ingest](/guides/bulk-ingest/) ([below](#upload-data)).
 - **Sessions**: the sessions you may see, and, for an administrator, a button that ends one.
+- **SQL Monitor (v2.1.0+)**: unrestricted administrators see queued, executing and fetching
+  queries, recent successes, failures and timeouts, queue status and free statement slots.
+  Captured profiles and query details open in their own windows. Requires instrumentation;
+  see [SQL Monitor](/guides/sql-monitor/).
+- **Server Configuration (v2.1.0+)**: unrestricted administrators inspect the selected
+  editor session's effective values alongside global values, then edit or reset settings
+  at supported runtime scopes. Startup settings identify when a restart is required.
+  See [Server Configuration](/guides/server-configuration/).
 - **API**: the server's Warp SQL API in Swagger UI, where **Try it out** runs requests as you.
 - **About**: the server's version, protocol and capabilities, and when your sign-in expires.
   **How the editor works** (the **?** at the end of the tab bar) sums up sessions,
@@ -39,6 +47,15 @@ talks [Warp SQL](/concepts/warp-sql/) back to the same origin. It is off by defa
 The editor and the side panel resize (drag the bar between them, or focus it and use the arrow
 keys; double-click for the default size). On a phone-sized screen the side panel sits above the
 editor and the page scrolls.
+
+The administrator tabs run in both browser sessions served by `--web-ui` and the
+[desktop app's SQL workspace](/guides/desktop-app/). Server permissions determine access.
+SQL Monitor is disabled without `enable_instrumentation`; Server Configuration does not
+need instrumentation. **API** is the final navigation tab in v2.1.0+.
+
+![SQL Monitor showing recent outcomes and statement-slot availability](../../../assets/web-ui/monitor-light.png)
+
+![Server Configuration showing session overrides and global values](../../../assets/web-ui/configuration-light.png)
 
 ![Saved queries in a folder, and the results' Download menu](../../../assets/web-ui/saved-dark.png)
 
@@ -118,7 +135,7 @@ the same one as every other client.
 
 ## The API page
 
-**API**, next to Query and Sessions, shows the server's own Warp SQL API: every endpoint, with
+**API** shows the server's own Warp SQL API: every endpoint, with
 its parameters, request and response schemas and examples, in [Swagger UI](https://swagger.io/tools/swagger-ui/).
 It reads the OpenAPI 3.1 document the server serves at `GET /warp/v1/openapi.json` (described
 on the [Warp SQL](/concepts/warp-sql/#the-api-description) page), and like the rest of the UI

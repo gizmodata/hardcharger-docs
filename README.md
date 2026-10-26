@@ -52,9 +52,9 @@ npm run dev                          # live reload while writing
 
 | Section | Pages |
 |---|---|
-| Get started | quickstart, your first query (Python, Go, Java, JavaScript, CLI, curl), coming from GizmoSQL |
+| Get started | quickstart, desktop app (v2.1.0+), web UI, your first query (Python, Go, Java, JavaScript, CLI, curl), coming from GizmoSQL |
 | Concepts | Warp SQL in one page, security model, performance model |
-| Guides | TLS and mTLS; users, roles and grants; row policies, masking, tenants, scoped tokens; catalog access rules; SSO; DuckLake and S3; bulk ingest; configuration; statement control; instrumentation and the audit log; Prometheus metrics; Docker and Kubernetes; load balancers; Raspberry Pi; upgrading |
+| Guides | TLS and mTLS; users, roles and grants; row policies, masking, tenants, scoped tokens; catalog access rules; SSO; DuckLake and S3; bulk ingest; configuration; SQL Monitor and Server Configuration (v2.1.0+); statement control; instrumentation and the audit log; Prometheus metrics; Docker and Kubernetes; load balancers; Raspberry Pi; upgrading |
 | Clients | Python, Go, C/C++/R/Rust, JDBC and DBeaver, JavaScript (`@gizmodata/hardcharger` on npm), the `hardcharger` CLI, plain HTTP |
 | Reference | server configuration, SQL functions and settings, error codes, CLI, the Warp SQL protocol, release notes, versions |
 | Benchmarks | method, every number, and where Hardcharger still loses |
@@ -173,7 +173,7 @@ At the flip (the repository public, Hardcharger 2.0.0 released):
       regenerate the reference from it (`scripts/gen_reference.py`: the `[2.0.0]` release notes, the
       Warp SQL 1.0.1 protocol page, the CLI and configuration pages) and move
       `HARDCHARGER_ADBC_REF` to `main` once the driver's main speaks Warp SQL 1.0.
-- [ ] Retire `scripts/check_no_version_history.py` and its step (2.0.0 is the first public release).
+- [x] Retire the pre-2.0 version-history check; guides now label features by their first version.
 - [ ] Run **release** (a `vX.Y.Z` tag or by hand) and open every page on the live domain in
       Chromium and WebKit (CSP violations included); then link the docs from the READMEs,
       gizmodata.com and the CLI's `.about`.

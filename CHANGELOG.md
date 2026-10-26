@@ -6,6 +6,18 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ## [Unreleased]
 
+### Added
+
+- v2.1.0+ desktop app guide, package selection in the quickstart, and SQL Editor guides
+  for SQL Monitor and Server Configuration, linked from the home page and sidebar.
+- Desktop dashboard design-preview screenshots and real SQL Monitor / Server Configuration
+  captures from temporary servers with synthetic data, in light and dark themes.
+
+### Changed
+
+- Retire the pre-2.0 ban on version-availability notes so readers can distinguish v2.1.0+
+  features from their installed 2.0 server. No generated reference pages are changed.
+
 ## [2.0.1] - 2026-10-22
 
 ### Fixed

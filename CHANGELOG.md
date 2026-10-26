@@ -8,6 +8,7 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Added
 
+- SQL Monitor guide explains the bordered, scrollable SQL text and Copy SQL button.
 - Desktop guide covers copyable connection examples, TLS detection, client credentials
   and CA certificates, plus the About screen's documentation link.
 - v2.1.0+ desktop app guide, package selection in the quickstart, and SQL Editor guides

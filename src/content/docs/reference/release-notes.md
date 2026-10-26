@@ -13,6 +13,147 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-26
+
+### Added
+
+- Retry transient Apple ticket-service errors during final desktop notarization
+  validation; app and disk image must still pass before uploading artifacts.
+
+- Query details show elapsed queue, execution, fetch, cursor-release and total times,
+  including live durations and compact same-day end timestamps.
+- The macOS Window menu lists open workspaces and query inspectors, making windows
+  that retain observer sessions easier to find behind the dashboard.
+- Closing the desktop SQL Workspace also closes its query-detail windows and awaits
+  their observer-session cleanup. Cancelling a transaction-close prompt keeps them open.
+- Desktop About links directly to the Hardcharger documentation.
+- Desktop network sharing includes copyable Web UI, Python/ADBC, JDBC, CLI and JavaScript
+  examples using the saved address and Hardcharger URI schemes, with private-CA guidance
+  and credential environment variables instead of saved passwords.
+- Desktop macOS packaging verifies the bundled server retains its extension-loading
+  entitlement after Tauri re-signing, in addition to signature and notarization checks.
+- Desktop previews for an unreleased version use current server-workflow artifacts;
+  branch pushes check the controller without trying to download an unpublished release.
+  Native staging rejects a server version that differs from the desktop source.
+
+- Enforce server/PyPI package version alignment for 2.1.0+: a server release `X.Y.Z`
+  uses `hardcharger==X.Y.Z`; Python-only fixes use `X.Y.Z.postN` while downloading the
+  same base server. CI rejects version or tag drift; AGENTS.md and CLAUDE.md record the rule.
+
+- Desktop Stop and Restart require a confirmation modal from the dashboard, app menu
+  and system tray, explaining interrupted work, disconnected sessions and closed SQL
+  windows. Cancel is the default; Escape dismisses without changing the server.
+
+- v2.1.0+ desktop app guide and README overview, with download/package comparisons,
+  network/TLS setup, persistent versus runtime settings, and screenshots of the desktop
+  preview, SQL Monitor and Server Configuration tabs in the SQL Editor web UI.
+
+- Sessions in the web UI show the client IP and label connections from the server's
+  own loopback or LAN interfaces as "This computer". `hardcharger_sessions()` exposes
+  `client_ip` and `client_is_local`, following the existing session visibility rules.
+- Desktop logs have a remembered Live tail toggle, pause/manual refresh, and preserve
+  the scroll position while reading older output. Server controls use green for Start,
+  red for Stop and amber for Restart; disabled controls remain muted.
+- Desktop network setup detects local addresses/hostname, labels required fields, and
+  generates a private server certificate/key with client trust instructions and fingerprint.
+  Save stays visible while scrolling; unsaved edits survive navigation and block tray or
+  automatic startup until saved or explicitly discarded. Invalid setup never falls back
+  to local-only mode.
+- SQL Monitor in the web SQL workspace for unrestricted administrators, enabled with
+  server instrumentation. Shows live queued, executing, and fetching statements regardless
+  of age, recent outcomes (10 minutes by default), execution and queue timeouts, statement
+  slots, queue capacity and wait limits, and instrumentation backlog/loss counters.
+- SQL Monitor statement details display the selected execution's captured instrumentation
+  profile: DuckDB 2.0 metrics, operator tree, actual/estimated rows, timings, memory, I/O,
+  planning/optimizer details, and original JSON download. Queries are never replayed.
+- SQL Monitor status icons or descriptions, with a remembered display preference,
+  accessible labels/tooltips, and a spinning circle for executing statements.
+- SQL Monitor query details open in independent windows with live status and captured
+  profiles. A remembered layout choice keeps details below the monitor if preferred;
+  blocked pop-ups fall back to the inline view. Desktop inspectors use native windows.
+- Server Configuration for unrestricted administrators: effective session and global
+  values, explicit overrides, live editing and resets at supported scopes, and safe
+  server/listener facts. Startup settings stay read-only.
+- SQL Monitor session controls cancel queued/in-flight work while keeping its session
+  connected, or end a session and cancel all of its work, with confirmation.
+- Desktop Network access settings: opt-in shared listener, client-facing address, TLS
+  certificates, and persistent administrator credentials in the OS credential store.
+  Existing installations remain local-only. The dashboard shows connection URLs.
+- Desktop About links to GizmoData and the Hardcharger product page, plus a clickable
+  by-GizmoData badge. The About page uses the product name in the logo without a duplicate heading.
+
+- Desktop preview in `desktop/`: a Tauri app that bundles the existing server and CLI,
+  opens the server's web SQL workspace, and manages the local server from a branded
+  dashboard and bull-head menu-bar/tray icon. Closing the dashboard keeps the server
+  running; Quit drains queries and stops it. The application icon places the bull head
+  on a white tile for contrast in the Dock and taskbar. Includes launch at login, logs, server
+  options from `--print-options-json`, reviewed YAML imports, exports without secrets,
+  setting-name search that opens matching sections, dropdowns for booleans and fixed
+  string choices (including profiling and logging), and OS credential storage for
+  sensitive options. Desktop packages use the existing
+  Apple Developer ID/notarization and Windows Azure signing credentials; branch previews
+  upload Actions artifacts without publishing a release.
+
+### Changed
+
+- Query details frame the SQL text with a subtle themed border and background, separating
+  it from execution metadata in both inline and pop-out views. The SQL scrolls independently,
+  supports keyboard scrolling and has a Copy SQL button for the complete captured statement.
+- Non-iOS builds retain DuckDB's four standard built-in extensions; httpfs, PostgreSQL,
+  DuckLake, tpch and autocomplete are runtime modules that administrators can replace.
+  Automatic installation/loading of known extensions defaults to enabled, matching
+  GizmoSQL. Signature verification remains enabled; startup SQL can disable automation
+  or select a repository. iOS retains its built-in extensions and disables dynamic loading.
+- Remove the DuckLake metadata storage-version compatibility patch. DuckLake follows
+  upstream metadata-format behavior; older readers may refuse a metadata file after
+  newer-server writes; compatibility controls follow the selected upstream extension.
+
+### Fixed
+
+- Sensitive-path tests preinstall the dynamically loaded PostgreSQL extension in their
+  isolated home before starting the access-control store; repository downloads no
+  longer consume its connection deadline.
+
+- Reject oversized Arrow IPC ingest messages and expanded compressed buffers before
+  allocation, with HTTP 413 `payload_too_large`. The configurable startup limit
+  `max_ingest_message_bytes` defaults to 64 MiB per message; ordinary and partitioned
+  ingest, dictionaries and Arrow prepared parameters all enforce it.
+
+- Closing the native SQL Workspace waits for all of that window's session DELETEs
+  before destroying it, preventing idle sessions from accumulating on reopen. An open
+  transaction still requires confirmation; Cancel and Escape preserve its sessions.
+- Native query-detail windows await their session cleanup before closing, including the
+  red window button and Cmd+W, preventing idle observer sessions from accumulating.
+
+- SQL Monitor and Sessions use in-page confirmation dialogs for ending sessions and
+  cancelling work, so those actions also run in native webviews that suppress browser
+  `window.confirm` dialogs.
+- Desktop Open SQL workspace offers explicit approval to trust its generated local CA,
+  then retries opening the workspace. macOS trust is scoped to the user and TLS server
+  address; Windows uses the current-user certificate import wizard. Cancellation keeps
+  verification enabled. Changed certificates and ordinary connection errors cannot
+  authorize CA imports.
+- Keep API last in the web SQL workspace navigation, after the administrator tabs.
+- Query detail windows' Close window button now closes their native desktop window.
+
+- Web UI and CLI decode Arrow VARIANT values into readable scalars, objects, and arrays
+  instead of exposing binary metadata/value structs (#2). Web headers show VARIANT;
+  clipboard, text exports, JSON, and Excel use decoded values and preserve exact numbers.
+  Arrow and Parquet downloads retain the original typed result. The web cell inspector
+  also offers raw Arrow storage. Ordinary structs remain ordinary structs.
+- Instrumentation records statement deadline and queue-wait timeouts as `timeout`, with
+  `queue_timeout` distinguishing time spent waiting for a statement slot.
+
+- Bulk ingest in `append` mode (and `create_append` into a table that exists) binds the
+  upload's columns to the table's by name, whatever their order in the stream: a column the
+  upload omits takes its default, and a column the table lacks is refused with `400`
+  `sql_error`, nothing written. 2.0.0 bound by position, so an upload whose columns were not
+  in table order failed on a type cast or a column count, and two columns of one type
+  uploaded the other way round were stored crosswise with no error. Found by a customer
+  loading through the ADBC driver's `adbc_ingest`. The fix is Warp SQL 1.0.2's
+  (`third_party/warp-sql` moves from 1.0.1 to 1.0.2); `server/tests/test_bulk_ingest_py.py` covers it, and the
+  drivers' live suites have the same case.
+
 ## [2.0.0] - 2026-10-20
 
 The first general release of Hardcharger: a SQL server on DuckDB 2.0.0 that speaks Warp SQL

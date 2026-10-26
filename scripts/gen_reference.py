@@ -241,7 +241,7 @@ def generate(out: pathlib.Path) -> None:
     files: dict[str, str] = {}
     files["src/data/options.json"] = options(bin_dir)
     files["src/content/docs/reference/configuration.mdx"] = configuration_page(files["src/data/options.json"])
-    with Server(bin_dir, "--enable-metrics", "--metrics-port", "0") as server:
+    with Server(bin_dir, "--enable-metrics", "--metrics-port", "0", "--enable-instrumentation") as server:
         files["src/data/settings.json"] = settings(server)
         files["src/data/functions.json"] = functions(server)
         files["src/data/cli-dot-commands.txt"] = cli_dot_commands(server)

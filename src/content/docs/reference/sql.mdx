@@ -14,6 +14,13 @@ and CI fails when they drift.
 ## Functions
 
 <SqlFunctions describe={{
+  HARDCHARGER_IS_FULL_ADMIN: 'Whether the caller is an unrestricted administrator, including the absence of catalog-access restrictions.',
+  hardcharger_set_session_setting: 'For an unrestricted administrator, set a supported session setting on another session. Returns whether the setting was applied.',
+  hardcharger_reset_session_setting: 'For an unrestricted administrator, reset a supported setting on another session.',
+  hardcharger_live_queries: 'Live and recent query executions for SQL Monitor, including queue, execution, fetch and cursor-close times. Requires unrestricted administrator privileges and enabled instrumentation.',
+  hardcharger_monitor_info: 'SQL Monitor status and statement-queue capacity, active slots, waiting statements and history-writer counters. Requires an unrestricted administrator.',
+  hardcharger_server_settings: 'Server settings with session/global values and editability for the Configuration tab. Requires an unrestricted administrator.',
+  hardcharger_session_settings: 'Settings and supported scopes for an administrator-selected session. Requires an unrestricted administrator.',
   HARDCHARGER_USER: 'The user this session signed in as.',
   HARDCHARGER_ROLE: 'The session\'s role: <code>admin</code>, <code>user</code> or <code>readonly</code> (for store users under access control, their role in the server\'s sense).',
   HARDCHARGER_VERSION: 'The server\'s version, such as <code>2.0.0-rc.1</code> (as <code>--version</code> prints it).',

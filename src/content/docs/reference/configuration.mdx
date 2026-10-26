@@ -33,7 +33,7 @@ Besides the options below, the server takes these command-line actions, which ru
 | `--verify-tls URL` | Fetch a URL over HTTPS with the system's CA bundle, then exit 0 or 1 |
 | `--verify-audit-log FILE [--verify-audit-log-partial]` | Check an [audit log](/guides/instrumentation-and-audit/#the-audit-log)'s hash chain |
 
-96 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
+97 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
 
 ## Listener
 
@@ -96,6 +96,18 @@ Most partitions a result is split into for a client that reads them at once (1: 
 | YAML | `max_result_partitions: …` |
 | Type | integer |
 | Default | `32` |
+
+### `max_ingest_message_bytes`
+
+Most wire bytes per Arrow ingest message and expanded buffer bytes per batch (default: 64 MiB)
+
+| | |
+|---|---|
+| Flag | `--max-ingest-message-bytes <n>` |
+| Environment | `HARDCHARGER_MAX_INGEST_MESSAGE_BYTES` |
+| YAML | `max_ingest_message_bytes: …` |
+| Type | integer |
+| Default | `67108864` |
 
 ### `web_ui`
 

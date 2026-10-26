@@ -243,6 +243,15 @@
     "description": "Largest request header block accepted, in bytes."
   },
   {
+    "name": "hardcharger.max_ingest_message_bytes",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "67108864",
+    "cli_flag": "--max-ingest-message-bytes",
+    "env_var": "HARDCHARGER_MAX_INGEST_MESSAGE_BYTES",
+    "description": "Maximum wire bytes per Arrow ingest message and total expanded buffer bytes per batch."
+  },
+  {
     "name": "hardcharger.max_sessions",
     "scope": "STARTUP",
     "input_type": "INTEGER",

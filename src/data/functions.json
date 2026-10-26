@@ -30,6 +30,11 @@
     "return_type": "VARCHAR"
   },
   {
+    "name": "HARDCHARGER_IS_FULL_ADMIN",
+    "type": "scalar",
+    "return_type": "BOOLEAN"
+  },
+  {
     "name": "HARDCHARGER_ROLE",
     "type": "scalar",
     "return_type": "VARCHAR"
@@ -46,6 +51,16 @@
   },
   {
     "name": "hardcharger_cancel",
+    "type": "scalar",
+    "return_type": "BOOLEAN"
+  },
+  {
+    "name": "hardcharger_reset_session_setting",
+    "type": "scalar",
+    "return_type": "BOOLEAN"
+  },
+  {
+    "name": "hardcharger_set_session_setting",
     "type": "scalar",
     "return_type": "BOOLEAN"
   },
@@ -275,6 +290,77 @@
     ]
   },
   {
+    "name": "hardcharger_live_queries",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "execution_id",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "statement_id",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "session_id",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "username",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "query_tag",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "sql_text",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "status",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "error_message",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "cancel_reason",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "rows_fetched",
+        "type": "BIGINT"
+      },
+      {
+        "name": "execution_start_time",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "execution_end_time",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "enqueue_time",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "fetch_start_time",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "fetch_end_time",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "cursor_close_time",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      }
+    ]
+  },
+  {
     "name": "hardcharger_metrics",
     "type": "table",
     "return_type": null,
@@ -290,6 +376,61 @@
       {
         "name": "labels",
         "type": "MAP(VARCHAR, VARCHAR)"
+      }
+    ]
+  },
+  {
+    "name": "hardcharger_monitor_info",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "instrumentation_enabled",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "queueing_enabled",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "concurrency_limit",
+        "type": "BIGINT"
+      },
+      {
+        "name": "slots_in_use",
+        "type": "BIGINT"
+      },
+      {
+        "name": "slots_available",
+        "type": "BIGINT"
+      },
+      {
+        "name": "queued_statements",
+        "type": "BIGINT"
+      },
+      {
+        "name": "queue_capacity",
+        "type": "BIGINT"
+      },
+      {
+        "name": "max_queue_wait_seconds",
+        "type": "BIGINT"
+      },
+      {
+        "name": "admin_bypass_default",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "history_backlog",
+        "type": "BIGINT"
+      },
+      {
+        "name": "history_dropped",
+        "type": "UBIGINT"
+      },
+      {
+        "name": "history_failed",
+        "type": "UBIGINT"
       }
     ]
   },
@@ -562,6 +703,108 @@
     ]
   },
   {
+    "name": "hardcharger_server_settings",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "value",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "session_value",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "global_value",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "scope",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "settable",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "cli_flag",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "input_type",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "default_value",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "env_var",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "description",
+        "type": "VARCHAR"
+      }
+    ]
+  },
+  {
+    "name": "hardcharger_session_settings",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "value",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "session_value",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "global_value",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "scope",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "settable",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "cli_flag",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "input_type",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "default_value",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "env_var",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "description",
+        "type": "VARCHAR"
+      }
+    ]
+  },
+  {
     "name": "hardcharger_sessions",
     "type": "table",
     "return_type": null,
@@ -592,6 +835,14 @@
       },
       {
         "name": "is_current",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "client_ip",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "client_is_local",
         "type": "BOOLEAN"
       }
     ]

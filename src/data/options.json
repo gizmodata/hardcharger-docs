@@ -61,6 +61,16 @@
       "description": "most partitions a result is split into for a client that reads them at once (1: never split)"
     },
     {
+      "name": "max_ingest_message_bytes",
+      "group": "Listener",
+      "flag": "--max-ingest-message-bytes",
+      "env": "HARDCHARGER_MAX_INGEST_MESSAGE_BYTES",
+      "yaml_key": "max_ingest_message_bytes",
+      "type": "integer",
+      "default": "67108864",
+      "description": "most wire bytes per Arrow ingest message and expanded buffer bytes per batch (default: 64 MiB)"
+    },
+    {
       "name": "web_ui",
       "group": "Listener",
       "flag": "--web-ui",

@@ -11,6 +11,25 @@ all of DuckDB's threads, **in one transaction**: if anything fails, no rows from
 remain. A large upload can also go as [several parts at once](#partitioned-uploads), over
 separate connections.
 
+## Upload message limits
+
+From v2.1.0, `max_ingest_message_bytes` defaults to **64 MiB per Arrow IPC message**.
+Wire bytes (including framing and metadata) and the combined expanded buffers of a
+compressed message must fit before allocation/decompression. This covers ordinary
+ingest, each partitioned-ingest part, dictionary messages and Arrow prepared parameters.
+An oversized message returns HTTP 413 `payload_too_large`. A rejected later part aborts
+the ingest without committing earlier parts.
+
+The limit applies to each message, not the entire upload. Split large data into smaller
+record batches. Administrators can change the positive startup setting through YAML,
+`--max-ingest-message-bytes` or `HARDCHARGER_MAX_INGEST_MESSAGE_BYTES`, then restart the
+server. It is also visible in Server Configuration. Aggregate stream-memory budgets
+and resumable engine-worker scheduling remain separate follow-up work.
+
+In v2.1.0, `append` and `create_append` into an existing table bind columns by name.
+Reordering uploaded columns preserves their values; omitted columns use table defaults,
+and unknown columns fail without writing rows.
+
 ## From Python
 
 `adbc_ingest` takes a `pyarrow.Table`, a `RecordBatchReader` (which streams: the data never has

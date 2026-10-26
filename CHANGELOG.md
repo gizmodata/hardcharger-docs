@@ -6,7 +6,13 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-26
+
 ### Added
+
+- Document per-message ingest allocation limits and name-based append column binding.
+- Regenerate the configuration, SQL functions, settings and release notes from v2.1.0;
+  enable instrumentation while describing its administrator-only table functions.
 
 - Describe query step elapsed times, compact same-day end timestamps, live and missing
   timings, plus the macOS Window menu's workspace/inspector list.

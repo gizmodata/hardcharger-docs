@@ -1,6 +1,6 @@
 {
   "name": "hardcharger-docs",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "private": true,
   "type": "module",
   "description": "Documentation for Hardcharger, GizmoData's DuckDB 2.0 server on the Warp SQL protocol",

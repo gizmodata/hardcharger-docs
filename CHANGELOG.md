@@ -8,12 +8,18 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Added
 
+- Desktop guide covers copyable connection examples, TLS detection, client credentials
+  and CA certificates, plus the About screen's documentation link.
 - v2.1.0+ desktop app guide, package selection in the quickstart, and SQL Editor guides
   for SQL Monitor and Server Configuration, linked from the home page and sidebar.
 - Desktop dashboard design-preview screenshots and real SQL Monitor / Server Configuration
   captures from temporary servers with synthetic data, in light and dark themes.
 
 ### Changed
+
+- Document v2.1.0+ native runtime extensions, automatic installation/loading matching
+  GizmoSQL, custom repositories, offline caches, iOS built-ins and upstream DuckLake
+  metadata-format behavior. Record Python/server version alignment and `.postN` fixes.
 
 - Retire the pre-2.0 ban on version-availability notes so readers can distinguish v2.1.0+
   features from their installed 2.0 server. No generated reference pages are changed.

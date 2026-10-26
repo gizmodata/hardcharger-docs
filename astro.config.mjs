@@ -104,6 +104,7 @@ export default defineConfig({
 						{
 							label: 'Data',
 							items: [
+								{ label: 'DuckDB extensions', slug: 'guides/extensions' },
 								{ label: 'DuckLake and S3', slug: 'guides/ducklake-and-s3' },
 								{ label: 'Bulk ingest', slug: 'guides/bulk-ingest' },
 							],

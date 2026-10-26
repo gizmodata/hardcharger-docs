@@ -14,6 +14,7 @@ const shots = [
 	{ name: 'sql-monitor', path: '/guides/sql-monitor/' },
 	{ name: 'server-configuration', path: '/guides/server-configuration/' },
 	{ name: 'web-ui', path: '/guides/web-ui/' },
+	{ name: 'extensions', path: '/guides/extensions/' },
 ];
 const sizes = { desktop: { width: 1440, height: 900 }, phone: { width: 390, height: 844 } };
 const pages = fs

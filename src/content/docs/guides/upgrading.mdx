@@ -15,9 +15,12 @@ say what, under **Changed**. Patch versions only fix things.
    options (an unknown option stops the server at startup, so you'll know at once) and changed
    defaults.
 
-2. **Check the database file format.** DuckDB 2.0 reads files written by DuckDB 1.x. A file is
-   only upgraded to a newer storage format when you ask for it (`storage_version`), so you can
-   go back as long as you didn't.
+2. **Check the database file format.** DuckDB 2.0 reads files written by DuckDB 1.x. An existing
+   plain DuckDB database retains its format unless you request an upgrade.
+   **v2.1.0+ removes Hardcharger’s DuckLake metadata compatibility patch:** upstream DuckLake
+   can upgrade a DuckDB metadata file on writes/checkpoints so older readers cannot reopen
+   it. Back up metadata before upgrading. `storage_version` does not override DuckLake’s
+   metadata choice. See [extension and metadata compatibility](/guides/extensions/#ducklake-metadata-compatibility).
 
 3. **Upgrade.**
 

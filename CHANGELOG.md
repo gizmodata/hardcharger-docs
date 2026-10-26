@@ -8,6 +8,8 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ### Added
 
+- Describe query step elapsed times, compact same-day end timestamps, live and missing
+  timings, plus the macOS Window menu's workspace/inspector list.
 - Explain workspace session cleanup on native close, transaction confirmation, and
   the separate lifetimes of the dashboard, workspace and query inspectors.
 - SQL Monitor guide explains the bordered, scrollable SQL text and Copy SQL button.

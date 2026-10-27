@@ -41,6 +41,7 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 GENERATED = [
+    "src/data/server-version.json",
     "src/data/options.json",
     "src/data/settings.json",
     "src/data/functions.json",
@@ -242,6 +243,10 @@ def generate(out: pathlib.Path) -> None:
     files["src/data/options.json"] = options(bin_dir)
     files["src/content/docs/reference/configuration.mdx"] = configuration_page(files["src/data/options.json"])
     with Server(bin_dir, "--enable-metrics", "--metrics-port", "0", "--enable-instrumentation") as server:
+        files["src/data/server-version.json"] = json.dumps(
+            obj={"version": server.query_json(sql="SELECT HARDCHARGER_VERSION() AS version")[0]["version"]},
+            indent=2,
+        ) + "\n"
         files["src/data/settings.json"] = settings(server)
         files["src/data/functions.json"] = functions(server)
         files["src/data/cli-dot-commands.txt"] = cli_dot_commands(server)

@@ -1,21 +1,17 @@
 {
-  "captured_at": "2026-10-26",
-  "source_repository": "gizmodata/hardcharger",
-  "source_commit": "3107c128caf6b57f00b61a55e73c2aef76a9925a",
-  "source_note": "v2.1.0 feature preview; same UI capture test as committed source",
-  "ui_capture_command": "npx playwright test test/e2e/documentation-screenshots.spec.ts",
-  "desktop_capture_command": "npx playwright test test/preview.spec.ts",
-  "desktop_note": "Design preview with sample status, labeled in the UI and captions; no live desktop credentials or user database used",
-  "ui_note": "Real temporary servers and synthetic sales.orders data; Chromium captures, also verified in WebKit",
-  "files": {
-    "desktop-preview-light.png": "20fbba9705cda80f37f4d5cacbe7065f961a277312fc666e1c9750558eb28af3",
-    "desktop-preview-dark.png": "390ae704cfa6b96f68d9b987da41f913db1e984e9dc85fb29440c3e10a890440",
-    "web-ui-monitor-dark.png": "32e34b96a325bbdc0a6e86649060a3243fc07edf27508d01c43d06e7021dce66",
-    "web-ui-monitor-light.png": "1b05ac47a7d879bb80e0cb994e493e3b9a74fbe30635e867508d61980544fde5",
-    "web-ui-configuration-dark.png": "08ae44f316fd33b47b569b74d7e43c8a61f28485623a10f196826e848d4daae6",
-    "web-ui-configuration-light.png": "dc1c480a0c3f790d99e77e63947f10635b5124aae0f4d96a9061c1de4f8b63ed"
+  "server": {
+    "name": "Hardcharger",
+    "version": "2.1.0 (DuckDB v2.0.0)"
   },
+  "release": "v2.1.0",
+  "commit": "f168bba03275889e7ad2a0619fd86a5ab43d96ca",
+  "sample_data": "TPC-H SF0.01; isolated temporary database and synthetic accounts",
   "server_version": "2.1.0",
-  "server_source_branch": "feature/loadable-extensions",
-  "server_binary_sha256": "9ec41d954ddc50d41e20a087d8a7bade96edf041145b939df4d1ddb26294c759"
+  "captured_at": "2026-10-27",
+  "capture_command": "node scripts/hardcharger-screenshots/capture.mjs (gizmodata-website)",
+  "screenshots": {
+    "desktop-preview-light.png": "c6741bfda6036b498b70d37c70f42499caf08835dd455652d38281347359bc34",
+    "desktop-preview-dark.png": "4858eaffdd891a29b5da0ee8d68e5018733d764551bf6cd6041ec98e67ebe8af"
+  },
+  "desktop_note": "Released v2.1.0 frontend with synthetic controller status at normal 1120x880 CSS pixels, device scale 2; no style or zoom overrides"
 }

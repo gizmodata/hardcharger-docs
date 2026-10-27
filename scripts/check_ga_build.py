@@ -9,10 +9,12 @@ domain; or if the sitemap isn't on it. CI runs it on a DOCS_GA=true build of eve
 switch is proven before it is flipped (README, "Private preview and GA").
 """
 import re
+import json
 import sys
 from pathlib import Path
 
 DOMAIN = "docs.hardcharger.gizmodata.com"
+SERVER_VERSION = json.loads((Path(__file__).resolve().parent.parent / "src/data/server-version.json").read_text())["version"]
 FORBIDDEN = [
     re.compile(p, re.I) for p in (
         r"private preview",
@@ -36,6 +38,11 @@ def main() -> int:
     bad: list[str] = []
     for page in pages:
         text = page.read_text(encoding="utf-8", errors="replace")
+        badge = re.search(r'<a\b[^>]*class="[^"]*\bhc-version\b[^"]*"[^>]*>(.*?)</a>', text, re.S)
+        if page == out / "index.html" and not badge:
+            bad.append("index.html: missing server version badge")
+        if badge and badge.group(1).strip() != SERVER_VERSION:
+            bad.append(f"{page.relative_to(out)}: header version differs from server {SERVER_VERSION}")
         for pattern in FORBIDDEN:
             for m in pattern.finditer(text):
                 snippet = text[max(0, m.start() - 60):m.end() + 60].replace("\n", " ")

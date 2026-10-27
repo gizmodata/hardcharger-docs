@@ -5,9 +5,10 @@
 // (DOCS_GA=true, src/components/ga.ts) describes the release.
 import Default from '@astrojs/starlight/components/SocialIcons.astro';
 import { ga } from './ga.ts';
+import { version as serverVersion } from '../data/server-version.json';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-const version = ga ? '2.0.0' : '2.0.0-rc.1 · main';
-const title = ga ? 'These docs describe Hardcharger 2.0.0' : 'These docs describe Hardcharger 2.0.0-rc.1, as built from its main branch';
+const version = ga ? serverVersion : `${serverVersion} · main`;
+const title = `These docs describe Hardcharger ${serverVersion}${ga ? '' : ', as built from its main branch'}`;
 ---
 
 <a class="hc-version" href={`${base}/reference/versions/`} title={title}>

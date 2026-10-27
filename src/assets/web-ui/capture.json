@@ -1,29 +1,23 @@
 {
-  "server_version": "2.0.0",
-  "duckdb_version": "2.0.0",
-  "commit": "f43b705730d5ad69d0c7a8b7d94487c11d8e5f10",
-  "release_run": 39539252886,
-  "artifact": "ui-e2e-chromium",
+  "server": {
+    "name": "Hardcharger",
+    "version": "2.1.0 (DuckDB v2.0.0)"
+  },
+  "release": "v2.1.0",
+  "commit": "f168bba03275889e7ad2a0619fd86a5ab43d96ca",
+  "sample_data": "TPC-H SF0.01; isolated temporary database and synthetic accounts",
+  "server_version": "2.1.0",
+  "captured_at": "2026-10-27",
+  "capture_command": "node scripts/hardcharger-screenshots/capture.mjs (gizmodata-website)",
   "screenshots": {
-    "query-dark.png": {
-      "artifact_path": "test-results/screenshots-screenshots-of-the-main-views-chromium/query-dark.png",
-      "sha256": "e5aa2f631a68ccf2e3e49f4f559ad1e76f7859262f656a6513dbbee352b3ae45"
-    },
-    "sign-in-dark.png": {
-      "artifact_path": "test-results/screenshots-screenshots-of-the-main-views-chromium/sign-in-dark.png",
-      "sha256": "91b2be0e974c60ad960d08f7d7cc4a89d3abb0b6806804c77f94e8f8014e1dbb"
-    },
-    "saved-dark.png": {
-      "artifact_path": "test-results/screenshots-screenshots-of-the-main-views-chromium/saved-dark.png",
-      "sha256": "1009f782c853e4c25ce956952b9bf9516f0a89bedcec6b104c192525af35e1b3"
-    },
-    "api-dark.png": {
-      "artifact_path": "test-results/screenshots-screenshots-of-the-API-page-chromium/api-try-dark.png",
-      "sha256": "cfb0e243f47105dd88ba3b36f7b66fb61ed3b43fd088d7aedcaa39913d2bb0a1"
-    },
-    "upload-dark.png": {
-      "artifact_path": "test-results/upload-screenshots-of-the-upload-dialog-light-and-dark-chromium/upload-preview-dark.png",
-      "sha256": "cef74e72a7d41492a15e1dd3a78e5df53aae8fc0c57596e90e8c78d85ba27a33"
-    }
+    "query-dark.png": "1c629e45d7d51a999022ce94933def6f69934ff7aa0d30eb469e1b5bd17eccec",
+    "sign-in-dark.png": "4cf4571280344890df93c9eea918c3bbf3ad1f96ba8b9746db028573549aef0f",
+    "saved-dark.png": "7bf91784344233fd73be58e3b84138e9f924147005be3c046355d61e86d493f9",
+    "api-dark.png": "a2f6e251a4882bdb80485d9a2ada8a01d59f320176d7ff7f75af8918eeba15bd",
+    "upload-dark.png": "a05b508d818d60f8e22dd69c5593b99a0e57cab3a730f40f1cc231b0b29c00de",
+    "monitor-light.png": "872c6494627272bf2aab004e54db8f527279414362e02f3ababefebe56f33935",
+    "monitor-dark.png": "ee9c83b228137bc7aea5b546c7615cf40e1cb8e12c6daa16c8f8eefdd725d1cd",
+    "configuration-light.png": "e5b88c8ebbcefcbc9fb7b40c37e16e7e1b41c699d99b6f3917e9e8ea873281d8",
+    "configuration-dark.png": "901dbf3c462eed72420313b861e475b1081daf45910b93efd00af8c6f35316ed"
   }
 }

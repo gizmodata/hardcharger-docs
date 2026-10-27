@@ -9,7 +9,7 @@ Hardcharger has a web UI compiled into `hardcharger-server`. There is nothing ex
 the server serves it at `/ui` on its own port, with its own TLS certificate, and the page
 talks [Warp SQL](/concepts/warp-sql/) back to the same origin. It is off by default.
 
-![The web UI in its dark theme: the schema browser, two editor tabs, and a result with a selection](../../../assets/web-ui/query-dark.png)
+![The web UI in its dark theme: the schema browser, a revenue query, and its results](../../../assets/web-ui/query-dark.png)
 
 - **SQL editor** in tabs (up to 20), each with its own server session, so a long query or an
   open transaction in one tab never touches another. Ctrl/⌘+Enter runs the statement under the
@@ -141,7 +141,7 @@ It reads the OpenAPI 3.1 document the server serves at `GET /warp/v1/openapi.jso
 on the [Warp SQL](/concepts/warp-sql/#the-api-description) page), and like the rest of the UI
 it is there only when `web_ui` is on.
 
-![The API page in its dark theme: Try it out on Read a session, with the server's answer](../../../assets/web-ui/api-dark.png)
+![The API page in its dark theme: the statement-submission endpoint and its request schema](../../../assets/web-ui/api-dark.png)
 
 - **Try it out** runs a request against this server, signed in as you. The page adds your
   access token to each request as it is sent, so there is no token to paste and no

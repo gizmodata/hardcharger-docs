@@ -6,6 +6,15 @@ All notable changes to the Hardcharger documentation are recorded here. The form
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-10-27
+
+### Fixed
+
+- Show Hardcharger 2.1.0 in the header and Versions page, using metadata generated from
+  the server instead of a separate hard-coded version.
+- Refresh the Desktop dashboard and web UI screenshots from v2.1.0, including SQL Monitor
+  and Server Configuration, with a normal-size Desktop window and current release labels.
+
 ## [2.1.0] - 2026-10-26
 
 ### Added

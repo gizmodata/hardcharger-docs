@@ -5,17 +5,18 @@ description: "Which Hardcharger version these docs describe, how versions and co
 
 import Preview from '../../../components/Preview.astro';
 import Ga from '../../../components/Ga.astro';
+import { version } from '../../../data/server-version.json';
 
 <Preview>
 
-These docs describe **version 2.0.0-rc.1** of Hardcharger, the release candidate for 2.0.0, as
-built from its main branch. Every example runs against a server built from `main`.
+These docs describe **version {version}** of Hardcharger, as built from its main branch.
+Every example runs against a server built from `main`.
 
 </Preview>
 
 <Ga>
 
-These docs describe **version 2.0.0** of Hardcharger, its first general release. Every example
+These docs describe **version {version}** of Hardcharger. Every example
 runs against a server of that version in CI.
 
 </Ga>
@@ -26,7 +27,9 @@ runs against a server of that version in CI.
   options or behavior, a minor version adds to them, and a patch version only fixes things.
 - A release candidate (`2.0.0-rc.1`) comes before its release. It is a pre-release: its image
   is tagged with its version (`:2.0.0-rc.1`), never `:latest`.
-- The server, the `hardcharger` CLI and the container image share one version. The drivers
+- The server, the `hardcharger` CLI, the desktop app, the `hardcharger` Python server package,
+  and the container image share one base version. Python-only packaging fixes use a `.postN`
+  release. The drivers
   ([Python](/clients/python/), [Go](/clients/go/), [JDBC](/clients/jdbc/),
   [JavaScript](/clients/javascript/)) are versioned on their own and speak
   [Warp SQL](/concepts/warp-sql/), whose protocol version the server reports at `GET /warp`

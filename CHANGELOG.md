@@ -1,10 +1,24 @@
 # Changelog
 
 All notable changes to the Hardcharger documentation are recorded here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). A docs release takes the version of
+the Hardcharger release it describes; a documentation-only fix adds `.postN` (`2.1.1.post1`), as
+the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed the 2.1.0 docs.)
 
 ## [Unreleased]
+
+## [2.1.1.post1] - 2026-10-27
+
+Documents Hardcharger 2.1.1.
+
+### Changed
+
+- Describe Hardcharger 2.1.1 in the header and Versions page, and add its release notes.
+
+### Added
+
+- DuckLake and S3 guide: tables with many partition files, the open-file limit 2.1.1 raises at
+  startup, the setting for earlier versions, and compaction.
 
 ## [2.1.1] - 2026-10-27
 

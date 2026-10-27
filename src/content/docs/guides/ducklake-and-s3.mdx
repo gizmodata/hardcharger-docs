@@ -119,6 +119,14 @@ docker compose down
   `GRANT SELECT ON CATALOG lake TO analyst`.
 - **Make it the default.** End the init SQL with `USE lake;` to make it every session's
   starting catalog, or set the session option `catalog` from the client.
+- **Many files.** A query over a DuckLake table holds many of its data files open at once, so a
+  table partitioned into thousands of files needs more than the 1024 open files that containers
+  and services usually start with. In **v2.1.1+** the server raises its soft limit to the hard
+  limit at startup (its log says `raised the open-file limit`) and warns when the hard limit is
+  below 8192; raise that with `docker run --ulimit nofile=1048576:1048576`, Compose's
+  `ulimits: nofile:` or systemd's `LimitNOFILE=`. On 2.1.0 a query over such a table fails with
+  `Too many open files` unless the container starts with that higher limit. Compacting the
+  lake now and then (`CALL ducklake_merge_adjacent_files('lake')`) also keeps the file count down.
 
 ## Logs in DuckLake
 

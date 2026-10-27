@@ -13,6 +13,27 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+### Changed
+
+- **Releases publish the Python package and the ADBC images themselves.** Once a release's
+  GitHub Release is published, its run publishes the matching `hardcharger` package to PyPI
+  and the `:X.Y.Z-adbc` images, each after its own tests on the release tag, and fails if
+  either doesn't publish. See "After the release" in `docs/releasing.md`.
+
+## [2.1.1] - 2026-10-27
+
+A patch release that fixes "Too many open files" on DuckLake tables with many partition files.
+
+### Fixed
+
+- **"Too many open files" reading a partitioned DuckLake table** ([#8](https://github.com/gizmodata/hardcharger/issues/8)). A scan of a DuckLake
+  table holds many of its data files open at once, and a table with thousands of partition
+  files went past the 1024-file soft limit that Docker, systemd and Kubernetes start
+  processes with, so queries failed with `IO Error: Cannot open file ...: Too many open files`.
+  The server now raises its soft open-file limit to the hard limit at startup (as Go programs
+  and most servers do), logs `raised the open-file limit` with the old and new values, and
+  warns when even the hard limit is below 8192. Windows has no such limit and is unchanged.
+
 ## [2.1.0] - 2026-10-26
 
 Hardcharger 2.1 introduces a desktop app for macOS and Windows, SQL monitoring and

@@ -13,12 +13,58 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+## [2.1.2] - 2026-10-27
+
+Hardcharger Desktop now updates itself. 2.1.0 and 2.1.1 can't, so desktop users install 2.1.2
+once from the [release](https://github.com/gizmodata/hardcharger/releases/tag/v2.1.2) (its
+first launch moves the app's data to the final app identifier); every later release then
+arrives in-app. The tray shows whether the server is running, and the macOS installer shows
+where to drag the app.
+
+### Added
+
+- **Hardcharger Desktop updates itself** ([#7](https://github.com/gizmodata/hardcharger/issues/7)).
+  It checks for a newer release at launch and every six hours, shows **Update available** with
+  the release notes, and with one click downloads, installs and restarts. If the server is
+  running, it asks first, as **Stop** does. Updates are signed with GizmoData's update key and
+  bound to their version; About has **Check for updates**, automatic checks (on) and release
+  candidates (off). Releases publish `latest.json` beside the installers.
+
 ### Changed
+
+- **The desktop app's identifier is now `com.gizmodata.hardcharger.desktop`** (it was
+  `…desktop.preview`). The first launch moves the app's data folder (database, settings,
+  certificates, logs) to the new name and leaves a link at the old one, so paths in your own
+  settings keep working; saved credentials stay where they are. Install this release once by
+  hand; later releases update in-app.
+
+- **The desktop tray shows the server's state.** The tray icon carries a green dot while the
+  server runs and a red one while it's stopped (drawn for light and dark menu bars on macOS),
+  and the tray and Server menus enable only what applies: Start while the server is stopped,
+  Stop, Restart and Open SQL Workspace while it runs. A server that exits on its own turns the
+  dot red within a second.
+
+- **The macOS installer shows where to drag the app.** The disk image's window now has an arrow
+  from Hardcharger to the Applications shortcut, with "Drag Hardcharger to Applications"
+  underneath, in the app's own font and colours (Retina and standard resolutions).
 
 - **Releases publish the Python package and the ADBC images themselves.** Once a release's
   GitHub Release is published, its run publishes the matching `hardcharger` package to PyPI
   and the `:X.Y.Z-adbc` images, each after its own tests on the release tag, and fails if
   either doesn't publish. See "After the release" in `docs/releasing.md`.
+
+### Fixed
+
+- **Desktop: blue buttons no longer go blank under the pointer.** Hovering a primary button
+  (Open SQL workspace, Trust CA and open workspace, the update dialogs) turned it white, text
+  included; it now darkens to the hover blue.
+
+### Security
+
+- **The web UI's SQL editor uses DOMPurify 3.4.17.** Monaco Editor 0.57.0 (the newest) pins
+  3.4.15, which has five published advisories (GHSA, one rated critical); an npm override in
+  `ui/package.json` lifts it. None of them could be reached: each needs a DOMPurify option
+  Monaco doesn't use (`SAFE_FOR_TEMPLATES`, `IN_PLACE` or the XHTML parser).
 
 ## [2.1.1] - 2026-10-27
 

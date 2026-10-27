@@ -132,6 +132,37 @@ The workspace includes the same administrator tabs as the server's browser-based
 
 Both require an unrestricted administrator. See the [SQL Monitor guide](/guides/sql-monitor/)
 for status meanings, profiles, session controls and runtime-setting scopes. For building
-and signing the app, see [desktop/README.md](https://github.com/gizmodata/hardcharger/blob/feature/desktop-app/desktop/README.md).
+and signing the app, see [desktop/README.md](https://github.com/gizmodata/hardcharger/blob/main/desktop/README.md).
 
 **About Hardcharger** links to the documentation, product website and GizmoData.
+
+## Menu bar and tray
+
+In **v2.1.2+** the bull in the menu bar (macOS) or system tray (Windows) shows the server's
+state: a green dot while it runs, a red one while it's stopped. Its menu and the app's
+**Server** menu offer only what applies: **Start Server** while the server is stopped;
+**Stop Server**, **Restart Server** and **Open SQL Workspace** while it runs.
+
+## Updates
+
+**Available in v2.1.2+.** Hardcharger Desktop checks for a newer release shortly after it
+opens and every six hours, and shows **Update available** in the header when there is one.
+Click it to read the release notes, then **Download and restart** (or **Download and
+install** while the server is stopped). The download runs while the server keeps working. If
+the server is running, the app asks before stopping it, as **Stop** does: the SQL workspace
+closes, active queries are interrupted and clients disconnect. It then installs the update,
+restarts, and starts the server again if **Start server when Hardcharger opens** is on.
+**Skip this version** hides that release's badge; **Later** keeps it.
+
+**About Hardcharger** shows the app's own version, **Check for updates**, and two settings:
+**Check for updates automatically** (on by default) and **Include release candidates** (off).
+Updates are signed with GizmoData's update key, and the app installs only a package whose
+signature matches it and names the version being installed. On Windows, installing asks for
+administrator approval, as the original installation did. An offline computer or a failed
+check never affects the server.
+
+2.1.0 and 2.1.1 can't update themselves: install 2.1.2 once from the
+[downloads](#choose-a-download), and later releases update in-app. 2.1.2 also gives the app
+its final identifier, `com.gizmodata.hardcharger.desktop`: its first launch moves the data
+folder from `…desktop.preview` (database, settings, certificates, logs), leaves a link at the
+old name so paths in your settings keep working, and keeps your saved credentials.

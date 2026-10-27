@@ -7,6 +7,23 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.1.2] - 2026-10-27
+
+Documents Hardcharger 2.1.2.
+
+### Added
+
+- Desktop app guide: in-app updates (the header badge, release notes, download and restart,
+  skipping a version, the automatic-check and release-candidate settings, signature checks),
+  the one-time install of 2.1.2 from 2.1.0 or 2.1.1, and the move to the final app identifier.
+- Desktop app guide: the menu bar and tray icon's running and stopped dot, and menu items that
+  apply only to the server's current state.
+
+### Changed
+
+- Describe Hardcharger 2.1.2 in the header and Versions page, and add its release notes.
+- Link the desktop build instructions on `main` instead of the retired desktop branch.
+
 ## [2.1.1.post1] - 2026-10-27
 
 Documents Hardcharger 2.1.1.

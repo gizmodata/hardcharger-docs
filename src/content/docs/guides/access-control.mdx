@@ -213,7 +213,9 @@ Paths are compared as DuckDB opens them, not as they are spelled:
   is `az://`), bucket, container and host names are compared in lower case, and a trailing `/` makes
   no difference. `s3://acme-landing/orders` covers `s3://acme-landing/orders/2026/10.csv`, not
   `s3://acme-landing/orders-old/`.
-- A local path is compared with symlinks resolved, so a symlink can't lead out of a location.
+- A local path is compared with symlinks resolved, so a symlink can't lead out of a location:
+  not the path a statement names, and not any file it opens, lists or matches with a glob
+  (a match that leads out is left out of the listing).
 - A glob is covered when its fixed part is: `s3://acme-landing/orders/*/*.csv` is,
   `s3://acme-landing/*/x.csv` isn't.
 - A remote path that could name one object two ways is refused instead of compared: `.` or `..`
@@ -233,7 +235,8 @@ storage privileges they hold. Statements on the catalog's tables still read and 
 the tables' grants, because DuckLake does that itself; the administrator may still look. A file
 written into a lake's storage could be registered as a table's rows, and a listing shows another
 catalog's files, so `COPY … TO` a lake's path, `read_parquet` of a lake's files and `glob` over
-them are refused, and so is a glob, or a `COPY … TO` with `PARTITION_BY`, aimed above a lake's path.
+them are refused, and so is a glob, or a `COPY … TO` with `PARTITION_BY`, aimed above a lake's path,
+or a symlink that leads into one.
 
 #### Upgrading from 2.1
 

@@ -236,11 +236,13 @@ GizmoSQL 1.x server created.
 Both apply a token's `catalog_access` rules whatever its role: an `admin` token with rules
 reads and writes only where they allow (temp included) and sees only those catalogs; an
 administrator without rules (the password administrator, or a token without the claim) is
-unrestricted. Both let a restricted administrator keep SET GLOBAL and CHECKPOINT. Hardcharger
-differs on purpose where 1.x's administrator rights reached data around the rules:
+unrestricted. Both let a restricted administrator keep CHECKPOINT. Hardcharger differs on
+purpose where 1.x's administrator rights reached data around the rules, or changed the server
+for every other tenant:
 
 | A restricted administrator (`role: admin` with `catalog_access`) | GizmoSQL 1.x | Hardcharger |
 |---|---|---|
+| `SET GLOBAL` (and `SET` of a global-only setting such as `threads`) | allowed | refused (it applies to every other tenant's sessions) |
 | ATTACH / DETACH | allowed | refused (DETACH a denied catalog, ATTACH its file under a name the rules allow, read it) |
 | files: `read_csv()`, `read_blob()`, `COPY ... FROM/TO` a file, `FROM 'file'` | allowed | refused (the database files themselves are files) |
 | INSTALL / LOAD, CREATE / DROP SECRET, EXPORT / IMPORT DATABASE | allowed | refused |

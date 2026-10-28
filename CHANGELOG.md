@@ -19,6 +19,8 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 ### Changed
 
 - Users, roles and grants: `ALL [PRIVILEGES]` on a schema or catalog includes its DDL privileges.
+- Catalog access rules and Coming from GizmoSQL: an administrator's token with rules no longer
+  changes server-wide settings (`SET GLOBAL`); it keeps `CHECKPOINT`.
 
 ## [2.1.2] - 2026-10-27
 

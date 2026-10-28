@@ -108,7 +108,7 @@ The token's `role` limits what kind of statement runs, and the rules limit where
 
 | Role | Can |
 |---|---|
-| `admin` | Read and write data where the rules allow; instance administration that reaches no data (SET GLOBAL, CHECKPOINT). Not the server's own catalogs, other sessions or KILL SESSION (see below). |
+| `admin` | Read and write data where the rules allow, and `CHECKPOINT`. Not `SET GLOBAL`, the server's own catalogs, other sessions or `KILL SESSION` (see below). |
 | `user` | Read and write data where the rules allow; no file-system or instance-level commands. |
 | `readonly` | Read where the rules allow; nothing that modifies state. |
 
@@ -128,8 +128,13 @@ ATTACH and DETACH (it could detach a denied catalog and attach its file under a 
 allow), files (`read_csv()`, `COPY ... TO`), extensions, secrets and EXPORT/IMPORT DATABASE are
 refused, as are macros, and under access control it runs no access-control statements. It does
 not read the instrumentation or log catalogs (a read would expose other sessions' SQL), sees
-only its own session in `hardcharger_sessions()`, and cannot `KILL SESSION`. GizmoSQL 1.x let
-an administrator's token keep those; see [Coming from GizmoSQL](/get-started/coming-from-gizmosql/).
+only its own session in `hardcharger_sessions()`, and cannot `KILL SESSION`. It changes no
+setting for the whole server either (`SET GLOBAL`, `RESET GLOBAL`, or `SET` of a setting DuckDB
+keeps only globally, such as `threads`), because a global setting applies to every other
+tenant's sessions: one tenant's token could starve the rest (`threads`, `memory_limit`) or cut
+every catalog off its object storage until a restart (`enable_external_access = false`). Settings
+of its own session (`SET TimeZone`, `SET search_path`) still work. GizmoSQL 1.x let an
+administrator's token keep those; see [Coming from GizmoSQL](/get-started/coming-from-gizmosql/).
 
 A view created by a token with rules gets no owner: the token's rights are its rules, for its
 own sessions only. Such a view reads with each reader's own rights (the creator's rules

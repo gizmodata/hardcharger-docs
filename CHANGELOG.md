@@ -7,6 +7,10 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-28
+
+Documents Hardcharger 2.2.0.
+
 ### Added
 
 - Users, roles and grants: the storage privileges (`READ` / `WRITE OBJECT STORAGE`, `READ` /
@@ -21,6 +25,7 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 - Users, roles and grants: `ALL [PRIVILEGES]` on a schema or catalog includes its DDL privileges.
 - Catalog access rules and Coming from GizmoSQL: an administrator's token with rules no longer
   changes server-wide settings (`SET GLOBAL`); it keeps `CHECKPOINT`.
+- Release notes and the server version (the header and Versions page) are regenerated for 2.2.0.
 
 ## [2.1.2] - 2026-10-27
 

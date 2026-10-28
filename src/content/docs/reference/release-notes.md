@@ -13,6 +13,163 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-28
+
+2.1.5 was tagged but never released: its gate was stopped for this release, which includes all of
+it. So 2.2.0 also fixes concurrent DDL under access control failing with "access control store
+unavailable" while the store is healthy (a multi-threaded dbt run lost models to it), a
+`CHECKPOINT` right after a statement being refused while instrumentation is on, and the web UI
+editor's catalog and schema pickers not refreshing (2.1.5's notes, below, have the details).
+
+A customer's security review of catalog isolation (GizmoSQL, October 2026) found ways for one
+tenant's token to reach another tenant's DuckLake catalog. Hardcharger already refused all four;
+this release adds a test suite that replays them, and closes what the review's paths led to here:
+storage privileges that can be narrowed to locations, DuckLake storage that only DuckLake may
+touch, and database paths hidden from everyone but the administrator. `GRANT ALL` now means all.
+
+**Upgrading.** Nothing that worked through a grant stops working on its own: roles holding `READ`
+or `WRITE FILESYSTEM` keep their reach (below). What changes on purpose:
+
+- an administrator's token with `catalog_access` rules no longer changes server-wide settings
+  (`SET GLOBAL`) or reads the settings that hold credentials;
+- `duckdb_databases().path` is NULL for everyone but the administrator;
+- a file path computed by an expression or a parameter needs `READ` (or `WRITE`) on every kind of
+  storage everywhere; write it as a literal instead;
+- no store user reads or writes an attached DuckLake catalog's files directly;
+- `GRANT ALL` on a schema or catalog from now on includes its DDL privileges (grants made before
+  keep what they gave).
+
+### Added
+
+- **Storage privileges by kind of storage: `READ` / `WRITE OBJECT STORAGE` and `READ` / `WRITE
+  HTTP`.** `READ` / `WRITE FILESYSTEM` now cover only the server's own files. Object storage
+  (`s3://`, `gs://`, `r2://`, `az://`, `abfss://`) and the web (`http://`, `https://`, `hf://`)
+  each need their own privilege, so a role that may read one bucket no longer reaches every URL
+  from the server's network position. A path with a scheme Hardcharger doesn't know is refused.
+- **Storage privileges on locations.** `GRANT READ OBJECT STORAGE ON LOCATION
+  's3://bucket/exports/' TO etl` covers that prefix and everything below it, and nothing else; the
+  same for the other five (a local location is an absolute directory or file). Paths are compared
+  as DuckDB opens them: scheme aliases folded (`s3a://` is `s3://`, `gcs://` is `gs://`), bucket
+  and host names in lower case, local paths with symlinks resolved, so no symlink leads out of a
+  location. A remote path that could name one object two ways is refused rather than compared:
+  `..` or `.` segments, `//`, backslashes, user information in the host, percent-escapes in object
+  storage (on the web, escaped `.`, `/` and `\`), and `?` or `#` in object storage (DuckDB reads
+  query parameters there as S3 settings, the endpoint and credentials among them). A path computed
+  by an expression or a parameter is refused unless the user holds the privilege for every kind of
+  storage everywhere, because DuckDB reads a path as it binds it. `WITH ADMIN OPTION` on a
+  location lets its holder grant that location or one below it. `SHOW GRANTS` and
+  `hardcharger_grants()` list location grants with object type `LOCATION`. Location grants and
+  the four new privileges are kept in a store table of their own, so a 2.1 server sharing the
+  store never reads them (it denies them); its `READ FILESYSTEM` grants keep working.
+- **Tenant-isolation test suite** (`server/tests/test_tenant_isolation.py`): two DuckLake
+  catalogs with PostgreSQL metadata and object-storage data, a `user` token and an
+  administrator's token each limited to one catalog, and every statement of the review: SQL into
+  the other catalog's metadata database (`postgres_query`, `postgres_execute`, `postgres_scan`,
+  the `__ducklake_metadata_*` catalog), writes into its storage, its `ducklake_*` functions, and
+  outbound HTTP. All refused, while each token keeps full read-write on its own catalog.
+
+### Changed
+
+- **Upgrading: `READ` / `WRITE FILESYSTEM` holders keep their reach, once.** On its first start,
+  2.2 gives every role that holds `READ FILESYSTEM` everywhere `READ OBJECT STORAGE` and
+  `READ HTTP` everywhere as well (`WRITE FILESYSTEM`: the `WRITE` ones), with the same admin
+  option and grantor, because 2.1's privilege covered them. Revoke what a role doesn't need; a
+  revoke is not undone at the next start.
+
+- **`GRANT ALL` on a schema or catalog now includes its DDL privileges.** `GRANT ALL PRIVILEGES
+  ON SCHEMA analytics TO loader` used to give only `SELECT`, `INSERT`, `UPDATE` and `DELETE` on
+  the schema's tables. It now gives every privilege that applies to a schema: those four and
+  `CREATE`, `DROP` and `ALTER` `TABLE` and `VIEW`. On a catalog it also gives `CREATE SCHEMA` and
+  `DROP SCHEMA`; on a table it is unchanged. `REVOKE ALL` takes back the same set. Grants made
+  before this release keep what they gave: `GRANT ALL` has always been stored as the separate
+  privileges it stood for.
+
+### Fixed
+
+- **A statement that fails while its rows stream is logged and recorded like any other failure.**
+  Once the server has answered `200` and begun a result's Arrow stream, a failure can only end the
+  stream early; the statement's document holds the error (Warp SQL §6.6), which the `hardcharger`
+  CLI and the drivers read. The server's log, though, showed the statement starting and nothing
+  else, and its instrumentation record kept the raw error, a connection string's password
+  included. It now logs `statement failed` with the statement's id and the error, and records
+  that same loggable error.
+
+### Security
+
+- **No user reads, writes, lists or globs an attached DuckLake catalog's storage directly,
+  whatever its storage privileges.** Statements on the catalog's tables still read and write
+  there (DuckLake does, under the tables' grants), and the administrator still may. Before, a
+  user with `WRITE FILESYSTEM` could write a file into any lake's data path (where it could be
+  registered as a table's rows), and one with `READ FILESYSTEM` could read and list every lake's
+  files around its grants. A data path is compared like a location (aliases, symlinks, Azure's
+  two spellings of a container), and a glob or a directory write above it counts as reaching it.
+- **A symlink doesn't lead a store user out of its location or into a DuckLake catalog's storage.**
+  The plan check compares the paths a statement names, symlinks resolved, but a glob below them
+  matches symlinks too: `read_csv('/srv/landing/**/*.csv')` read `/srv/landing/x.csv`, a
+  symlink to a file in a directory the user had no grant on. Once any role holds `READ` or `WRITE FILESYSTEM`, the file system's
+  guard checks every file a store user's statement opens, lists or globs: one spelled inside its
+  location must really be inside a location it holds for that access, and none may resolve into a
+  DuckLake catalog's storage unless it is spelled there (as DuckLake spells its own files), even
+  for a user holding `READ FILESYSTEM` everywhere. A glob lists the matches that pass only.
+- **`duckdb_databases().path` is NULL for everyone but the administrator.** A catalog's path can
+  be its connection string, password included (`ATTACH 'postgres:... password=...'`), and every
+  user who could see the catalog could read it; it also showed the server's own file paths.
+- **`COPY ... TO` with a `FILENAME_PATTERN` that names a directory is refused under access
+  control**, so partition files can't be written outside the directory the statement was checked
+  for.
+- **An administrator's token with `catalog_access` rules changes no setting for the whole
+  server.** It could `SET GLOBAL` (and `SET` a global-only setting such as `threads`), as in
+  GizmoSQL 1.x, and so starve every other tenant (`threads = 1`, `memory_limit`), cut every
+  catalog off its object storage until a restart (`enable_external_access = false`), or point
+  extension installs at a repository of its choosing; `SET GLOBAL hardcharger.*` went through
+  too. Now it holds `CHECKPOINT` only of the system privileges: global settings, and reading the
+  settings that hold credentials, are the unrestricted administrator's. Its own session's
+  settings still work.
+
+## [2.1.5] - 2026-10-28
+
+2.1.3 and 2.1.4 were tagged but never released. 2.1.3's release gate found a `CHECKPOINT` racing
+the instrumentation writer (fixed below) and a test timeout too short for the thread-sanitizer
+build; 2.1.4 was withdrawn before its gate finished, to include the fix.
+
+Concurrent DDL under access control no longer fails with "access control store unavailable"
+while the store is healthy: a multi-threaded dbt run lost models to it. `CREATE` and `DROP`
+under access control are also several times faster, more so the more objects the store holds.
+
+### Fixed
+
+- **Concurrent DDL no longer fails with "access control store unavailable" while the store is
+  healthy.** Under access control, every `CREATE` and `DROP` records its object's owner in the
+  store. In a dbt run with several threads, some models failed with `the owner of what it
+  creates could not be recorded (Hardcharger access control store unavailable: timed out after
+  10 s (rbac_store_timeout_seconds))`, and the server logged the store as down, although the
+  store answered at once. Three causes, all fixed:
+  - Statements took turns at the store's connection under a mutex, which let callers barge
+    ahead; one that waited longer than `rbac_store_timeout_seconds` gave up with the outage
+    error. They now take turns in the order they asked, and one waiting its turn fails only
+    when a store statement has been outstanding for the timeout (a store that really doesn't
+    answer still fails statements in about the timeout, as before).
+  - Reading the store was quadratic in its rows (DuckDB rebuilds a view of every row of a
+    result for each value read), and every `CREATE` and `DROP` read the whole store twice:
+    with 5,000 owner records, one read of an in-memory store took 1.5 s; it now takes 6 ms.
+  - An owner change no longer rereads the store: it is applied to the grants the server
+    holds in memory when no other change came in between. A `CREATE TABLE` under access
+    control took 60 ms with 300 tables in the store and now takes 7 ms; 16 sessions creating
+    and dropping tables against PostgreSQL ran 5,800 statements in 30 s instead of 458, the
+    slowest in 0.16 s instead of six failing after 10 s.
+- **Web UI: the schema browser's Refresh also lists the editor's catalogs and schemas again.**
+  The Catalog and Schema pickers of every editor tab kept what they had first listed, so a
+  catalog attached or a schema created elsewhere (another session, a dbt run) appeared in the
+  schema browser after Refresh but not in the pickers. An upload into a new table now refreshes
+  them too.
+- **A `CHECKPOINT` right after a statement is no longer refused while instrumentation is on.**
+  The instrumentation writer records each statement on a connection of its own just after it
+  ends. That connection's current database was the server's, and DuckDB counts a write from
+  such a connection to another attached file (the instrumentation database) against the
+  current one, so a client's `CHECKPOINT` issued right after a statement failed with `Cannot
+  CHECKPOINT: there are other write transactions active` about half the time (2.1.2 included).
+  The instrumentation and catalog-log writers now work from their own catalogs.
+
 ## [2.1.2] - 2026-10-27
 
 Hardcharger Desktop now updates itself. 2.1.0 and 2.1.1 can't, so desktop users install 2.1.2

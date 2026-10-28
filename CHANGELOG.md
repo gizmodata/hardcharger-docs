@@ -7,6 +7,19 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+### Added
+
+- Users, roles and grants: the storage privileges (`READ` / `WRITE OBJECT STORAGE`, `READ` /
+  `WRITE HTTP`, and `READ` / `WRITE FILESYSTEM` now for the server's own files only), granting
+  them `ON LOCATION`, how paths are compared and what is refused, DuckLake storage being
+  DuckLake's, and what upgrading from 2.1 does to existing `READ` / `WRITE FILESYSTEM` grants.
+  The security model says the same in brief, and that `duckdb_databases().path` is the
+  administrator's.
+
+### Changed
+
+- Users, roles and grants: `ALL [PRIVILEGES]` on a schema or catalog includes its DDL privileges.
+
 ## [2.1.2] - 2026-10-27
 
 Documents Hardcharger 2.1.2.

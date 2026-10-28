@@ -124,9 +124,15 @@ refused: UNAUTHORIZED: [warpsql] ExecuteQuery: Permission Error: Hardcharger blo
 | Privilege | On |
 |---|---|
 | `SELECT` (optionally on columns: `SELECT (a, b)`) | a table or view, a schema, a catalog |
-| `INSERT`, `UPDATE`, `DELETE`, `ALL [PRIVILEGES]` | a table, a schema, a catalog |
+| `INSERT`, `UPDATE`, `DELETE` | a table, a schema, a catalog |
 | `CREATE TABLE`, `CREATE VIEW`, `DROP TABLE`, `DROP VIEW`, `ALTER TABLE`, `ALTER VIEW` | a schema or catalog |
 | `CREATE SCHEMA`, `DROP SCHEMA` | a catalog |
+| `ALL [PRIVILEGES]` | a table, a schema, a catalog: every privilege above that applies there |
+
+`ALL` means all of them. On a table it is `SELECT`, `INSERT`, `UPDATE` and `DELETE`; on a schema,
+those and `CREATE`, `DROP` and `ALTER` `TABLE` and `VIEW`, so a role can build in that schema; on a
+catalog, all of that and `CREATE SCHEMA` and `DROP SCHEMA`. `GRANT ALL` is stored as the separate
+privileges it stands for (`SHOW GRANTS` lists each), and `REVOKE ALL` takes back the same set.
 
 ```sql test profile=rbac
 CREATE ROLE loader;
@@ -146,12 +152,17 @@ member grant the role. A revoke cascades to the grants made through it unless yo
 
 ### System privileges
 
-Reaching outside the database needs a system privilege, granted to a role with no `ON` clause:
+Reaching outside the database needs a system privilege, granted to a role with no object `ON`
+clause:
 
 | System privilege | Opens |
 |---|---|
-| `READ FILESYSTEM` | `read_csv`, `read_parquet`, `FROM 'file'`, `COPY … FROM`, local and remote |
-| `WRITE FILESYSTEM` | `COPY … TO` a file or URL |
+| `READ FILESYSTEM` | reading the server's own files: `read_csv`, `read_parquet`, `glob`, `FROM 'file'`, `COPY … FROM` |
+| `WRITE FILESYSTEM` | `COPY … TO` a file on the server |
+| `READ OBJECT STORAGE` | reading `s3://`, `gs://`, `r2://`, `az://`, `abfss://` |
+| `WRITE OBJECT STORAGE` | `COPY … TO` object storage |
+| `READ HTTP` | reading `http://`, `https://`, `hf://` |
+| `WRITE HTTP` | `COPY … TO` an `http(s)://` URL |
 | `MANAGE CATALOGS` | `ATTACH`, `DETACH` |
 | `MANAGE EXTENSIONS` | `INSTALL`, `LOAD`, extension repositories |
 | `MANAGE SECRETS` | `CREATE`/`DROP SECRET`, `duckdb_secrets()` |
@@ -165,8 +176,73 @@ GRANT READ FILESYSTEM TO ingest;
 GRANT ingest TO joe;
 ```
 
+Each kind of storage has its own privilege, so a role that reads the server's files reaches no
+bucket and no URL. `joe` can read files now, but not the web:
+
+```console test profile=rbac exit=1
+$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe \
+    --command "SELECT * FROM read_csv('https://example.com/orders.csv')"
+Error: Hardcharger blocked read_csv() of 'https://example.com/orders.csv', which needs the READ HTTP system privilege, everywhere or on a location that covers it. User joe does not hold it (see SHOW GRANTS)
+```
+
 A few things no privilege opens, such as `query()` with SQL text built at run time; those stay
 with the administrator.
+
+#### Storage privileges on locations
+
+The six storage privileges can also be granted on a location: a bucket and prefix, a host and
+path, or an absolute directory or file on the server. A location covers itself and everything
+below it, and nothing else:
+
+```sql test profile=rbac
+CREATE ROLE landing;
+GRANT READ OBJECT STORAGE ON LOCATION 's3://acme-landing/orders/' TO landing;
+GRANT WRITE OBJECT STORAGE ON LOCATION 's3://acme-exports/finance/' TO landing;
+GRANT READ HTTP ON LOCATION 'https://data.example.com/public/' TO landing;
+GRANT READ FILESYSTEM ON LOCATION '/srv/landing/' TO landing;
+REVOKE READ HTTP ON LOCATION 'https://data.example.com/public/' FROM landing;
+```
+
+`SHOW GRANTS` and `hardcharger_grants()` list these with object type `LOCATION` and the location
+as Hardcharger stores it (see below). `WITH ADMIN OPTION` on a location lets its holder grant that
+location or any location below it.
+
+Paths are compared as DuckDB opens them, not as they are spelled:
+
+- Scheme aliases are one scheme (`s3a://` and `s3n://` are `s3://`, `gcs://` is `gs://`, `azure://`
+  is `az://`), bucket, container and host names are compared in lower case, and a trailing `/` makes
+  no difference. `s3://acme-landing/orders` covers `s3://acme-landing/orders/2026/10.csv`, not
+  `s3://acme-landing/orders-old/`.
+- A local path is compared with symlinks resolved, so a symlink can't lead out of a location.
+- A glob is covered when its fixed part is: `s3://acme-landing/orders/*/*.csv` is,
+  `s3://acme-landing/*/x.csv` isn't.
+- A remote path that could name one object two ways is refused instead of compared: `.` or `..`
+  segments, `//`, backslashes, user information in the host, percent-escapes in object storage
+  (on the web, escaped `.`, `/` and `\`), and `?` or `#` in object storage, where DuckDB reads
+  query parameters as S3 settings (the endpoint and credentials among them). A query string on an
+  `https://` URL is fine. A scheme Hardcharger doesn't know is refused.
+- A path computed by an expression or a parameter (`read_csv('s3://bucket/' || name)`,
+  `read_csv($1)`) is refused unless the user holds the privilege for every kind of storage
+  everywhere: DuckDB reads a file while it binds the statement, before the path could be checked.
+  Write the path as a literal (or a list of literals).
+
+#### DuckLake storage is DuckLake's
+
+No user reads, writes, lists or globs an attached DuckLake catalog's data path directly, whatever
+storage privileges they hold. Statements on the catalog's tables still read and write there under
+the tables' grants, because DuckLake does that itself; the administrator may still look. A file
+written into a lake's storage could be registered as a table's rows, and a listing shows another
+catalog's files, so `COPY … TO` a lake's path, `read_parquet` of a lake's files and `glob` over
+them are refused, and so is a glob, or a `COPY … TO` with `PARTITION_BY`, aimed above a lake's path.
+
+#### Upgrading from 2.1
+
+Before 2.2, `READ FILESYSTEM` also covered object storage and URLs, and `WRITE FILESYSTEM` the same
+for writes. On its first start, 2.2 gives every role that holds `READ FILESYSTEM` everywhere
+`READ OBJECT STORAGE` and `READ HTTP` everywhere too (and `WRITE FILESYSTEM`, the two `WRITE` ones),
+with the same admin option and grantor, so nothing that worked stops working. Revoke what a role
+doesn't need; a revoke is not undone at the next start. A 2.1 server sharing the store doesn't see
+the new privileges or any location grant, so it refuses what they allow.
 
 ## Ownership and views
 
@@ -257,6 +333,9 @@ name
 id
 email
 ```
+
+Where a database lives is the administrator's to see: `duckdb_databases().path` is `NULL` for
+everyone else, because an attached catalog's path can be its connection string, password included.
 
 A grant or revoke applies to the next listing, prepared ones included. Scoped tokens, `SET ROLE`,
 tenants and [catalog access rules](/guides/catalog-access-rules/) narrow what is listed the same

@@ -79,8 +79,11 @@ statement is checked inside DuckDB against its own plan, after binding and again
 optimizing, so nested SQL, views and macros can't route around a grant. Anything the check can't
 classify is refused. Views read with their owner's rights; [row and masking policies](/guides/row-policies-and-masking/)
 filter and mask what a role sees; tenants keep groups of users apart; an Open Policy Agent
-service can veto any session or statement. Reaching outside the database (files, URLs, `ATTACH`,
-extensions, secrets) needs a system privilege such as `READ FILESYSTEM`.
+service can veto any session or statement. Reaching outside the database (files, object storage,
+URLs, `ATTACH`, extensions, secrets) needs a system privilege such as `READ OBJECT STORAGE`, and the
+storage privileges can be limited to locations (`ON LOCATION 's3://bucket/prefix/'`). No user
+touches an attached DuckLake catalog's storage directly, and only the administrator sees where an
+attached database lives (`duckdb_databases().path`, which can hold a connection string's password).
 
 ## Guards that apply to everyone
 

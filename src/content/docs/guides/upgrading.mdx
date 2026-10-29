@@ -39,6 +39,33 @@ say what, under **Changed**. Patch versions only fix things.
 
 </Steps>
 
+## Upgrading from 2.2
+
+Hardcharger's protocol is now named Chargewire. The server answers at `/chargewire` and
+`/chargewire/v1/...`, and it keeps answering drivers and clients released before the rename in
+the spelling they use.
+
+- **Drivers and clients from 2.2 and earlier keep working** with the new server, unchanged,
+  except that they show no column defaults (JDBC's `COLUMN_DEF`, for one): the server sends a
+  column's default only under the Chargewire metadata key. Upgrade the driver to see them again.
+- **The new drivers work with 2.2 servers too**, at the default base path, so servers and drivers
+  can be upgraded in either order.
+- **Connection strings keep working.** `hardcharger://` URIs, `jdbc:hardcharger://` URLs and the
+  `adbc.hardcharger.*` options are unchanged, and the drivers still read `warp://` URIs and
+  `adbc.warp.*` option keys, as `chargewire://` and `adbc.chargewire.*`.
+- **Single sign-on: register the new redirect URI before upgrading.** When
+  [`oauth_redirect_uri`](/reference/configuration/#oauth_redirect_uri) isn't set, the server now
+  sends `<oauth_base_url>/chargewire/v1/auth/oauth/callback` to the identity provider. Add that
+  URL to the application's allowed redirect URIs (Okta, Microsoft Entra ID and Google all accept
+  several), or set `oauth_redirect_uri` to the URL registered there today. The server answers its
+  callback at both, so sign-in keeps working through the upgrade.
+- **ODBC.** The Hardcharger ODBC Driver keeps its registered name, so its DSNs need no change. A
+  DSN or connection string that names the generic Chargewire driver by its earlier registered
+  name must name `Chargewire ODBC Driver` instead.
+- **A proxy that routes by path** ([behind a load balancer](/guides/load-balancers/)) should pass
+  `/chargewire/` as well as `/warp/`: new clients use the first, clients from before the rename
+  the second.
+
 ## Rolling back
 
 The installer keeps every version you installed, so switching back doesn't download anything:

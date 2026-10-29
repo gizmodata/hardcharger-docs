@@ -250,6 +250,9 @@ Earlier builds ran browser sign-in on a separate port (31339) with the redirect 
 `…:31339/oauth/callback`. That port, its routes and the `oauth_port` and `oauth_disable_tls`
 options are gone. Register `<oauth_base_url>/chargewire/v1/auth/oauth/callback` with your identity
 provider (and remove the old URI), or sign-ins fail at the provider with a redirect URI mismatch.
+
+Coming from 2.2, the path in the redirect URI changed too: register the new one before upgrading
+([Upgrading from 2.2](/guides/upgrading/#upgrading-from-22)).
 </Aside>
 
 How a sign-in runs:

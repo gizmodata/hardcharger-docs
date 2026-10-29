@@ -19,6 +19,13 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 - The browser check opens each moved page's old address in Chromium and WebKit and fails unless
   it forwards to a page of the site; the GA build check accepts the forwarding pages' `noindex`.
 
+### Added
+
+- Upgrading: **Upgrading from 2.2**: drivers from before the rename keep working with the new
+  server (without column defaults) and the new drivers with 2.2 servers, earlier connection
+  strings keep working, the new SSO redirect URI to register before upgrading, ODBC DSNs that
+  name the generic driver, and proxies that route by path. The SSO guide points to it.
+
 ### Fixed
 
 - CI clones the public source repositories anonymously and needs no deploy keys.

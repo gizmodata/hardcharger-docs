@@ -7,6 +7,8 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-10-29
+
 ### Changed
 
 - The docs use the protocol's new name, Chargewire, throughout: `/chargewire/v1` paths,

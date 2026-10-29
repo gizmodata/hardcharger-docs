@@ -1,17 +1,18 @@
 {
   "server": {
     "name": "Hardcharger",
-    "version": "2.1.0 (DuckDB v2.0.0)"
+    "version": "2.3.0 (DuckDB v2.0.0)"
   },
-  "release": "v2.1.0",
-  "commit": "f168bba03275889e7ad2a0619fd86a5ab43d96ca",
-  "sample_data": "TPC-H SF0.01; isolated temporary database and synthetic accounts",
-  "server_version": "2.1.0",
-  "captured_at": "2026-10-27",
-  "capture_command": "node scripts/hardcharger-screenshots/capture.mjs (gizmodata-website)",
+  "release": "pre-release 2.3.0 (feature/chargewire-rename, not a published release)",
+  "commit": "cd9191b4174da82fc9f5f5d33c9d955f971081fd",
+  "build": "Pre-release build of Hardcharger's feature/chargewire-rename branch (the protocol's rename to Chargewire); server, web UI and desktop frontend built from `commit`",
+  "sample_data": "TPC-H SF1 (dbgen); isolated temporary database and synthetic accounts (maya, devon); no customer data",
+  "server_version": "2.3.0",
+  "captured_at": "2026-10-29",
+  "capture_command": "node scripts/hardcharger-screenshots/desktop.mjs (gizmodata-website); the same capture session as the website's images",
   "screenshots": {
-    "desktop-preview-light.png": "c6741bfda6036b498b70d37c70f42499caf08835dd455652d38281347359bc34",
-    "desktop-preview-dark.png": "4858eaffdd891a29b5da0ee8d68e5018733d764551bf6cd6041ec98e67ebe8af"
+    "desktop-preview-light.png": "b69b8beff36122395dccedb14e8e34dac68d3a20556f275714c740e78feff144",
+    "desktop-preview-dark.png": "ef2fa60a1891908afc94c9617a4c2d116b6898d041804c0cfe20d760d64a8ebb"
   },
-  "desktop_note": "Released v2.1.0 frontend with synthetic controller status at normal 1120x880 CSS pixels, device scale 2; no style or zoom overrides"
+  "desktop_note": "Desktop frontend from the same pre-release 2.3.0 commit, synthetic controller status at normal 1120x880 CSS pixels, device scale 2; no style or zoom overrides"
 }

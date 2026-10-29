@@ -1,23 +1,24 @@
 {
   "server": {
     "name": "Hardcharger",
-    "version": "2.1.0 (DuckDB v2.0.0)"
+    "version": "2.3.0 (DuckDB v2.0.0)"
   },
-  "release": "v2.1.0",
-  "commit": "f168bba03275889e7ad2a0619fd86a5ab43d96ca",
-  "sample_data": "TPC-H SF0.01; isolated temporary database and synthetic accounts",
-  "server_version": "2.1.0",
-  "captured_at": "2026-10-27",
-  "capture_command": "node scripts/hardcharger-screenshots/capture.mjs (gizmodata-website)",
+  "release": "pre-release 2.3.0 (feature/chargewire-rename, not a published release)",
+  "commit": "cd9191b4174da82fc9f5f5d33c9d955f971081fd",
+  "build": "Pre-release build of Hardcharger's feature/chargewire-rename branch (the protocol's rename to Chargewire); server, web UI and desktop frontend built from `commit`",
+  "sample_data": "TPC-H SF1 (dbgen); isolated temporary database and synthetic accounts (maya, devon); no customer data",
+  "server_version": "2.3.0",
+  "captured_at": "2026-10-29",
+  "capture_command": "node scripts/hardcharger-screenshots/capture.mjs (gizmodata-website); the same capture session as the website's images",
   "screenshots": {
-    "query-dark.png": "1c629e45d7d51a999022ce94933def6f69934ff7aa0d30eb469e1b5bd17eccec",
-    "sign-in-dark.png": "4cf4571280344890df93c9eea918c3bbf3ad1f96ba8b9746db028573549aef0f",
-    "saved-dark.png": "7bf91784344233fd73be58e3b84138e9f924147005be3c046355d61e86d493f9",
-    "api-dark.png": "a2f6e251a4882bdb80485d9a2ada8a01d59f320176d7ff7f75af8918eeba15bd",
-    "upload-dark.png": "a05b508d818d60f8e22dd69c5593b99a0e57cab3a730f40f1cc231b0b29c00de",
-    "monitor-light.png": "872c6494627272bf2aab004e54db8f527279414362e02f3ababefebe56f33935",
-    "monitor-dark.png": "ee9c83b228137bc7aea5b546c7615cf40e1cb8e12c6daa16c8f8eefdd725d1cd",
-    "configuration-light.png": "e5b88c8ebbcefcbc9fb7b40c37e16e7e1b41c699d99b6f3917e9e8ea873281d8",
-    "configuration-dark.png": "901dbf3c462eed72420313b861e475b1081daf45910b93efd00af8c6f35316ed"
+    "query-dark.png": "fe02128e09f58c5f8065d7edac7f701a73f8911e5271d38796917cf15a2fc8b5",
+    "sign-in-dark.png": "ac5b6ab34cbece11ab36dd8552357e4a6598639cce49defea017e76d6adbf01f",
+    "saved-dark.png": "d1c8807447685b6ed7ae765af38f6b32913fdc8e153e7bf68bb0fe75db21a47c",
+    "api-dark.png": "53aad648c6befe84d677be15df7596626d3d10880774a6df384508fd61d0f3bb",
+    "upload-dark.png": "de8a611c1c7c0e8eb9e4bc0fb5e436e1362e2bf307cd93b307b7ce23b7981bc1",
+    "monitor-light.png": "b515a0fb64589a6079388f9de9ca6e006693cd77b536414243c919c5d3e2cea0",
+    "monitor-dark.png": "15c9c835181b7ee3e5ae1ed76df50ae76685b506b8262e5647dc62fba9c591e3",
+    "configuration-light.png": "10c165f0433bc9f6ae6fd8cc9c07d08922c3a724be41637e3ab35137b8a31cdd",
+    "configuration-dark.png": "34bb96a32814792aca90b9d9d29031d5afc435f6aeb5fa9a0ad2bd42a44b639d"
   }
 }

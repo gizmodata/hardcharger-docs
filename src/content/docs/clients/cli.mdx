@@ -261,7 +261,7 @@ $ printf '.tables --flat\n.describe trips\n' | hardcharger --host localhost --tl
 ## Large results
 
 The client reads a large result over up to 8 connections at once, in the same order
-([partitions](/concepts/warp-sql/#partitioned-results)); small results come as one stream.
+([partitions](/concepts/chargewire/#partitioned-results)); small results come as one stream.
 `--result-partitions N` (or `HARDCHARGER_RESULT_PARTITIONS`) changes the 8; `1` reads over one
 connection.
 
@@ -272,6 +272,6 @@ connection.
 
 ## Coming from gizmosql_client
 
-`hardcharger` is GizmoSQL 1.x's `gizmosql_client`, on Warp SQL, with the same options under
+`hardcharger` is GizmoSQL 1.x's `gizmosql_client`, on Chargewire, with the same options under
 Hardcharger's names. [Coming from GizmoSQL](/get-started/coming-from-gizmosql/#the-command-line-client)
 maps them and lists what behaves differently.

@@ -5,7 +5,7 @@ description: "Serve Hardcharger over HTTPS with your certificate, require client
 
 import { Aside, Tabs, TabItem, Steps } from '@astrojs/starlight/components';
 
-With a certificate and its key, Hardcharger serves Warp SQL over HTTPS on the same port. Add a
+With a certificate and its key, Hardcharger serves Chargewire over HTTPS on the same port. Add a
 CA, and it also requires every client to present a certificate that chains to it (mutual TLS).
 Clients default to TLS: `hardcharger://host` and `jdbc:hardcharger://host` are HTTPS unless you
 say otherwise.
@@ -95,7 +95,7 @@ JDBC also takes a JKS or PKCS#12 trust store (`trustStore`, `trustStorePassword`
 <TabItem label="curl">
 
 ```console test server=none
-$ curl -s --cacert ca.crt https://localhost:31337/warp | jq -r .server.name
+$ curl -s --cacert ca.crt https://localhost:31337/chargewire | jq -r .server.name
 Hardcharger
 ```
 
@@ -190,7 +190,7 @@ on [certificate sign-in](#signing-in-with-the-certificate).
    <TabItem label="curl">
 
    ```console test server=none
-   $ curl -s --cacert ca.crt --cert client.crt --key client.key https://localhost:31337/warp | jq -r .server.name
+   $ curl -s --cacert ca.crt --cert client.crt --key client.key https://localhost:31337/chargewire | jq -r .server.name
    Hardcharger
    ```
 
@@ -202,7 +202,7 @@ on [certificate sign-in](#signing-in-with-the-certificate).
 A client without a certificate doesn't get past the handshake, and the CLI says why:
 
 ```console test server=none
-$ curl -s --cacert ca.crt https://localhost:31337/warp || echo "refused"
+$ curl -s --cacert ca.crt https://localhost:31337/chargewire || echo "refused"
 refused
 $ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls-roots ca.crt --username hardcharger --command "SELECT 1"; echo "exit status $?"
 Error: The server at https://localhost:31337 refused the connection: it requires a client certificate (--mtls-cert and --mtls-key)
@@ -212,7 +212,7 @@ exit status 1
 ## Signing in with the certificate
 
 With `--mtls-certificate-sign-in`, a client signs in **as** its certificate's identity, with no
-password: Warp SQL's `client_certificate` grant, `--auth-type mtls` in the CLI. The certificate
+password: Chargewire's `client_certificate` grant, `--auth-type mtls` in the CLI. The certificate
 proves who the user is; grants decide what they may do. It is off by default: with
 `--mtls-ca-cert` alone, a certificate only admits the connection, as above.
 
@@ -288,7 +288,7 @@ proves who the user is; grants decide what they may do. It is off by default: wi
 
    ```console test server=none
    $ curl -s --cacert ca.crt --cert ops.crt --key ops.key -H 'Content-Type: application/json' \
-       -d '{"grant_type": "client_certificate"}' https://localhost:31337/warp/v1/auth/token | jq -r .token_type
+       -d '{"grant_type": "client_certificate"}' https://localhost:31337/chargewire/v1/auth/token | jq -r .token_type
    Bearer
    ```
 
@@ -302,7 +302,7 @@ A certificate whose identity is no administrator and, under access control, no u
 
 ```console test server=none
 $ curl -s --cacert ca.crt --cert client.crt --key client.key -H 'Content-Type: application/json' \
-    -d '{"grant_type": "client_certificate"}' https://localhost:31337/warp/v1/auth/token | jq -r .code
+    -d '{"grant_type": "client_certificate"}' https://localhost:31337/chargewire/v1/auth/token | jq -r .code
 unknown_certificate_identity
 ```
 
@@ -312,9 +312,9 @@ the private key. Here the token goes out over a connection with another certific
 
 ```console test server=none
 $ TOKEN=$(curl -s --cacert ca.crt --cert ops.crt --key ops.key -H 'Content-Type: application/json' \
-    -d '{"grant_type": "client_certificate"}' https://localhost:31337/warp/v1/auth/token | jq -r .access_token)
+    -d '{"grant_type": "client_certificate"}' https://localhost:31337/chargewire/v1/auth/token | jq -r .access_token)
 $ curl -s --cacert ca.crt --cert client.crt --key client.key -H "Authorization: Bearer $TOKEN" \
-    -H 'Content-Type: application/json' -d '{}' https://localhost:31337/warp/v1/sessions | jq -r .code
+    -H 'Content-Type: application/json' -d '{}' https://localhost:31337/chargewire/v1/sessions | jq -r .code
 certificate_mismatch
 ```
 
@@ -377,9 +377,9 @@ HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb \
 The revoked certificate no longer gets past the handshake; the others still do:
 
 ```console test server=none
-$ curl -s --cacert ca.crt --cert client.crt --key client.key https://localhost:31337/warp || echo "refused"
+$ curl -s --cacert ca.crt --cert client.crt --key client.key https://localhost:31337/chargewire || echo "refused"
 refused
-$ curl -s --cacert ca.crt --cert ops.crt --key ops.key https://localhost:31337/warp | jq -r .server.name
+$ curl -s --cacert ca.crt --cert ops.crt --key ops.key https://localhost:31337/chargewire | jq -r .server.name
 Hardcharger
 $ hardcharger --host localhost --tls-roots ca.crt --mtls-cert client.crt --mtls-key client.key \
     --auth-type mtls --command "SELECT 1"; echo "exit status $?"
@@ -416,7 +416,7 @@ origin in [`cors_origins`](/reference/configuration/#cors_origins) gets
 included; other origins get no CORS headers:
 
 ```console test profile=cors stop
-$ curl -s -o /dev/null -D - -X OPTIONS localhost:31337/warp/v1/auth/token \
+$ curl -s -o /dev/null -D - -X OPTIONS localhost:31337/chargewire/v1/auth/token \
     -H 'Origin: https://app.example.com' -H 'Access-Control-Request-Method: POST' \
     | grep -i '^access-control-allow-\(origin\|credentials\)' | tr -d '\r'
 Access-Control-Allow-Origin: https://app.example.com

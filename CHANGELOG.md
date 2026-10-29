@@ -7,6 +7,22 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+### Changed
+
+- The docs use the protocol's new name, Chargewire, throughout: `/chargewire/v1` paths,
+  `Chargewire-*` headers, `urn:chargewire:error:*` error types, `chargewire://` URIs,
+  `adbc.chargewire.*` options, the `@gizmodata/chargewire` JavaScript client and the Chargewire
+  JDBC classes, all checked against the renamed server and drivers. The pages "Chargewire in one
+  page" (`/concepts/chargewire/`) and "Chargewire protocol" (`/reference/chargewire-protocol/`)
+  moved, and their old addresses forward to them. The reference (protocol page, release notes,
+  configuration) is regenerated from the renamed sources.
+- The browser check opens each moved page's old address in Chromium and WebKit and fails unless
+  it forwards to a page of the site; the GA build check accepts the forwarding pages' `noindex`.
+
+### Fixed
+
+- CI clones the public source repositories anonymously and needs no deploy keys.
+
 ## [2.2.0] - 2026-10-28
 
 Documents Hardcharger 2.2.0.
@@ -136,16 +152,16 @@ Documents Hardcharger 2.1.1.
 - Document connection profiles and their driver manifest, Python 3.11 minimum, and the native
   library build. Test examples with the 2.0 driver on main instead of the old internal RC pin.
 - Refresh release notes from the tested f43b705 server, including ADBC images and Web UI fixes.
-- Regenerated the reference from the Hardcharger 2.0.0 candidate and Warp SQL 1.0.1:
+- Regenerated the reference from the Hardcharger 2.0.0 candidate and Chargewire 1.0.1:
   configuration and CLI help, SQL functions, metrics, protocol and release notes.
-- Hardcharger 2.0.0-rc.1 (main feaa5d39, warp-sql e38b28e): the reference is regenerated from the
-  `:main` image (2.0.0-rc.1): the release notes' `[2.0.0-rc.1]` section, the Warp SQL 1.0.0
+- Hardcharger 2.0.0-rc.1 (main feaa5d39, chargewire e38b28e): the reference is regenerated from the
+  `:main` image (2.0.0-rc.1): the release notes' `[2.0.0-rc.1]` section, the Chargewire 1.0.0
   specification, the CLI's `--licenses`, the sensitive-path and instrumentation options' new
   wording, and the access-control introspection functions (`hardcharger_grants()`,
   `hardcharger_role_members()`, `hardcharger_roles()`, `hardcharger_users()`,
   `hardcharger_policies()`, `hardcharger_effective_privileges()`), each described in the SQL
   reference. The docs that rc.1 made wrong are corrected, each checked against an rc.1 server:
-  the browser sign-in, Warp SQL 1.0, API page, instrumentation id and sensitive-path guard pages
+  the browser sign-in, Chargewire 1.0, API page, instrumentation id and sensitive-path guard pages
   (from `docs/oauth-in-protocol`, `spec/v1.0`, `docs/ui-api-page`, `docs/instrumentation-ids` and
   `docs/sensitive-paths-fs-layer`) and the no-version-history check (`docs/no-version-history`)
   are merged; instrumentation no longer goes to DuckLake (a DuckLake `instrumentation_catalog`
@@ -156,7 +172,7 @@ Documents Hardcharger 2.1.1.
   again; the Versions page names 2.0.0-rc.1 and release candidates. Access control: "Seeing
   grants" shows the introspection functions and the SQL standard's privilege views, with a tested
   `hardcharger_effective_privileges()` example. CI builds the Python driver from the release that
-  speaks Warp SQL 1.0 (`internal-0.1.0rc1`), since hardcharger-adbc main still commits a
+  speaks Chargewire 1.0 (`internal-0.1.0rc1`), since hardcharger-adbc main still commits a
   partitioned ingest the draft way.
 - Instrumentation: the records are written in the background, in batches, so they appear a moment
   after a statement ends; the guide says so, and its examples (and statement control's query-tag
@@ -170,11 +186,11 @@ Documents Hardcharger 2.1.1.
   show the full charging bull in place of GizmoData's hexagon mark, with the same text and
   layout: the brand kit's mascot, cropped, 480 px wide, as WebP
   (`src/assets/brand/hardcharger-mascot.webp`), which `scripts/banner.py` now draws too. The
-  Warp SQL banners keep GizmoData's mark.
-- Browser sign-in is part of Warp SQL now (`oauth_browser`, on the server's own port): the SSO
+  Chargewire banners keep GizmoData's mark.
+- Browser sign-in is part of Chargewire now (`oauth_browser`, on the server's own port): the SSO
   guide describes the new flow (create a flow, sign in in the browser, collect the token once
   with the poll secret; PKCE, state and nonce with the provider), says plainly that operators
-  must re-register the redirect URI as `<oauth_base_url>/warp/v1/auth/oauth/callback`, and drops
+  must re-register the redirect URI as `<oauth_base_url>/chargewire/v1/auth/oauth/callback`, and drops
   the separate port (31339), `oauth_port`, `oauth_disable_tls`, the `/oauth/...` routes and the
   CLI's `--oauth-port`/`--oauth-base-url` (`HARDCHARGER_OAUTH_PORT`, `HARDCHARGER_OAUTH_BASE_URL`).
   New options `oauth_provider_name` and `oauth_max_flows`; `oauth_base_url` is the server's public
@@ -188,18 +204,17 @@ Documents Hardcharger 2.1.1.
 
 ### Added
 
-- Web UI guide: **The API page** (the server's Warp SQL API in Swagger UI; Try it out runs as
+- Web UI guide: **The API page** (the server's Chargewire API in Swagger UI; Try it out runs as
   the signed-in user, sends the token to the page's own origin only, offers Arrow answers as a
-  download), with a dark screenshot, and the CSP table's reasons now name Swagger UI. Warp SQL
-  page: **The API description** (`GET /warp/v1/openapi.json`, OpenAPI 3.1, listed in discovery
+  download), with a dark screenshot, and the CSP table's reasons now name Swagger UI. Chargewire
+  page: **The API description** (`GET /chargewire/v1/openapi.json`, OpenAPI 3.1, listed in discovery
   as capability `openapi` and `links.openapi`), with a tested example.
 - Instrumentation guide: **Statement and execution ids**, how `sql_statements` and
-  `sql_executions` key rows by the Warp SQL ids clients hold (`q_...` for a statement and its
+  `sql_executions` key rows by the Chargewire ids clients hold (`q_...` for a statement and its
   execution, `q_....N` for the statements of a one-request script, `p_...` for a prepared
   statement with an execution per request), the same ids in the query log, and what startup
   says about a table with UUID ids; with a tested example (a statement found by the id
-  `hardcharger_active_connections()` shows). Coming from GizmoSQL: the UUID columns' row
-  (hardcharger `feat/instrumentation-warp-ids`).
+  `hardcharger_active_connections()` shows). Coming from GizmoSQL: the UUID columns' row.
 - Web UI guide, the editor's full behavior (Hardcharger feat/ui-portal-parity): tabs with their
   own sessions, Run all, transactions, the grid, the schema browser and autocomplete, saved
   queries, Run as, every download format, resizing, the help, phone-sized screens; a section on
@@ -216,7 +231,7 @@ Documents Hardcharger 2.1.1.
   one-transaction upload (cancel and failures leave the table unchanged), the privileges it needs
   under access control, and a dark-theme screenshot. The Content-Security-Policy section names the
   upload's worker and Parquet reader. The page no longer says which release brought the UI.
-- Hardcharger 0.3.0 (main 5983a6a, warp-sql a8d762a): the reference is regenerated from the
+- Hardcharger 0.3.0 (main 5983a6a, chargewire a8d762a): the reference is regenerated from the
   `:main` image (`sha-5983a6a`), and the release notes show the `[0.3.0]` section. New:
   - Error codes: `invalid_token` reasons (`token_expired`, `token_revoked`, `credentials_changed`,
     `principal_dropped`; none for a token the server can't verify as its own), `token_revoked` among
@@ -275,7 +290,7 @@ Documents Hardcharger 2.1.1.
 
 ### Changed
 
-- Warp SQL 1.0.0 (warp-sql spec/v1.0, a828247, on the browser sign-in spec; outputs captured from
+- Chargewire 1.0.0 (chargewire spec/v1.0, a828247, on the browser sign-in spec; outputs captured from
   a Hardcharger server built from its spec/v1.0, b4c813b2): the protocol page is the 1.0.0
   specification in full, §4.3 included (its description no longer says draft), and the rest of
   the reference is regenerated from that server and its CHANGELOG (the release notes' Unreleased
@@ -291,9 +306,9 @@ Documents Hardcharger 2.1.1.
   statement, `partition_not_found`, `not_found` for endpoints only, `statement_cancelled` and
   `statement_timeout` at `409`, `execution_error` at `422`, `internal_error` at `500`, the
   cancelled-at-submit problem document, codes clients make up (`client_*`), unknown codes by status,
-  and which `invalid_token`/`session_ended` reasons a client signs in again after. Warp SQL in one
+  and which `invalid_token`/`session_ended` reasons a client signs in again after. Chargewire in one
   page: `retained` (a server may decline), both split-result headers, `result_locations`, and the
-  error statuses. Statement control: `Warp-Query-Tag`'s ASCII and 4,096-byte rule (tested).
+  error statuses. Statement control: `Chargewire-Query-Tag`'s ASCII and 4,096-byte rule (tested).
 - Security model: the sensitive-path guard as Hardcharger 2.0.0-rc.1 has it (hardcharger branch
   `fix/sensitive-paths-in-fs-layer`): checked in DuckDB's file system, so computed paths,
   `query('…')`, macros, views and prepared parameters are covered and literals are no longer
@@ -323,8 +338,8 @@ Documents Hardcharger 2.1.1.
 - The JavaScript page (and the landing page's client card) use `@gizmodata/hardcharger`
   (gizmodata/hardcharger-js): `import { connect } from '@gizmodata/hardcharger'` with
   `hardcharger://` URLs, a URL table, and `authType: 'client_certificate'` (or `'mtls'`);
-  `@gizmodata/warp-sql` stays named as the generic client for any Warp SQL server. CI builds
-  hardcharger-js on the warp-sql-js tarball it already builds (new secret
+  `@gizmodata/chargewire` stays named as the generic client for any Chargewire server. CI builds
+  hardcharger-js on the chargewire-js tarball it already builds (new secret
   `DEPLOY_KEY_HARDCHARGER_JS`, a read-only deploy key of gizmodata/hardcharger-js) and runs the
   page's examples with it.
 - CI uses no personal token: the server and the CLI come from `ghcr.io/gizmodata/hardcharger:main`
@@ -335,11 +350,11 @@ Documents Hardcharger 2.1.1.
   `max_queued_statements` reports `-1`, the CLI keeps color to terminals (and honours `NO_COLOR`),
   shows the server's reason for a refused sign-in and takes comments anywhere in a script, the
   Python driver raises DB-API's own exception classes, the CLI reads large results in 8
-  partitions by default, and partitioned uploads (Warp SQL §8.3) are documented and run over
+  partitions by default, and partitioned uploads (Chargewire §8.3) are documented and run over
   plain HTTP. Benchmarks and the landing page carry the new load numbers.
 - Output comparisons are exact again (no color codes are stripped outside the interactive
   shell), and `console` commands may span lines with open quotes or loops.
-- The docs follow Hardcharger's main (5178d26) and warp-sql's (982a58c): the reference lists the
+- The docs follow Hardcharger's main (5178d26) and chargewire's (982a58c): the reference lists the
   seven `mtls_*` options and `--auth-type mtls`; the drivers read results in 8 partitions and send
   large loads in 8 parts by default (Python, JDBC); Linux builds after 0.2.0 need glibc 2.28;
   DuckLake, PostgreSQL and S3 are built in (no `INSTALL`); a restricted administrator reads none of
@@ -363,14 +378,14 @@ The first private preview of the Hardcharger documentation.
 ### Added
 
 - 37 pages on Astro Starlight: get started (quickstart, a first query in six languages, coming
-  from GizmoSQL), concepts (Warp SQL, security model, performance model), 18 guides, 7 client
+  from GizmoSQL), concepts (Chargewire, security model, performance model), 18 guides, 7 client
   pages, the reference and the benchmarks.
 - GizmoData branding: the README banners' dark card, the hex logo, the orange-to-blue gradient,
   a "Built by GizmoData" footer, and a private-preview banner with `noindex`.
 - 134 runnable examples, each run in CI against a real hardcharger-server from Hardcharger's main
   branch with the real clients (`scripts/verify_examples.py`); missing prerequisites fail the run.
 - A reference generated from the server and its repositories (`scripts/gen_reference.py`): server
-  options, SQL settings and functions, metrics, CLI help, release notes, the Warp SQL spec. CI
+  options, SQL settings and functions, metrics, CLI help, release notes, the Chargewire spec. CI
   fails when it drifts.
 - Link checks (internal at build time, external with lychee), and a Chromium and WebKit check of
   every page in light and dark mode at desktop and phone width.

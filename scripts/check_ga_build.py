@@ -38,6 +38,8 @@ def main() -> int:
     bad: list[str] = []
     for page in pages:
         text = page.read_text(encoding="utf-8", errors="replace")
+        if re.match(r'<!doctype html><title>Redirecting to: [^<]*</title><meta http-equiv="refresh"', text):
+            continue  # the page Astro writes at a moved page's old address (noindex, as it should be)
         badge = re.search(r'<a\b[^>]*class="[^"]*\bhc-version\b[^"]*"[^>]*>(.*?)</a>', text, re.S)
         if page == out / "index.html" and not badge:
             bad.append("index.html: missing server version badge")

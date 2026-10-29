@@ -25,7 +25,7 @@ flowchart TB
 ## Transport
 
 Turn on TLS with a certificate and key ([guide](/guides/tls/)); add `--mtls-ca-cert` to require
-client certificates as well. Plain HTTP is for loopback and development: the Warp SQL spec says
+client certificates as well. Plain HTTP is for loopback and development: the Chargewire spec says
 servers should refuse it elsewhere, and you should put Hardcharger behind TLS before anyone else
 connects.
 
@@ -39,7 +39,7 @@ nothing to work with.
 |---|---|---|
 | The administrator | `--admin-username` (default `hardcharger`) and `HARDCHARGER_ADMIN_PASSWORD` | The `admin` role: a superuser |
 | Store users (with access control on) | Their own password, set with `CREATE USER … PASSWORD` | Exactly what their grants allow |
-| Identity-provider users | An OIDC ID token, exchanged for a server token, or the browser sign-in flow (Warp SQL's `oauth_browser`, on the server's own port) | A role from the token, or a store user's grants ([SSO guide](/guides/sso/)) |
+| Identity-provider users | An OIDC ID token, exchanged for a server token, or the browser sign-in flow (Chargewire's `oauth_browser`, on the server's own port) | A role from the token, or a store user's grants ([SSO guide](/guides/sso/)) |
 | Scoped tokens | A token minted in SQL with `CREATE SCOPED TOKEN` | A subset of a user's rights, for a limited time |
 
 Server tokens are JWTs signed with [`secret_key`](/reference/configuration/#secret_key) and

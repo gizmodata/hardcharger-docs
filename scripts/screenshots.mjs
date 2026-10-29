@@ -21,9 +21,29 @@ const pages = fs
 	.readFileSync('dist/sitemap-0.xml', 'utf8')
 	.match(/<loc>[^<]+<\/loc>/g)
 	.map((l) => new URL(l.slice(5, -6)).pathname);
+// The pages Astro writes for moved pages (astro.config.mjs `redirects`): each must forward, in
+// both engines, to a page of the site.
+const redirects = fs
+	.readdirSync('dist', { recursive: true })
+	.filter((f) => f.endsWith('index.html'))
+	.map((f) => [f, fs.readFileSync(`dist/${f}`, 'utf8').match(/<meta http-equiv="refresh" content="0;url=([^"]+)"/)])
+	.filter(([, m]) => m)
+	.map(([f, m]) => ({ from: `/${f.slice(0, -'index.html'.length)}`, to: m[1] }));
 let problems = 0;
 for (const [engineName, engine] of [['chromium', chromium], ['webkit', webkit]]) {
 	const browser = await engine.launch();
+	const forward = await browser.newPage();
+	for (const { from, to } of redirects) {
+		await forward.goto(base + from);
+		await forward.waitForURL(base + to, { timeout: 10000 }).catch(() => {});
+		const landed = new URL(forward.url()).pathname;
+		if (landed !== to || !pages.includes(to)) {
+			console.log(`${engineName}: ${from} should forward to a page of the site (${to}), landed on ${landed}`);
+			problems++;
+		}
+	}
+	console.log(`${engineName}: ${redirects.length} moved pages checked`);
+	await forward.close();
 	for (const scheme of ['light', 'dark']) {
 		for (const [sizeName, viewport] of Object.entries(sizes)) {
 			const context = await browser.newContext({ viewport, colorScheme: scheme, deviceScaleFactor: sizeName === 'phone' ? 2 : 1 });

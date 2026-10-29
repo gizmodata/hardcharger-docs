@@ -12,7 +12,7 @@
   <a href="https://gizmodata.com"><img src="https://img.shields.io/badge/by-GizmoData-31a8db.svg" alt="GizmoData"></a>
 </p>
 
-<h3 align="center">The documentation for Hardcharger, GizmoData's DuckDB 2.0 server on Warp SQL.</h3>
+<h3 align="center">The documentation for Hardcharger, GizmoData's DuckDB 2.0 server on Chargewire.</h3>
 
 ---
 
@@ -53,10 +53,10 @@ npm run dev                          # live reload while writing
 | Section | Pages |
 |---|---|
 | Get started | quickstart, desktop app (v2.1.0+), web UI, your first query (Python, Go, Java, JavaScript, CLI, curl), coming from GizmoSQL |
-| Concepts | Warp SQL in one page, security model, performance model |
+| Concepts | Chargewire in one page, security model, performance model |
 | Guides | TLS and mTLS; users, roles and grants; row policies, masking, tenants, scoped tokens; catalog access rules; SSO; DuckLake and S3; bulk ingest; configuration; SQL Monitor and Server Configuration (v2.1.0+); statement control; instrumentation and the audit log; Prometheus metrics; Docker and Kubernetes; load balancers; Raspberry Pi; upgrading |
 | Clients | Python, Go, C/C++/R/Rust, JDBC and DBeaver, JavaScript (`@gizmodata/hardcharger` on npm), the `hardcharger` CLI, plain HTTP |
-| Reference | server configuration, SQL functions and settings, error codes, CLI, the Warp SQL protocol, release notes, versions |
+| Reference | server configuration, SQL functions and settings, error codes, CLI, the Chargewire protocol, release notes, versions |
 | Benchmarks | method, every number, and where Hardcharger still loses |
 
 Built with [Astro Starlight](https://starlight.astro.build): static output, Pagefind search,
@@ -115,7 +115,7 @@ itself: the configuration page from `hardcharger-server --print-options-json` (a
 gizmodata/hardcharger#1), the SQL settings and functions from `hardcharger_settings()` and
 `duckdb_functions()` on a running server, the metrics table from a live `/metrics`, the CLI
 reference from `hardcharger --help` and `.help`, the release notes from Hardcharger's
-`CHANGELOG.md`, and the protocol page from `warp-sql/spec/warp-sql.md`. CI runs it with `--check`
+`CHANGELOG.md`, and the protocol page from `chargewire/spec/chargewire.md`. CI runs it with `--check`
 and fails when anything committed differs from what the server says.
 
 ## ⚙️ CI
@@ -125,21 +125,19 @@ and fails when anything committed differs from what the server says.
 | [docs](.github/workflows/docs.yml) | every push and pull request; called by release | build (internal links), external links (lychee), Chromium and WebKit in light and dark at desktop and phone width (console errors, sideways scrolling), every example, the reference check |
 | [release](.github/workflows/release.yml) | `vX.Y.Z` tags, or by hand | docs on the tagged commit, then a GitHub Release with the CHANGELOG section and the built site, and the GitHub Pages deployment (the preview, or the public site when `DOCS_GA` is true) |
 
-While Hardcharger is internal, CI uses no personal token:
+CI uses no personal token and no deploy key:
 
 1. **The image**, `ghcr.io/gizmodata/hardcharger:main` (the server and the CLI) and `:latest`
    (the Docker examples), pulled with the workflow's `GITHUB_TOKEN`. The package must grant this
    repository read access (package settings, **Manage Actions access**).
-2. **Read-only deploy keys**, one per internal repository, stored here as secrets:
-   `DEPLOY_KEY_HARDCHARGER`, `DEPLOY_KEY_WARP_SQL`, `DEPLOY_KEY_HARDCHARGER_ADBC`,
-   `DEPLOY_KEY_WARP_SQL_ADBC`, `DEPLOY_KEY_HARDCHARGER_JDBC`, `DEPLOY_KEY_WARP_SQL_JDBC`.
-   Each source repository has the matching public key as a read-only deploy key titled
-   "hardcharger-docs CI (read-only)". The JavaScript driver is installed from npm.
+2. **Public source repositories**, cloned anonymously: `hardcharger`, `chargewire` (the spec),
+   `hardcharger-adbc` and `hardcharger-jdbc` (with its `chargewire-jdbc` submodule). Go fetches
+   its modules the same way. The JavaScript driver is installed from npm.
 3. **No release downloads.** Examples that download a release (the installer, tarballs, the
    Python package's server) run against a release mirror made from the `:main` image, with the
    real installer script and the real package.
 
-Without the image or a key, the examples job fails; it never skips.
+Without the image or a repository, the examples job fails; it never skips.
 
 ## ✍️ Writing
 
@@ -171,8 +169,8 @@ At the flip (the repository public, Hardcharger 2.0.0 released):
       `approved`), then `gh api -X PUT repos/gizmodata/hardcharger-docs/pages -F https_enforced=true`.
 - [ ] Pin `HARDCHARGER_IMAGE` in `docs.yml` to the release (`ghcr.io/gizmodata/hardcharger:2.0.0`),
       regenerate the reference from it (`scripts/gen_reference.py`: the `[2.0.0]` release notes, the
-      Warp SQL 1.0.1 protocol page, the CLI and configuration pages) and move
-      `HARDCHARGER_ADBC_REF` to `main` once the driver's main speaks Warp SQL 1.0.
+      Chargewire protocol page, the CLI and configuration pages) and move
+      `HARDCHARGER_ADBC_REF` to `main` once the driver's main speaks Chargewire 1.0.
 - [x] Retire the pre-2.0 version-history check; guides now label features by their first version.
 - [ ] Run **release** (a `vX.Y.Z` tag or by hand) and open every page on the live domain in
       Chromium and WebKit (CSP violations included); then link the docs from the READMEs,

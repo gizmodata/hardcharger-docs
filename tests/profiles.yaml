@@ -1,5 +1,5 @@
 # The servers the docs' examples run against (scripts/verify_examples.py).
-# Every profile listens on the documented defaults: Warp SQL on 31337, /health on 31338,
+# Every profile listens on the documented defaults: Chargewire on 31337, /health on 31338,
 # with administrator hardcharger / change-me, as the examples assume.
 # {dir} is the page's working directory.
 

@@ -1,6 +1,6 @@
 ---
 title: "Hardcharger"
-description: "Hardcharger is GizmoData's DuckDB 2.0 server. Clients connect over Warp SQL, an open HTTP protocol that streams Apache Arrow. Security, observability and speed are built in, and every feature is included."
+description: "Hardcharger is GizmoData's DuckDB 2.0 server. Clients connect over Chargewire, an open HTTP protocol that streams Apache Arrow. Security, observability and speed are built in, and every feature is included."
 editUrl: false
 lastUpdated: false
 pagefind: true
@@ -10,12 +10,12 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 import HeroBanner from '../../components/HeroBanner.astro';
 import banner from '../../assets/banners/hardcharger-banner.svg';
 
-<HeroBanner src={banner} alt="Hardcharger™ by GizmoData™: the DuckDB 2.0 server that speaks Warp SQL" href="https://gizmodata.com" />
+<HeroBanner src={banner} alt="Hardcharger™ by GizmoData™: the DuckDB 2.0 server that speaks Chargewire" href="https://gizmodata.com" />
 
 <div class="hc-badges not-content">
   <a href="https://github.com/gizmodata/hardcharger/pkgs/container/hardcharger"><img src="https://img.shields.io/badge/github--package-container--image-green.svg?logo=Docker" alt="GitHub container image" /></a>
   <a href="https://github.com/gizmodata/hardcharger/releases/latest"><img src="https://img.shields.io/badge/release-binaries-orange.svg?logo=GitHub" alt="Release binaries" /></a>
-  <a href="/reference/warp-sql-protocol/"><img src="https://img.shields.io/badge/protocol-Warp%20SQL-31a8db.svg" alt="Warp SQL protocol" /></a>
+  <a href="/reference/chargewire-protocol/"><img src="https://img.shields.io/badge/protocol-Chargewire-31a8db.svg" alt="Chargewire protocol" /></a>
   <a href="https://duckdb.org"><img src="https://img.shields.io/badge/engine-DuckDB%202.0-fff000.svg?logo=duckdb&logoColor=black" alt="DuckDB 2.0" /></a>
   <a href="https://arrow.apache.org"><img src="https://img.shields.io/badge/wire%20format-Apache%20Arrow-f15a24.svg" alt="Apache Arrow" /></a>
   <a href="https://github.com/gizmodata/hardcharger/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-brightgreen.svg" alt="Apache 2.0 license" /></a>
@@ -26,7 +26,7 @@ import banner from '../../assets/banners/hardcharger-banner.svg';
 <p class="hc-tagline not-content"><span>Fast, secure, remote DuckDB. Every feature included.</span></p>
 
 **Hardcharger™** puts [DuckDB 2.0](https://duckdb.org) on the network. Clients connect over
-[Warp SQL](/concepts/warp-sql/), an open HTTP protocol that moves
+[Chargewire](/concepts/chargewire/), an open HTTP protocol that moves
 [Apache Arrow](https://arrow.apache.org) record batches straight from DuckDB to your
 application. It is the successor to GizmoSQL, rebuilt for DuckDB 2.0, and it is free:
 no editions and no license keys.
@@ -36,7 +36,7 @@ no editions and no license keys.
   <LinkCard title="🖥️ Desktop app" description="macOS and Windows in v2.1.0+: server dashboard, settings, logs and SQL workspace." href="/guides/desktop-app/" />
   <LinkCard title="🔭 SQL Monitor" description="v2.1.0+: active queries, recent outcomes, profiles and administrator controls." href="/guides/sql-monitor/" />
   <LinkCard title="🔌 Your first query" description="Python, Go, Java, JavaScript, the CLI or curl, side by side." href="/get-started/first-query/" />
-  <LinkCard title="⚡ Warp SQL in one page" description="Sessions, statements, streaming, partitions and resumable results." href="/concepts/warp-sql/" />
+  <LinkCard title="⚡ Chargewire in one page" description="Sessions, statements, streaming, partitions and resumable results." href="/concepts/chargewire/" />
   <LinkCard title="🔁 Coming from GizmoSQL" description="Every GizmoSQL name, mapped to its Hardcharger name." href="/get-started/coming-from-gizmosql/" />
 </CardGrid>
 
@@ -98,7 +98,7 @@ doesn't win yet are on the [benchmarks page](/benchmarks/). How the pipeline wor
 |---|---|
 | 🦆 DuckDB 2.0, DuckLake and DuckDB's extensions | ✅ |
 | 🖥️ Built-in web UI: SQL editor, results grid, schema browser, exports (`--web-ui`) | ✅ |
-| ⚡ Warp SQL: streamed and resumable results, bind parameters, prepared statements, bulk ingest, zstd | ✅ |
+| ⚡ Chargewire: streamed and resumable results, bind parameters, prepared statements, bulk ingest, zstd | ✅ |
 | 🔐 TLS and mTLS, password and token sign-in, SSO via OIDC/JWKS, browser sign-in, authorized e-mail filters | ✅ |
 | 👥 Role-based access control: users, roles, grants, ownership, system privileges | ✅ |
 | 🛡️ Row policies, column masking, tenants, per-catalog access rules, Open Policy Agent | ✅ |

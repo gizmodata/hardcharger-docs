@@ -96,7 +96,7 @@
     "default_value": "0",
     "cli_flag": "--query-timeout-seconds",
     "env_var": "HARDCHARGER_QUERY_TIMEOUT_SECONDS",
-    "description": "Statement timeout in seconds (0: none). A request's Warp-Statement-Timeout wins."
+    "description": "Statement timeout in seconds (0: none). A request's Chargewire-Statement-Timeout wins."
   },
   {
     "name": "hardcharger.admin_bypass_queue_default",

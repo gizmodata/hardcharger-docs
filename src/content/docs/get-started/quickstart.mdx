@@ -81,7 +81,7 @@ docker run --rm --name hardcharger -p 31337:31337 -p 31338:31338 \
   ghcr.io/gizmodata/hardcharger:latest
 ```
 
-Port 31337 speaks Warp SQL; 31338 answers `/health`.
+Port 31337 speaks Chargewire; 31338 answers `/health`.
 
 <Preview>
 
@@ -114,7 +114,7 @@ tar -xzf "hardcharger-$PLATFORM.tar.gz"
 mv "hardcharger-$PLATFORM" hardcharger
 ```
 
-```bash test server=self background wait=http://127.0.0.1:31337/warp/v1/health
+```bash test server=self background wait=http://127.0.0.1:31337/chargewire/v1/health
 HARDCHARGER_ADMIN_PASSWORD='change-me' ./hardcharger/bin/hardcharger-server --database my.duckdb
 ```
 
@@ -179,30 +179,30 @@ set `--admin-username`.
 ## 2. Check that it is up
 
 ```console test server=none
-$ curl -s localhost:31337/warp/v1/health
+$ curl -s localhost:31337/chargewire/v1/health
 {"status":"serving"}
 ```
 
 The health endpoint needs no credentials. For load balancers and Kubernetes probes, also
 serve it on its own plaintext port with `--health-port 31338` (the Docker image does). Port
-31337 describes itself at `/warp`:
+31337 describes itself at `/chargewire`:
 
 ```console test server=none
-$ curl -s localhost:31337/warp | jq -r '.server.name, .protocol'
+$ curl -s localhost:31337/chargewire | jq -r '.server.name, .protocol'
 Hardcharger
-warp-sql
+chargewire
 ```
 
 ## 3. Run a query
 
-Warp SQL is plain HTTP, so `curl` is enough. Get a token, open a session, run SQL:
+Chargewire is plain HTTP, so `curl` is enough. Get a token, open a session, run SQL:
 
 ```bash test server=none
-TOKEN=$(curl -s localhost:31337/warp/v1/auth/token -H 'Content-Type: application/json' \
+TOKEN=$(curl -s localhost:31337/chargewire/v1/auth/token -H 'Content-Type: application/json' \
   -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
-SESSION=$(curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $TOKEN" \
+SESSION=$(curl -s localhost:31337/chargewire/v1/sessions -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' -d '{}' | jq -r .session_id)
-curl -s localhost:31337/warp/v1/sessions/$SESSION/statements -H "Authorization: Bearer $TOKEN" \
+curl -s localhost:31337/chargewire/v1/sessions/$SESSION/statements -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' -d '{"sql": "SELECT 42 AS answer"}' | jq .result.kind
 ```
 

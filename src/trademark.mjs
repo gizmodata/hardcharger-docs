@@ -2,7 +2,7 @@
 // Its first mention on each page carries the mark: in the page's body (src/middleware.ts) and
 // in its <title> and description metadata (src/starlightRouteData.ts). Never in code (inline,
 // blocks, CLI output), never in headings (their anchors stay as they are), and never on
-// "Warp SQL".
+// "Chargewire".
 
 const NAME = /\bHardcharger\b(?![™\-.\w])/;
 const MARKED = /\bHardcharger™/;

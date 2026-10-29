@@ -11,19 +11,18 @@ name: docs
 #     Hardcharger's main branch, with the real clients (Python, Go, Java, Node, the CLI, curl),
 #     PostgreSQL, Docker and nginx. Missing prerequisites FAIL the job; nothing is skipped.
 #   - reference: the generated reference (configuration, SQL settings and functions, metrics,
-#     CLI help, release notes, the Warp SQL spec) is regenerated from that server and those
+#     CLI help, release notes, the Chargewire spec) is regenerated from that server and those
 #     repositories and must match what is committed.
 #
-# Access while Hardcharger is internal, with no personal token:
+# Access, with no personal token and no deploy key:
 #   - ghcr.io/gizmodata/hardcharger (:main for the server and the CLI, :latest for the Docker
 #     examples), pulled with this workflow's GITHUB_TOKEN: the package grants this repository
 #     read access (package settings, Manage Actions access).
-#   - the internal repositories, each through a read-only deploy key of that repository, kept
-#     here as a secret: DEPLOY_KEY_HARDCHARGER (CHANGELOG, the Python server package),
-#     DEPLOY_KEY_WARP_SQL (the spec), DEPLOY_KEY_HARDCHARGER_ADBC and DEPLOY_KEY_WARP_SQL_ADBC
-#     (the Python and Go driver; Go fetches both modules), DEPLOY_KEY_HARDCHARGER_JDBC and
-#     DEPLOY_KEY_WARP_SQL_JDBC (the JDBC driver and its submodule). The JavaScript driver is
-#     installed from npm at the version pinned in package-lock.json.
+#   - the source repositories (hardcharger for the CHANGELOG and the Python server package,
+#     chargewire for the spec, hardcharger-adbc for the Python and Go driver, hardcharger-jdbc
+#     and its chargewire-jdbc submodule for the JDBC driver) are public and cloned anonymously;
+#     Go fetches its modules the same way. The JavaScript driver is installed from npm at the
+#     version pinned in package-lock.json.
 #   - Release downloads (the installer, tarballs, the Python package's server) are exercised
 #     against a release mirror made from the :main image (verify_examples.py, `release`).
 
@@ -152,48 +151,18 @@ jobs:
       GOPRIVATE: github.com/gizmodata/*
     steps:
       - uses: actions/checkout@v7
-      - name: Deploy keys for the internal repositories
-        env:
-          DEPLOY_KEY_HARDCHARGER: ${{ secrets.DEPLOY_KEY_HARDCHARGER }}
-          DEPLOY_KEY_WARP_SQL: ${{ secrets.DEPLOY_KEY_WARP_SQL }}
-          DEPLOY_KEY_HARDCHARGER_ADBC: ${{ secrets.DEPLOY_KEY_HARDCHARGER_ADBC }}
-          DEPLOY_KEY_WARP_SQL_ADBC: ${{ secrets.DEPLOY_KEY_WARP_SQL_ADBC }}
-          DEPLOY_KEY_HARDCHARGER_JDBC: ${{ secrets.DEPLOY_KEY_HARDCHARGER_JDBC }}
-          DEPLOY_KEY_WARP_SQL_JDBC: ${{ secrets.DEPLOY_KEY_WARP_SQL_JDBC }}
-        run: |
-          # One SSH host alias per repository, each with its own key, and git rewrites every
-          # spelling of that repository's URL (https, ssh, scp-like) to its alias. Go's module
-          # fetches and git submodules go through the same rewrites. After this repository's own
-          # checkout: the rules are URL prefixes, and "hardcharger" is a prefix of
-          # "hardcharger-docs".
-          mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
-          for repo in hardcharger warp-sql hardcharger-adbc warp-sql-adbc hardcharger-jdbc warp-sql-jdbc; do
-            var="DEPLOY_KEY_$(echo "$repo" | tr 'a-z-' 'A-Z_')"
-            key="${!var}"
-            if [ -z "$key" ]; then
-              echo "::error::the $var secret is not set: the private key of a read-only deploy key of gizmodata/$repo"
-              exit 1
-            fi
-            printf '%s\n' "$key" > ~/.ssh/"$repo" && chmod 600 ~/.ssh/"$repo"
-            printf 'Host github.com-%s\n  HostName github.com\n  User git\n  IdentityFile ~/.ssh/%s\n  IdentitiesOnly yes\n' "$repo" "$repo" >> ~/.ssh/config
-            for from in "https://github.com/gizmodata/$repo" "ssh://git@github.com/gizmodata/$repo" "git@github.com:gizmodata/$repo"; do
-              git config --global --add url."git@github.com-$repo:gizmodata/$repo".insteadOf "$from"
-            done
-          done
-
       - name: Source repositories
         env:
-          # Main now contains the 2.0 driver, including Warp SQL 1.0 partitioned ingest,
+          # Main now contains the 2.0 driver, including Chargewire 1.0 partitioned ingest,
           # connection profiles and session handoff, tested against the server's main image.
           # Switch to the published wheel at the public release.
           HARDCHARGER_ADBC_REF: main
         run: |
-          for repo in hardcharger warp-sql hardcharger-adbc hardcharger-jdbc; do
+          for repo in hardcharger chargewire hardcharger-adbc hardcharger-jdbc; do
             ref=()
             if [ "$repo" = hardcharger-adbc ]; then ref=(--branch "$HARDCHARGER_ADBC_REF"); fi
             git clone --quiet --depth 1 "${ref[@]}" --recurse-submodules --shallow-submodules \
-              "git@github.com:gizmodata/$repo.git" "$RUNNER_TEMP/src/$repo"
+              "https://github.com/gizmodata/$repo.git" "$RUNNER_TEMP/src/$repo"
             echo "$repo at $(git -C "$RUNNER_TEMP/src/$repo" rev-parse --short HEAD)"
           done
 
@@ -257,20 +226,20 @@ jobs:
 
       - name: The published JavaScript driver (installed by npm ci)
         run: |
-          npm ls @gizmodata/hardcharger @gizmodata/warp-sql apache-arrow
+          npm ls @gizmodata/hardcharger @gizmodata/chargewire apache-arrow
           node --input-type=module -e 'import { parseUrl } from "@gizmodata/hardcharger"; console.log(parseUrl("hardcharger://localhost").href)'
 
       - name: The JDBC driver (hardcharger-jdbc.jar)
         run: |
           jdbc="$RUNNER_TEMP/src/hardcharger-jdbc"
-          mvn -q -f "$jdbc/third_party/warp-sql-jdbc/pom.xml" -DskipTests -DskipITs install
+          mvn -q -f "$jdbc/third_party/chargewire-jdbc/pom.xml" -DskipTests -DskipITs install
           mvn -q -f "$jdbc/pom.xml" -DskipTests package
           echo "HARDCHARGER_DOCS_JDBC_JAR=$jdbc/target/hardcharger-jdbc.jar" >> "$GITHUB_ENV"
 
       - name: Reference matches the server
         env:
           HARDCHARGER_DOCS_HARDCHARGER_SRC: ${{ runner.temp }}/src/hardcharger
-          HARDCHARGER_DOCS_WARPSQL_SRC: ${{ runner.temp }}/src/warp-sql
+          HARDCHARGER_DOCS_CHARGEWIRE_SRC: ${{ runner.temp }}/src/chargewire
         run: .venv/bin/python scripts/gen_reference.py --check
 
       - name: Every tested example

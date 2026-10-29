@@ -116,7 +116,7 @@ with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="joe"
 ```text output
 (Decimal('200.0'),)
 [(1, 'ann@example.com'), (2, 'bob@example.com')]
-refused: UNAUTHORIZED: [warpsql] ExecuteQuery: Permission Error: Hardcharger blocked this statement: user joe has no SELECT on column(s) birthday of my.main.customers. Access control on this server lets user joe do only what their roles are granted (see SHOW GRANTS) (permission_denied, HTTP 403, request …). SQLSTATE: 42501
+refused: UNAUTHORIZED: [chargewire] ExecuteQuery: Permission Error: Hardcharger blocked this statement: user joe has no SELECT on column(s) birthday of my.main.customers. Access control on this server lets user joe do only what their roles are granted (see SHOW GRANTS) (permission_denied, HTTP 403, request …). SQLSTATE: 42501
 ```
 
 ## Privileges

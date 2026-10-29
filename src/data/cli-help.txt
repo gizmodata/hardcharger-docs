@@ -12,7 +12,7 @@ Connection:
   -p, --port PORT               Server port (default: 31337; env: HARDCHARGER_PORT)
   -u, --username USER           Username (env: HARDCHARGER_USER, falls back to HARDCHARGER_ADMIN_USERNAME for parity with the server)
   -W, --password                Force a password prompt (else env: HARDCHARGER_PASSWORD, or a prompt)
-      --uri URI                 Connection URI: hardcharger://HOST[:PORT][/PREFIX][?tls=false], HTTPS unless it says ?tls=false, port 31337 by default; also warp://, https:// and http:// (also the one positional argument; not with --host, --port or --tls)
+      --uri URI                 Connection URI: hardcharger://HOST[:PORT][/PREFIX][?tls=false], HTTPS unless it says ?tls=false, port 31337 by default; also chargewire://, https:// and http:// (also the one positional argument; not with --host, --port or --tls)
 
 TLS:
       --tls[=BOOL]              TLS (HTTPS), on by default; --no-tls (or --tls=false, --tls false) for plain HTTP to a server without TLS (env: HARDCHARGER_TLS=false; in a URI, ?tls=false)

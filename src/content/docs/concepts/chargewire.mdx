@@ -1,27 +1,27 @@
 ---
-title: "Warp SQL in one page"
-description: "The Warp SQL protocol behind Hardcharger: tokens, sessions, statements, streamed and asynchronous results, partitions, retention and resumption, in one page."
+title: "Chargewire in one page"
+description: "The Chargewire protocol behind Hardcharger: tokens, sessions, statements, streamed and asynchronous results, partitions, retention and resumption, in one page."
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-Hardcharger speaks **Warp SQL**: an open protocol for running SQL over plain HTTP, with
+Hardcharger speaks **Chargewire**: an open protocol for running SQL over plain HTTP, with
 results, parameters and uploads carried as [Apache Arrow IPC streams](https://arrow.apache.org/docs/format/Columnar.html#ipc-streaming-format).
 Any HTTP client can call it. The drivers wrap it so you rarely see it, but knowing its shape
 explains how Hardcharger behaves on real networks. The full specification is in the
-[reference](/reference/warp-sql-protocol/).
+[reference](/reference/chargewire-protocol/).
 
 ## The pieces
 
 | Thing | What it is | Endpoint |
 |---|---|---|
-| **Token** | A bearer credential the server issues for a password or an identity provider's token | `POST /warp/v1/auth/token` |
-| **Session** | The server-side state of one connection: current catalog and schema, settings, temporary tables, an open transaction | `POST /warp/v1/sessions` |
+| **Token** | A bearer credential the server issues for a password or an identity provider's token | `POST /chargewire/v1/auth/token` |
+| **Session** | The server-side state of one connection: current catalog and schema, settings, temporary tables, an open transaction | `POST /chargewire/v1/sessions` |
 | **Statement** | One run of one SQL statement in a session, with a state and, when it succeeds, a result | `POST …/sessions/{id}/statements` |
 | **Result** | Arrow record batches, in one or more **partitions** | `GET …/statements/{id}/result` |
 | **Prepared statement** | SQL parsed once, executed with Arrow parameter batches | `POST …/sessions/{id}/prepared` |
 | **Ingest** | An Arrow stream written into a table | `POST …/sessions/{id}/ingest` |
-| **API description** | The OpenAPI 3.1 document of every endpoint above | `GET /warp/v1/openapi.json` |
+| **API description** | The OpenAPI 3.1 document of every endpoint above | `GET /chargewire/v1/openapi.json` |
 
 Every handle (session, statement, prepared statement) belongs to the identity that created
 it, and the server checks that on every request. Another user's session id gets the same
@@ -33,9 +33,9 @@ it, and the server checks that on every request. Another user's session id gets 
 sequenceDiagram
   participant C as Client
   participant H as Hardcharger
-  C->>H: POST /warp/v1/auth/token
+  C->>H: POST /chargewire/v1/auth/token
   H-->>C: bearer token
-  C->>H: POST /warp/v1/sessions
+  C->>H: POST /chargewire/v1/sessions
   H-->>C: session_id
   alt short query: one round trip
     C->>H: POST …/statements  (Accept: Arrow stream)
@@ -60,26 +60,26 @@ costs one round trip.
 statement document (state `queued` or `running`). The client long-polls the statement with
 `Prefer: wait=N` until it is `succeeded`, `failed` or `cancelled`, then reads the result. No
 request has to stay open for the whole query, which matters behind proxies that cut idle
-connections. The drivers switch to it with one option (`adbc.warp.statement.async`,
+connections. The drivers switch to it with one option (`adbc.chargewire.statement.async`,
 JDBC `async=true`).
 
 ## Retained, resumable results
 
 A **retained** result stays on the server until it expires, and can be read again from any
 batch. If a download breaks off, the client asks for the rest with `from_batch`. Retention is part
-of every Warp SQL server, but a server may decline to keep a result, so a client reads the
+of every Chargewire server, but a server may decline to keep a result, so a client reads the
 statement document's `retained` before relying on a re-read:
 
 ```bash test
 H='Content-Type: application/json'
-TOKEN=$(curl -s localhost:31337/warp/v1/auth/token -H "$H" \
+TOKEN=$(curl -s localhost:31337/chargewire/v1/auth/token -H "$H" \
   -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
-SESSION=$(curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $TOKEN" -H "$H" -d '{}' | jq -r .session_id)
-URL=localhost:31337/warp/v1/sessions/$SESSION
+SESSION=$(curl -s localhost:31337/chargewire/v1/sessions -H "Authorization: Bearer $TOKEN" -H "$H" -d '{}' | jq -r .session_id)
+URL=localhost:31337/chargewire/v1/sessions/$SESSION
 
 # Submit without waiting, and ask the server to keep the result.
 STATEMENT=$(curl -s $URL/statements -H "Authorization: Bearer $TOKEN" -H "$H" \
-  -H 'Prefer: respond-async' -H 'Warp-Retain-Result: true' \
+  -H 'Prefer: respond-async' -H 'Chargewire-Retain-Result: true' \
   -d '{"sql": "SELECT * FROM range(1000000) t(i)"}' | jq -r .statement_id)
 
 # Long-poll until it finishes (up to 10 s per request).
@@ -106,7 +106,7 @@ the server cuts the stream short, and the client reports the error.
 ## Partitioned results
 
 One TCP connection carries what one network flow allows (about 10 Gbit/s on AWS, much less
-across regions). For a large result, a client can send `Warp-Result-Partitions: n`, and the
+across regions). For a large result, a client can send `Chargewire-Result-Partitions: n`, and the
 server may split the result into up to `n` partitions, which the client reads at once, each
 over its own connection. The CLI asks for 8 by default; a result of fewer than two batches
 still comes as one stream:
@@ -116,7 +116,7 @@ from adbc_driver_hardcharger import dbapi as hardcharger
 
 with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger",
                          password="change-me",
-                         db_kwargs={"adbc.warp.statement.result_partitions": "8"}) as conn:
+                         db_kwargs={"adbc.chargewire.statement.result_partitions": "8"}) as conn:
     with conn.cursor() as cur:
         cur.execute(operation="SELECT i FROM range(10000000) t(i) ORDER BY i")
         table = cur.fetch_arrow_table()
@@ -131,7 +131,7 @@ With the default `result_order=preserve` the server deals batches to partitions 
 (`interleaved`), and the driver takes them back in the same order, so `ORDER BY` holds. With
 `any`, batches come in whatever order they arrive. Small results stay in one partition. A
 result split over several partitions always says so in two response headers,
-`Warp-Result-Partitions` and `Warp-Result-Order`, so a client never guesses the order. A
+`Chargewire-Result-Partitions` and `Chargewire-Result-Order`, so a client never guesses the order. A
 client must read every partition, concurrently, to its end-of-stream marker before it treats
 the result as complete. The JDBC driver's option is `resultPartitions`, and the CLI's is
 `--result-partitions`.
@@ -146,7 +146,7 @@ no defined order ([bulk ingest](/guides/bulk-ingest/#partitioned-uploads)).
 <Aside type="tip" title="Why partitions are in the protocol">
 Results are already described as partitions with a `location`. A server with the
 `result_locations` capability can point partitions at other machines, for a client that says it
-can read them (`Warp-Result-Locations: remote`); for every other client `location` is `null`.
+can read them (`Chargewire-Result-Locations: remote`); for every other client `location` is `null`.
 Hardcharger doesn't list `result_locations` yet: every partition lives on the server you asked.
 </Aside>
 
@@ -158,7 +158,7 @@ Hardcharger doesn't list `result_locations` yet: every partition lives on the se
   discarded. Hardcharger never undoes a write because its reader left.
 - `POST …/sessions/{id}/cancel` cancels everything the session is running, for a client
   that doesn't know a statement's id yet.
-- `Warp-Statement-Timeout: <ms>` limits one statement; the server's
+- `Chargewire-Statement-Timeout: <ms>` limits one statement; the server's
   [`query_timeout_seconds`](/reference/configuration/#query_timeout_seconds) sets a default.
 - A client that hangs up while reading an unretained result cancels the query within a
   second.
@@ -199,21 +199,21 @@ reason, since signing in with the old credentials would fail or undo a revocatio
 ## The API description
 
 The server describes its endpoints in [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.1.html)
-at `GET /warp/v1/openapi.json`: parameters, headers, request and response schemas, the problem
+at `GET /chargewire/v1/openapi.json`: parameters, headers, request and response schemas, the problem
 document, and `bearerAuth` on every operation except discovery, health, sign-in and the
 document itself, which need no token. Discovery lists it as the capability `openapi`, with its
 path in `links`:
 
 ```console test
-$ curl -s localhost:31337/warp | jq -c '{openapi: (.capabilities | index("openapi") != null), links}'
-{"openapi":true,"links":{"openapi":"/warp/v1/openapi.json"}}
-$ curl -s localhost:31337/warp/v1/openapi.json | jq -c '{openapi, title: .info.title}'
-{"openapi":"3.1.1","title":"Warp SQL"}
+$ curl -s localhost:31337/chargewire | jq -c '{openapi: (.capabilities | index("openapi") != null), links}'
+{"openapi":true,"links":{"openapi":"/chargewire/v1/openapi.json"}}
+$ curl -s localhost:31337/chargewire/v1/openapi.json | jq -c '{openapi, title: .info.title}'
+{"openapi":"3.1.1","title":"Chargewire"}
 ```
 
 API tools and client generators can read it from there. The [web UI](/guides/web-ui/#the-api-page)'s
 **API** page shows it in Swagger UI, where you can try each request signed in as yourself. The
-[protocol reference](/reference/warp-sql-protocol/) remains the definition; where the two
+[protocol reference](/reference/chargewire-protocol/) remains the definition; where the two
 disagree, the document has a bug.
 
 ## Errors
@@ -228,7 +228,7 @@ a statement that was still running, or from a replay of an idempotent request. C
 statement's own failure is never a `5xx`: `500 internal_error` means the server itself failed.
 
 ```console test
-$ curl -s localhost:31337/warp/v1/sessions -H 'Authorization: Bearer not-a-token' -d '{}' | jq -c '{status, code}'
+$ curl -s localhost:31337/chargewire/v1/sessions -H 'Authorization: Bearer not-a-token' -d '{}' | jq -c '{status, code}'
 {"status":401,"code":"invalid_token"}
 ```
 

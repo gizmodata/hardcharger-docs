@@ -3,7 +3,7 @@
   "version": "2.2.0",
   "private": true,
   "type": "module",
-  "description": "Documentation for Hardcharger, GizmoData's DuckDB 2.0 server on the Warp SQL protocol",
+  "description": "Documentation for Hardcharger, GizmoData's DuckDB 2.0 server on the Chargewire protocol",
   "engines": {
     "node": ">=22.19.0"
   },

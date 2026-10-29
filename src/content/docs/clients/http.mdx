@@ -5,18 +5,18 @@ description: "Talk to Hardcharger with curl or any HTTP library - sign in, open 
 
 import { Aside } from '@astrojs/starlight/components';
 import HeroBanner from '../../../components/HeroBanner.astro';
-import banner from '../../../assets/banners/warp-sql-http-banner.svg';
+import banner from '../../../assets/banners/chargewire-http-banner.svg';
 
-<HeroBanner src={banner} alt="Plain HTTP: Warp SQL with curl, fetch or any HTTP library" />
+<HeroBanner src={banner} alt="Plain HTTP: Chargewire with curl, fetch or any HTTP library" />
 
-Warp SQL is plain HTTP with JSON control messages and Arrow IPC data, so any HTTP client can
+Chargewire is plain HTTP with JSON control messages and Arrow IPC data, so any HTTP client can
 use Hardcharger. This page walks through the protocol with `curl`, `jq` and a line of Python to
-read Arrow; the [specification](/reference/warp-sql-protocol/) has every detail.
+read Arrow; the [specification](/reference/chargewire-protocol/) has every detail.
 
 ## Discover
 
 ```console test
-$ curl -s localhost:31337/warp | jq -c '{server: .server.name, protocol_versions, capabilities}'
+$ curl -s localhost:31337/chargewire | jq -c '{server: .server.name, protocol_versions, capabilities}'
 {"server":"Hardcharger","protocol_versions":["1"],"capabilities":["prepared_statements","transactions","ingest","partitioned_ingest","long_poll","ipc_compression_zstd","ipc_compression_lz4_frame","result_partitions","openapi"]}
 ```
 
@@ -27,12 +27,12 @@ know. Everything else in the protocol (result retention included) is core: every
 
 ```console test
 $ H='Content-Type: application/json'
-$ TOKEN=$(curl -s localhost:31337/warp/v1/auth/token -H "$H" \
+$ TOKEN=$(curl -s localhost:31337/chargewire/v1/auth/token -H "$H" \
     -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
 $ AUTH="Authorization: Bearer $TOKEN"
-$ curl -s localhost:31337/warp/v1/sessions -H "$AUTH" -H "$H" -d '{"options": {"schema": "main"}}' | tee session.json | jq -c '{options, transaction, idle_timeout_s}'
+$ curl -s localhost:31337/chargewire/v1/sessions -H "$AUTH" -H "$H" -d '{"options": {"schema": "main"}}' | tee session.json | jq -c '{options, transaction, idle_timeout_s}'
 {"options":{"catalog":"my","schema":"main","autocommit":true,"duckdb_arrow_lossless_conversion":false},"transaction":"none","idle_timeout_s":900}
-$ URL=localhost:31337/warp/v1/sessions/$(jq -r .session_id session.json)
+$ URL=localhost:31337/chargewire/v1/sessions/$(jq -r .session_id session.json)
 $ echo "export H='$H' AUTH='$AUTH' URL='$URL'" > env.sh
 ```
 
@@ -104,18 +104,18 @@ $ curl -s -o /dev/null -w '%{http_code}\n' -X DELETE $URL/statements/$ID -H "$AU
 ```
 
 `Prefer: wait=N` long-polls: the server answers as soon as the state changes, or after N seconds.
-Add `Warp-Retain-Result: true` when submitting to make the result re-readable and resumable
+Add `Chargewire-Retain-Result: true` when submitting to make the result re-readable and resumable
 (`?from_batch=N`); a server may decline, so check the statement document's `result.retained`
-before relying on a re-read. See [Warp SQL in one page](/concepts/warp-sql/#retained-resumable-results).
+before relying on a re-read. See [Chargewire in one page](/concepts/chargewire/#retained-resumable-results).
 
 A statement that has failed, or was cancelled, by the time the server answers its submission gets
 an error response (a [problem document](/reference/errors/) with the statement's id in
-`Warp-Statement-Id`), never a success status with a `failed` or `cancelled` document. Here a
+`Chargewire-Statement-Id`), never a success status with a `failed` or `cancelled` document. Here a
 statement times out while the submission waits for it:
 
 ```console test
 $ . ./env.sh
-$ curl -s $URL/statements -H "$AUTH" -H "$H" -H 'Warp-Statement-Timeout: 200' \
+$ curl -s $URL/statements -H "$AUTH" -H "$H" -H 'Chargewire-Statement-Timeout: 200' \
     -d '{"sql": "SELECT sum(hash(a.range + b.range)) FROM range(1000000) a, range(1000000) b"}' | jq -c '{status, code, cancel_reason}'
 {"status":409,"code":"statement_timeout","cancel_reason":"timeout"}
 ```

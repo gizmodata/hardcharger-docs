@@ -8,7 +8,7 @@ import HeroBanner from '../../../components/HeroBanner.astro';
 import banner from '../../../assets/banners/hardcharger-adbc-banner.svg';
 import Preview from '../../../components/Preview.astro';
 
-<HeroBanner src={banner} alt="Hardcharger ADBC: the driver for Hardcharger, on Warp SQL" href="https://github.com/gizmodata/hardcharger-adbc" />
+<HeroBanner src={banner} alt="Hardcharger ADBC: the driver for Hardcharger, on Chargewire" href="https://github.com/gizmodata/hardcharger-adbc" />
 
 The Hardcharger ADBC driver is written in Go, so Go programs use it directly, as a package,
 with no driver manager and no cgo:
@@ -20,7 +20,7 @@ go get github.com/gizmodata/hardcharger-adbc/go/v2
 <Preview>
 
 <Aside type="caution" title="Private preview">
-The module and its dependency `github.com/gizmodata/warp-sql-adbc/go` are internal until launch.
+The module and its dependency `github.com/gizmodata/chargewire-adbc/go/v2` are internal until launch.
 Set `GOPRIVATE=github.com/gizmodata/*` and give git access to GitHub (`gh auth setup-git`, or an
 SSH key) before `go get`.
 </Aside>
@@ -101,17 +101,17 @@ The database and connection options are the same in every ADBC language:
 
 | Option | Meaning |
 |---|---|
-| `uri` | `hardcharger://host[:port][/prefix][?tls=false]`, or `warp://`, `https://`, `http://` |
+| `uri` | `hardcharger://host[:port][/prefix][?tls=false]`, or `chargewire://`, `https://`, `http://` |
 | `username`, `password` | Password sign-in (`token` with an ID token as the password for SSO) |
 | `adbc.hardcharger.query_tag`, `adbc.hardcharger.session_tag` | JSON tags recorded in instrumentation |
 | `adbc.hardcharger.setting.NAME` | `SET SESSION hardcharger.NAME` on every session (database) or now (connection) |
 | `adbc.hardcharger.global_setting.NAME` | `SET GLOBAL hardcharger.NAME` (administrators) |
 | `adbc.hardcharger.auth_type` | `external` for [browser sign-in](/guides/sso/#browser-sign-in) |
-| `adbc.warp.tls.root_certs`, `adbc.warp.tls.client_cert`, `adbc.warp.tls.client_key` | TLS: a private CA, mutual TLS |
-| `adbc.warp.statement.result_partitions`, `adbc.warp.statement.result_order` | [Partitioned results](/concepts/warp-sql/#partitioned-results) |
-| `adbc.warp.ipc_compression` | `zstd` |
-| `adbc.warp.statement.async`, `adbc.warp.statement.retain_result` | Submit, poll, fetch; resumable results |
-| `adbc.warp.statement.timeout_seconds` | Per-statement timeout |
+| `adbc.chargewire.tls.root_certs`, `adbc.chargewire.tls.client_cert`, `adbc.chargewire.tls.client_key` | TLS: a private CA, mutual TLS |
+| `adbc.chargewire.statement.result_partitions`, `adbc.chargewire.statement.result_order` | [Partitioned results](/concepts/chargewire/#partitioned-results) |
+| `adbc.chargewire.ipc_compression` | `zstd` |
+| `adbc.chargewire.statement.async`, `adbc.chargewire.statement.retain_result` | Submit, poll, fetch; resumable results |
+| `adbc.chargewire.statement.timeout_seconds` | Per-statement timeout |
 
 The Go package exports the Hardcharger names as constants (`hardcharger.OptionQueryTag`, ...).
 Bind parameters with `stmt.Bind` or `stmt.BindStream`; bulk-load with the standard
@@ -120,6 +120,6 @@ Bind parameters with `stmt.Bind` or `stmt.BindStream`; bulk-load with the standa
 ## Errors
 
 Errors are `adbc.Error` values with the SQLSTATE and the server's message.
-`warpsql.ErrorCode(err)` (from `github.com/gizmodata/warp-sql-adbc/go/warpsql`) returns the
+`chargewire.ErrorCode(err)` (from `github.com/gizmodata/chargewire-adbc/go/v2/chargewire`) returns the
 server's stable error code (`sql_error`, `session_not_found`, ...) behind any error the driver
 returns. Cancel a running statement by cancelling its context.

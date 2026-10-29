@@ -68,14 +68,14 @@ flowchart LR
 
 | You want | Do this |
 |---|---|
-| A large result faster over a fast network | Partitions: `adbc.warp.statement.result_partitions` (ADBC), `resultPartitions` (JDBC), `--result-partitions` (the CLI); each is 8 by default. On a fast LAN, 32 was fastest in the benchmarks; the server caps it at [`max_result_partitions`](/reference/configuration/#max_result_partitions) (32). |
+| A large result faster over a fast network | Partitions: `adbc.chargewire.statement.result_partitions` (ADBC), `resultPartitions` (JDBC), `--result-partitions` (the CLI); each is 8 by default. On a fast LAN, 32 was fastest in the benchmarks; the server caps it at [`max_result_partitions`](/reference/configuration/#max_result_partitions) (32). |
 | A large load faster | [Partitioned uploads](/guides/bulk-ingest/#partitioned-uploads), when the rows needn't keep the upload's order. |
-| A large result faster over a slow or long link | zstd (`adbc.warp.ipc_compression=zstd`, JDBC `ipcCompression=zstd`) cuts the bytes to about a quarter. On a LAN it is slower than none, because the client decompresses on one core. Over high latency, prefer up to 8 partitions, in any order. |
-| Long queries behind a proxy | Submit asynchronously (`adbc.warp.statement.async`, JDBC `async=true`) so no request outlives the proxy's timeout. |
+| A large result faster over a slow or long link | zstd (`adbc.chargewire.ipc_compression=zstd`, JDBC `ipcCompression=zstd`) cuts the bytes to about a quarter. On a LAN it is slower than none, because the client decompresses on one core. Over high latency, prefer up to 8 partitions, in any order. |
+| Long queries behind a proxy | Submit asynchronously (`adbc.chargewire.statement.async`, JDBC `async=true`) so no request outlives the proxy's timeout. |
 | Bounded memory | [`memory_limit`](/reference/configuration/#memory_limit), and [`max_concurrent_statements`](/guides/statement-control/#the-statement-queue) to queue rather than overload. |
 | Smaller first batches | [`result_batch_rows`](/reference/configuration/#result_batch_rows): a full scan's first batch takes about 21 ms at 122,880 rows and 2 ms at 2,048, but throughput drops with small batches. |
 
-A tested example of reading partitions is in [Warp SQL in one page](/concepts/warp-sql/#partitioned-results).
+A tested example of reading partitions is in [Chargewire in one page](/concepts/chargewire/#partitioned-results).
 
 ## What Hardcharger doesn't do yet
 

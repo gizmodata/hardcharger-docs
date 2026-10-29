@@ -17,12 +17,19 @@ export default defineConfig({
 	site,
 	base,
 	trailingSlash: 'always',
+	// Pages that moved, from their old address to the new one. GitHub Pages can't send an HTTP
+	// redirect, so Astro writes a page at each old address that forwards at once (and names
+	// the new one as canonical). The one place the protocol's earlier name may stay.
+	redirects: {
+		'/concepts/warp-sql/': '/concepts/chargewire/',
+		'/reference/warp-sql-protocol/': '/reference/chargewire-protocol/',
+	},
 	integrations: [
 		mermaid({ theme: 'dark', autoTheme: true }),
 		starlight({
 			title: 'Hardcharger™',
 			description:
-				'Hardcharger™ is GizmoData’s DuckDB 2.0 server: fast, secure, remote DuckDB over the Warp SQL protocol. Every feature included.',
+				'Hardcharger™ is GizmoData’s DuckDB 2.0 server: fast, secure, remote DuckDB over the Chargewire protocol. Every feature included.',
 			// The Hardcharger lockup (bull head and lettering) replaces the title text; the GizmoData
 			// logo stays in the footer.
 			logo: {
@@ -83,7 +90,7 @@ export default defineConfig({
 				{
 					label: 'Concepts',
 					items: [
-						{ label: 'Warp SQL in one page', slug: 'concepts/warp-sql' },
+						{ label: 'Chargewire in one page', slug: 'concepts/chargewire' },
 						{ label: 'Security model', slug: 'concepts/security-model' },
 						{ label: 'Performance model', slug: 'concepts/performance-model' },
 					],
@@ -145,7 +152,7 @@ export default defineConfig({
 						{ label: 'SQL functions and settings', slug: 'reference/sql' },
 						{ label: 'Error codes', slug: 'reference/errors' },
 						{ label: 'CLI reference', slug: 'reference/cli' },
-						{ label: 'Warp SQL protocol', slug: 'reference/warp-sql-protocol' },
+						{ label: 'Chargewire protocol', slug: 'reference/chargewire-protocol' },
 						{ label: 'Release notes', slug: 'reference/release-notes' },
 						{ label: 'Versions', slug: 'reference/versions' },
 					],

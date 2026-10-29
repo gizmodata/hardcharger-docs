@@ -5,7 +5,7 @@ description: "Put Hardcharger behind nginx, a cloud load balancer or a Kubernete
 
 import { Aside } from '@astrojs/starlight/components';
 
-Warp SQL is ordinary HTTP/1.1, so Hardcharger works behind any reverse proxy or load balancer.
+Chargewire is ordinary HTTP/1.1, so Hardcharger works behind any reverse proxy or load balancer.
 Four settings decide whether it works *well*:
 
 | Setting | Why | nginx |
@@ -16,7 +16,7 @@ Four settings decide whether it works *well*:
 | **Long timeouts, or asynchronous submits** | A streamed query keeps its request open while it runs. | `proxy_read_timeout`, `proxy_send_timeout` |
 
 A client that can't get long timeouts through a proxy can submit asynchronously instead
-(`adbc.warp.statement.async`, JDBC `async=true`): no request then stays open longer than a
+(`adbc.chargewire.statement.async`, JDBC `async=true`): no request then stays open longer than a
 long-poll (10 seconds by default).
 
 ## nginx
@@ -34,7 +34,7 @@ http {
   server {
     listen 8080;                       # put TLS here, or on Hardcharger itself
 
-    location /warp/ {
+    location /chargewire/ {
       proxy_pass http://hardcharger;
       proxy_http_version 1.1;
       proxy_set_header Connection "";
@@ -53,7 +53,7 @@ http {
 Try it in front of a server on your machine (`--add-host` points `hardcharger-0` at your
 machine for this test):
 
-```bash test background cleanup="docker rm -f hardcharger-proxy" wait=http://127.0.0.1:8080/warp/v1/health timeout=120
+```bash test background cleanup="docker rm -f hardcharger-proxy" wait=http://127.0.0.1:8080/chargewire/v1/health timeout=120
 docker run --rm --name hardcharger-proxy -p 8080:8080 --add-host hardcharger-0:host-gateway \
   -v "$PWD/nginx.conf:/etc/nginx/nginx.conf:ro" nginx:1.29
 ```
@@ -67,7 +67,7 @@ from adbc_driver_hardcharger import dbapi as hardcharger
 payload = pa.table({"blob": pa.array([b"x" * 1024] * 8192, type=pa.binary())})  # 8 MiB
 with hardcharger.connect(uri="hardcharger://localhost:8080?tls=false", username="hardcharger",
                          password="change-me",
-                         db_kwargs={"adbc.warp.statement.result_partitions": "8"}) as conn:
+                         db_kwargs={"adbc.chargewire.statement.result_partitions": "8"}) as conn:
     with conn.cursor() as cur:
         print(cur.adbc_ingest(table_name="uploads", data=payload, mode="replace"))
         cur.execute(operation="SELECT i FROM range(5000000) t(i) ORDER BY i")
@@ -113,7 +113,7 @@ Replicas share nothing in memory, so beyond affinity:
   from one is accepted by the others (a client that lands elsewhere signs in once, not again).
 - Give them the same `cluster_id` (a UUID): it labels their logs and instrumentation.
 - A session can't move. If a replica goes away, its sessions are gone: the drivers open a new
-  session and say so ([sessions that disappear](/concepts/warp-sql/#sessions-that-disappear)).
+  session and say so ([sessions that disappear](/concepts/chargewire/#sessions-that-disappear)).
 
 <Aside type="caution">
 Every reload of a shared proxy may close idle keep-alive connections or, for HTTP/2, send GOAWAY.

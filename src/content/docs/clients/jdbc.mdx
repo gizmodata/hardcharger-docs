@@ -9,11 +9,11 @@ import banner from '../../../assets/banners/hardcharger-jdbc-banner.svg';
 import Preview from '../../../components/Preview.astro';
 import Ga from '../../../components/Ga.astro';
 
-<HeroBanner src={banner} alt="Hardcharger JDBC: the JDBC driver for Hardcharger, on Warp SQL" href="https://github.com/gizmodata/hardcharger-jdbc" />
+<HeroBanner src={banner} alt="Hardcharger JDBC: the JDBC driver for Hardcharger, on Chargewire" href="https://github.com/gizmodata/hardcharger-jdbc" />
 
 `hardcharger-jdbc` is a JDBC 4.2 driver: one jar for Java 17 and later, with no gRPC, Netty or
 protobuf, and no `--add-opens` or other JVM options. It accepts `jdbc:hardcharger://` URLs and
-is a thin layer on the Warp SQL JDBC driver, which streams results batch by batch.
+is a thin layer on the Chargewire JDBC driver, which streams results batch by batch.
 
 <Preview>
 
@@ -104,11 +104,11 @@ Boston 12.5
 | `async` | `false` | Submit, long-poll, fetch: for long queries behind proxies |
 | `retainResults` | server's | `true` keeps results on the server, so a broken download resumes |
 | `ipcCompression` | `none` | `zstd` |
-| `resultPartitions` | `8` | Read a large result over up to n connections at once ([partitions](/concepts/warp-sql/#partitioned-results)); `1`: one stream |
+| `resultPartitions` | `8` | Read a large result over up to n connections at once ([partitions](/concepts/chargewire/#partitioned-results)); `1`: one stream |
 | `resultOrder` | `preserve` | `any`: rows in arrival order |
 | `resultBufferSize` | `134217728` | Bytes an unread result may buffer when another statement needs its session |
 
-Per statement: `statement.unwrap(com.gizmodata.warpsql.jdbc.WarpStatement.class).setResultPartitions(8)`.
+Per statement: `statement.unwrap(com.gizmodata.chargewire.jdbc.ChargewireStatement.class).setResultPartitions(8)`.
 
 ## How statements run
 
@@ -130,7 +130,7 @@ scrollable or updatable result sets, and bulk ingest (use `executeBatch()`, or
 ## Errors
 
 Server errors become the `SQLException` subclass their SQLSTATE calls for, with the HTTP status as
-the vendor code. `com.gizmodata.warpsql.jdbc.WarpProblem.codeOf(e)` returns the server's stable
+the vendor code. `com.gizmodata.chargewire.jdbc.ChargewireProblem.codeOf(e)` returns the server's stable
 code (`sql_error`, `statement_timeout`, ...).
 
 ```java test
@@ -142,7 +142,7 @@ try (Connection connection = DriverManager.getConnection("jdbc:hardcharger://loc
      Statement statement = connection.createStatement()) {
   statement.executeQuery("SELECT * FROM no_such_table");
 } catch (SQLException e) {
-  System.out.println(e.getSQLState() + " " + com.gizmodata.warpsql.jdbc.WarpProblem.codeOf(e));
+  System.out.println(e.getSQLState() + " " + com.gizmodata.chargewire.jdbc.ChargewireProblem.codeOf(e));
 }
 ```
 

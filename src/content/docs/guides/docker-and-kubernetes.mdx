@@ -14,7 +14,7 @@ import { Aside } from '@astrojs/starlight/components';
 |---|---|
 | Entrypoint | `hardcharger-server`: arguments after the image name are server flags |
 | User | `hardcharger` (uid 999), home and working directory `/var/lib/hardcharger` |
-| Ports | 31337 (Warp SQL), 31338 (`/health`, plaintext) |
+| Ports | 31337 (Chargewire), 31338 (`/health`, plaintext) |
 | Preset | `HARDCHARGER_HOST=0.0.0.0`, `HARDCHARGER_PORT=31337`, `HARDCHARGER_HEALTH_PORT=31338` |
 | Also inside | the `hardcharger` CLI, on `PATH` |
 | Required | `HARDCHARGER_ADMIN_PASSWORD` |
@@ -69,7 +69,7 @@ spec:
   selector:
     app: hardcharger
   ports:
-    - {name: warp, port: 31337, targetPort: warp}
+    - {name: chargewire, port: 31337, targetPort: chargewire}
     - {name: metrics, port: 9091, targetPort: metrics}
 ---
 apiVersion: apps/v1
@@ -104,7 +104,7 @@ spec:
             - name: HARDCHARGER_MEMORY_LIMIT
               value: "6GB"                         # below the container's memory limit
           ports:
-            - {name: warp, containerPort: 31337}
+            - {name: chargewire, containerPort: 31337}
             - {name: health, containerPort: 31338}
             - {name: metrics, containerPort: 9091}
           readinessProbe:
@@ -139,7 +139,7 @@ spec:
 - **Shutdown.** On `SIGTERM` the server drains: health turns `not_serving` (so the readiness probe
   takes the pod out of the Service), running statements get up to 300 seconds, then the rest is
   cancelled. `terminationGracePeriodSeconds` just above that lets it finish.
-- **Exposure.** Put TLS on the Warp SQL port ([guide](/guides/tls/)) or terminate it at your
+- **Exposure.** Put TLS on the Chargewire port ([guide](/guides/tls/)) or terminate it at your
   ingress, and keep the health and metrics ports inside the cluster.
 
 <Aside type="caution" title="Autoscaled nodes">

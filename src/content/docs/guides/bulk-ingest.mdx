@@ -96,9 +96,9 @@ where it goes:
 
 ```bash test
 H='Content-Type: application/json'
-TOKEN=$(curl -s localhost:31337/warp/v1/auth/token -H "$H" \
+TOKEN=$(curl -s localhost:31337/chargewire/v1/auth/token -H "$H" \
   -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
-SESSION=$(curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $TOKEN" -H "$H" -d '{}' | jq -r .session_id)
+SESSION=$(curl -s localhost:31337/chargewire/v1/sessions -H "Authorization: Bearer $TOKEN" -H "$H" -d '{}' | jq -r .session_id)
 
 python3 -c "
 import pyarrow as pa
@@ -106,7 +106,7 @@ table = pa.table({'id': [1, 2], 'name': ['ann', 'bob']})
 with pa.OSFile('people.arrows', 'wb') as sink, pa.ipc.new_stream(sink=sink, schema=table.schema) as writer:
     writer.write_table(table=table)"
 
-curl -s "localhost:31337/warp/v1/sessions/$SESSION/ingest?table=people&mode=create" \
+curl -s "localhost:31337/chargewire/v1/sessions/$SESSION/ingest?table=people&mode=create" \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/vnd.apache.arrow.stream' \
   -H "Idempotency-Key: $(uuidgen 2>/dev/null || cat /proc/sys/kernel/random/uuid)" \
   --data-binary @people.arrows
@@ -179,7 +179,7 @@ with no values at all (Arrow's `null` type) becomes `VARCHAR`.
 ## Partitioned uploads
 
 A large upload can go to the server as several parts at once, each over its own connection
-(Warp SQL §8.3, capability `partitioned_ingest`). The server inserts from all of them in
+(Chargewire §8.3, capability `partitioned_ingest`). The server inserts from all of them in
 parallel and commits them as one: all or nothing. That takes a load past what one network flow
 carries (on AWS, SF10 lineitem[^tpch] in 3.0 s instead of 9.1 s; across regions, SF1 in 2.9 s instead
 of 14.0 s; see the [benchmarks](/benchmarks/#partitioned-uploads-2026-10-17)).
@@ -189,7 +189,7 @@ of 14.0 s; see the [benchmarks](/benchmarks/#partitioned-uploads-2026-10-17)).
 
 <Aside type="note" title="In the drivers">
 The ADBC drivers (`adbc-driver-hardcharger`, the Go package) send loads of two batches or more
-as 8 parts by default (`adbc.warp.ingest.parts`, also `adbc.hardcharger.ingest.parts`; `1` keeps
+as 8 parts by default (`adbc.chargewire.ingest.parts`, also `adbc.hardcharger.ingest.parts`; `1` keeps
 one ordered stream). The protocol below is how to use it directly.
 </Aside>
 
@@ -197,10 +197,10 @@ Over plain HTTP: open the ingest, upload the parts at once, commit:
 
 ```console test
 $ H='Content-Type: application/json'
-$ TOKEN=$(curl -s localhost:31337/warp/v1/auth/token -H "$H" \
+$ TOKEN=$(curl -s localhost:31337/chargewire/v1/auth/token -H "$H" \
     -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
 $ AUTH="Authorization: Bearer $TOKEN"
-$ URL=localhost:31337/warp/v1/sessions/$(curl -s localhost:31337/warp/v1/sessions -H "$AUTH" -H "$H" -d '{}' | jq -r .session_id)
+$ URL=localhost:31337/chargewire/v1/sessions/$(curl -s localhost:31337/chargewire/v1/sessions -H "$AUTH" -H "$H" -d '{}' | jq -r .session_id)
 $ python3 -c "
 import pyarrow as pa
 for part in range(4):
@@ -232,7 +232,7 @@ nothing else.
 - One stream can't go faster than one network flow (about 1.1 GB/s of Arrow on AWS).
   [Partitioned uploads](#partitioned-uploads) use several; on a fast LAN, DuckDB's insert then
   becomes the limit (the server used about 25 cores for SF10 lineitem).
-- zstd (`adbc.warp.ipc_compression=zstd`) pays off only on slow links: the client compresses on
+- zstd (`adbc.chargewire.ipc_compression=zstd`) pays off only on slow links: the client compresses on
   one core.
 - Batches of about 100,000 rows are a good size.
 

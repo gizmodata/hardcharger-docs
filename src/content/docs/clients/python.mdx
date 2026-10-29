@@ -8,10 +8,10 @@ import HeroBanner from '../../../components/HeroBanner.astro';
 import banner from '../../../assets/banners/hardcharger-adbc-banner.svg';
 import Preview from '../../../components/Preview.astro';
 
-<HeroBanner src={banner} alt="Hardcharger ADBC: the Python driver for Hardcharger, on Warp SQL" href="https://github.com/gizmodata/hardcharger-adbc" />
+<HeroBanner src={banner} alt="Hardcharger ADBC: the Python driver for Hardcharger, on Chargewire" href="https://github.com/gizmodata/hardcharger-adbc" />
 
 `adbc-driver-hardcharger` is Hardcharger's Python driver: a [DB-API 2.0](https://peps.python.org/pep-0249/)
-module whose results are Arrow tables. It is a thin layer on the Warp SQL ADBC driver (written in
+module whose results are Arrow tables. It is a thin layer on the Chargewire ADBC driver (written in
 Go), which does the work: Arrow streaming, bind parameters, bulk ingest, partitioned results,
 cancel, retries and TLS. The Hardcharger layer adds `hardcharger://` URIs, query and session
 tags, `hardcharger.*` settings and browser sign-in.
@@ -72,7 +72,7 @@ with hardcharger.connect(uri="hardcharger://localhost?tls=false",
 | `hardcharger://host:port` | HTTPS to another port |
 | `hardcharger://host?tls=false` | Plain HTTP (your own machine) |
 | `hardcharger://host:port/custom/prefix` | The protocol is mounted under `/custom/prefix` |
-| `warp://…`, `https://…`, `http://…` | The Warp SQL driver's own spellings |
+| `chargewire://…`, `https://…`, `http://…` | The Chargewire driver's own spellings |
 
 Credentials never go in the URI. `connect()` also takes `catalog=` and `db_schema=` for the
 session's starting point.
@@ -151,8 +151,8 @@ every `hardcharger.*` setting as an Arrow table. A bad setting name or value fai
 from adbc_driver_hardcharger import dbapi as hardcharger
 
 with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger", password="change-me",
-                         db_kwargs={"adbc.warp.statement.result_partitions": "8",
-                                    "adbc.warp.statement.result_order": "any"}) as conn:
+                         db_kwargs={"adbc.chargewire.statement.result_partitions": "8",
+                                    "adbc.chargewire.statement.result_order": "any"}) as conn:
     with conn.cursor() as cur:
         cur.execute(operation="SELECT * FROM range(20000000) t(i)")
         total = 0
@@ -167,15 +167,15 @@ with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hard
 
 | Option (`db_kwargs`, or per statement) | Default | Does |
 |---|---|---|
-| `adbc.warp.statement.result_partitions` | `8` | Read a large result over up to n connections at once ([partitions](/concepts/warp-sql/#partitioned-results)); `1`: one stream. Small results are one stream anyway |
-| `adbc.warp.ingest.parts` | `8` | Send a bulk load of two batches or more over up to n connections at once ([partitioned uploads](/guides/bulk-ingest/#partitioned-uploads)); `1`: one stream, in the upload's order |
-| `adbc.warp.statement.result_order` | `preserve` | `any`: batches in arrival order (faster when order doesn't matter) |
-| `adbc.warp.ipc_compression` | `none` | `zstd` for slow links |
-| `adbc.warp.statement.async` | `false` | Submit, poll, fetch: for long queries behind proxies |
-| `adbc.warp.statement.retain_result` | server's | Keep results on the server so a broken download resumes |
-| `adbc.warp.statement.timeout_seconds` | none | The server cancels the statement after this long |
-| `adbc.warp.retry.max_attempts` | `4` | Sends of a request that is safe to repeat |
-| `adbc.warp.session.reconnect` | `true` | Replace a session the server lost, and say so |
+| `adbc.chargewire.statement.result_partitions` | `8` | Read a large result over up to n connections at once ([partitions](/concepts/chargewire/#partitioned-results)); `1`: one stream. Small results are one stream anyway |
+| `adbc.chargewire.ingest.parts` | `8` | Send a bulk load of two batches or more over up to n connections at once ([partitioned uploads](/guides/bulk-ingest/#partitioned-uploads)); `1`: one stream, in the upload's order |
+| `adbc.chargewire.statement.result_order` | `preserve` | `any`: batches in arrival order (faster when order doesn't matter) |
+| `adbc.chargewire.ipc_compression` | `none` | `zstd` for slow links |
+| `adbc.chargewire.statement.async` | `false` | Submit, poll, fetch: for long queries behind proxies |
+| `adbc.chargewire.statement.retain_result` | server's | Keep results on the server so a broken download resumes |
+| `adbc.chargewire.statement.timeout_seconds` | none | The server cancels the statement after this long |
+| `adbc.chargewire.retry.max_attempts` | `4` | Sends of a request that is safe to repeat |
+| `adbc.chargewire.session.reconnect` | `true` | Replace a session the server lost, and say so |
 
 ## Bulk ingest
 

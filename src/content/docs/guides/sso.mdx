@@ -18,7 +18,7 @@ sequenceDiagram
   participant H as Hardcharger
   U->>I: sign in (browser, device code, workload identity, ...)
   I-->>U: ID token (JWT, signed by the provider)
-  U->>H: POST /warp/v1/auth/token  {grant_type: token_exchange, subject_token}
+  U->>H: POST /chargewire/v1/auth/token  {grant_type: token_exchange, subject_token}
   H->>I: (once, cached) OpenID configuration and JWKS
   H-->>U: Hardcharger access token
 ```
@@ -145,12 +145,12 @@ ann@example.com
 
 ```console test server=none
 $ ID_TOKEN=$(python3 idp.py token ann@example.com)
-$ curl -s localhost:31337/warp/v1/auth/token -H 'Content-Type: application/json' \
+$ curl -s localhost:31337/chargewire/v1/auth/token -H 'Content-Type: application/json' \
     -d "{\"grant_type\": \"token_exchange\", \"subject_token\": \"$ID_TOKEN\"}" | jq -r .token_type
 Bearer
 ```
 
-The Warp SQL ADBC driver takes the ID token as `adbc.warp.auth.subject_token`, and JDBC as
+The Chargewire ADBC driver takes the ID token as `adbc.chargewire.auth.subject_token`, and JDBC as
 `subjectToken`.
 
 </TabItem>
@@ -166,7 +166,7 @@ python3 idp.py serve & HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server
 
 ```console test server=none
 $ ID_TOKEN=$(python3 idp.py token eve@elsewhere.org)
-$ curl -s localhost:31337/warp/v1/auth/token -H 'Content-Type: application/json' \
+$ curl -s localhost:31337/chargewire/v1/auth/token -H 'Content-Type: application/json' \
     -d "{\"grant_type\": \"token_exchange\", \"subject_token\": \"$ID_TOKEN\"}" | jq -r .detail
 User 'eve@elsewhere.org' is not authorized. Contact your administrator.
 ```
@@ -224,15 +224,15 @@ mappings; `DROP GROUP MAPPING 'okta-analysts' ISSUER '…'` removes one.
 
 For people at a desktop (the CLI, a notebook, a driver in a desktop tool) and for the
 [web UI](/guides/web-ui/), Hardcharger runs the OAuth authorization-code flow with your provider
-itself, as Warp SQL's browser sign-in (capability `oauth_browser`). It is part of the protocol, on
+itself, as Chargewire's browser sign-in (capability `oauth_browser`). It is part of the protocol, on
 the server's own port: there is no separate sign-in port.
 
 <Steps>
 
 1. Register Hardcharger with your provider as a **confidential web client** and register the
-   redirect URI `https://<your server>/warp/v1/auth/oauth/callback`: the server's public URL
+   redirect URI `https://<your server>/chargewire/v1/auth/oauth/callback`: the server's public URL
    ([`oauth_base_url`](/reference/configuration/#oauth_base_url)) followed by
-   `/warp/v1/auth/oauth/callback`, on the same port clients connect to.
+   `/chargewire/v1/auth/oauth/callback`, on the same port clients connect to.
 
 2. Start the server with the provider and the client:
 
@@ -248,7 +248,7 @@ the server's own port: there is no separate sign-in port.
 <Aside type="caution" title="Re-register the redirect URI">
 Earlier builds ran browser sign-in on a separate port (31339) with the redirect URI
 `…:31339/oauth/callback`. That port, its routes and the `oauth_port` and `oauth_disable_tls`
-options are gone. Register `<oauth_base_url>/warp/v1/auth/oauth/callback` with your identity
+options are gone. Register `<oauth_base_url>/chargewire/v1/auth/oauth/callback` with your identity
 provider (and remove the old URI), or sign-ins fail at the provider with a redirect URI mismatch.
 </Aside>
 
@@ -260,15 +260,15 @@ sequenceDiagram
   participant B as Browser
   participant I as Identity provider
   participant H as Hardcharger
-  C->>H: POST /warp/v1/auth/oauth/flows
+  C->>H: POST /chargewire/v1/auth/oauth/flows
   H-->>C: flow_id, poll_secret, authorize_url
   C->>B: open authorize_url
   B->>I: sign in (state, PKCE, nonce)
-  I-->>B: redirect to /warp/v1/auth/oauth/callback?code&state
+  I-->>B: redirect to /chargewire/v1/auth/oauth/callback?code&state
   B->>H: callback
   H->>I: code + PKCE verifier + client secret
   I-->>H: ID token
-  C->>H: POST /warp/v1/auth/oauth/flows/{flow_id}  {poll_secret}
+  C->>H: POST /chargewire/v1/auth/oauth/flows/{flow_id}  {poll_secret}
   H-->>C: Hardcharger access token (once)
 ```
 
@@ -311,7 +311,7 @@ one) beside the user name and password form.
 </TabItem>
 </Tabs>
 
-Other Warp SQL drivers call it `oauth_browser` (JDBC `authType=oauth_browser`, which also takes
+Other Chargewire drivers call it `oauth_browser` (JDBC `authType=oauth_browser`, which also takes
 `external`).
 
 With the stand-in provider, the server's side of the flow can be checked (the stand-in has no
@@ -324,16 +324,16 @@ python3 idp.py serve & HARDCHARGER_ADMIN_PASSWORD='change-me' HARDCHARGER_OAUTH_
 ```
 
 ```console test server=none
-$ curl -s localhost:31337/warp | jq -c .auth.oauth_browser
+$ curl -s localhost:31337/chargewire | jq -c .auth.oauth_browser
 {"provider":"Stand-in IdP"}
-$ curl -s -X POST localhost:31337/warp/v1/auth/oauth/flows | jq -r '.authorize_url | split("?")[0]'
+$ curl -s -X POST localhost:31337/chargewire/v1/auth/oauth/flows | jq -r '.authorize_url | split("?")[0]'
 http://127.0.0.1:8099/authorize
 ```
 
 | Option | Meaning |
 |---|---|
 | `oauth_client_id`, `oauth_client_secret` | The client registered with the provider. Setting the id turns browser sign-in on. Prefer `HARDCHARGER_OAUTH_CLIENT_SECRET` to the flag. |
-| `oauth_base_url` | The server's public URL, as browsers reach it (default `http(s)://localhost:<port>`). The redirect URI is this followed by `/warp/v1/auth/oauth/callback`. |
+| `oauth_base_url` | The server's public URL, as browsers reach it (default `http(s)://localhost:<port>`). The redirect URI is this followed by `/chargewire/v1/auth/oauth/callback`. |
 | `oauth_redirect_uri` | The redirect URI registered with the provider, given whole (overrides the one from `oauth_base_url`). |
 | `oauth_scopes` | Scopes requested (default `openid profile email`). |
 | `oauth_provider_name` | The provider's name for people: "Sign in with *name*" in the web UI, and in the protocol's discovery document. |

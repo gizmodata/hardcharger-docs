@@ -24,7 +24,7 @@ and CI fails when they drift.
   HARDCHARGER_USER: 'The user this session signed in as.',
   HARDCHARGER_ROLE: 'The session\'s role: <code>admin</code>, <code>user</code> or <code>readonly</code> (for store users under access control, their role in the server\'s sense).',
   HARDCHARGER_VERSION: 'The server\'s version, such as <code>2.0.0-rc.1</code> (as <code>--version</code> prints it).',
-  HARDCHARGER_CURRENT_SESSION: 'This session\'s id, its Warp SQL session id (<code>s_...</code>), as <code>KILL SESSION</code> and instrumentation name it.',
+  HARDCHARGER_CURRENT_SESSION: 'This session\'s id, its Chargewire session id (<code>s_...</code>), as <code>KILL SESSION</code> and instrumentation name it.',
   HARDCHARGER_CURRENT_INSTANCE: 'This server process\'s id (a UUID), new at every start.',
   HARDCHARGER_CURRENT_CLUSTER: 'The <code>cluster_id</code> the replicas share, or NULL when unset.',
   HARDCHARGER_INSTRUMENTATION_ENABLED: 'Whether instrumentation is on.',
@@ -112,7 +112,7 @@ biggest
 
 Write `SET SESSION`: a plain `SET arrow_lossless_conversion` is DuckDB's global setting, which
 changes every session's results and needs an administrator (`MANAGE CONFIG` under access
-control). Over [plain HTTP](/clients/http/), the Warp SQL session option
+control). Over [plain HTTP](/clients/http/), the Chargewire session option
 `duckdb_arrow_lossless_conversion` does the same for one session. JSON bind parameters beyond the
 64-bit range bind exactly as HUGEINT or UHUGEINT; wider ones are refused.
 

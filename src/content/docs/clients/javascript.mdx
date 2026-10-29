@@ -14,8 +14,8 @@ with no native code, takes the same `hardcharger://` URLs as the [Python](/clien
 [Go](/clients/go/) drivers, and returns [`apache-arrow`](https://arrow.apache.org/docs/js/) Tables
 or streams of record batches.
 
-It is a thin layer on [`@gizmodata/warp-sql`](https://github.com/gizmodata/warp-sql-js), the
-generic JavaScript client for any Warp SQL server, which it depends on and re-exports: import
+It is a thin layer on [`@gizmodata/chargewire`](https://github.com/gizmodata/chargewire-js), the
+generic JavaScript client for any Chargewire server, which it depends on and re-exports: import
 everything from `@gizmodata/hardcharger`.
 
 ## Install
@@ -25,7 +25,7 @@ npm install @gizmodata/hardcharger apache-arrow
 ```
 
 For Node.js, use 22.19 or later. `apache-arrow` 21.2 or later is a peer dependency;
-`@gizmodata/warp-sql` is installed automatically. No source build is required.
+`@gizmodata/chargewire` is installed automatically. No source build is required.
 
 ## Query, stream, ingest
 
@@ -82,8 +82,8 @@ statement_timeout: the operation timed out (its AbortSignal fired)
 
 Statement options (per call, or as defaults in `connect`): `signal`, `async`, `retainResult`,
 `statementTimeoutMs`, `queryTag`, `resultPartitions` (8 in Node, 4 in browsers), `resultOrder`,
-`ipcCompression: 'zstd'`. Every error is a `HardchargerError` (the Warp SQL client's
-`WarpSqlError`, under Hardcharger's name) with the server's stable `code`,
+`ipcCompression: 'zstd'`. Every error is a `HardchargerError` (the Chargewire client's
+`ChargewireError`, under Hardcharger's name) with the server's stable `code`,
 `status`, `sqlstate` and `requestId`. A result stream that ends without Arrow's end-of-stream
 marker throws: a short table is never taken for a complete one.
 
@@ -94,8 +94,8 @@ marker throws: a short table is never taken for a complete one.
 | `hardcharger://host` | HTTPS to `host:31337` |
 | `hardcharger://host:port` | HTTPS to another port |
 | `hardcharger://host?tls=false` | Plain HTTP (development, loopback) |
-| `hardcharger://host:port/custom/prefix` | The server mounts Warp SQL under `/custom/prefix` |
-| `warp://…`, `https://…`, `http://…` | The Warp SQL client's own spellings |
+| `hardcharger://host:port/custom/prefix` | The server mounts Chargewire under `/custom/prefix` |
+| `chargewire://…`, `https://…`, `http://…` | The Chargewire client's own spellings |
 
 `hardcharger+http://`, credentials in the URL and unknown parameters (`useEncryption` included)
 are refused before anything is sent, with a `client_invalid_argument` error that says what to write.
@@ -114,11 +114,11 @@ The same code runs in a page. The server must allow the page's origin with
 [`cors_origins`](/reference/configuration/#cors_origins): an explicit list, off by default, never `*`:
 
 ```console test profile=cors
-$ curl -s -o /dev/null -D - -X OPTIONS localhost:31337/warp/v1/auth/token \
+$ curl -s -o /dev/null -D - -X OPTIONS localhost:31337/chargewire/v1/auth/token \
     -H 'Origin: https://app.example.com' -H 'Access-Control-Request-Method: POST' \
     | grep -i '^access-control-allow-origin' | tr -d '\r'
 Access-Control-Allow-Origin: https://app.example.com
-$ curl -s -o /dev/null -D - -X OPTIONS localhost:31337/warp/v1/auth/token \
+$ curl -s -o /dev/null -D - -X OPTIONS localhost:31337/chargewire/v1/auth/token \
     -H 'Origin: https://elsewhere.example.com' -H 'Access-Control-Request-Method: POST' \
     | grep -i '^access-control-allow-origin' || echo "no CORS headers: the browser refuses"
 no CORS headers: the browser refuses
@@ -132,5 +132,5 @@ no CORS headers: the browser refuses
 
 ## Without the client
 
-Warp SQL is plain HTTP, so `fetch` and `apache-arrow` alone work too. See the
+Chargewire is plain HTTP, so `fetch` and `apache-arrow` alone work too. See the
 [plain HTTP page](/clients/http/) for the protocol and examples.

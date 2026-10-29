@@ -41,9 +41,9 @@ switch, rather than wonder why a setting didn't apply.
 
 ## What changes
 
-- **The protocol.** Clients speak [Warp SQL](/concepts/warp-sql/) over HTTP instead of Arrow
+- **The protocol.** Clients speak [Chargewire](/concepts/chargewire/) over HTTP instead of Arrow
   Flight SQL over gRPC. Use the Hardcharger drivers ([Python](/clients/python/),
-  [JDBC](/clients/jdbc/)) or any Warp SQL client; GizmoSQL's Flight SQL drivers don't connect.
+  [JDBC](/clients/jdbc/)) or any Chargewire client; GizmoSQL's Flight SQL drivers don't connect.
 - **The port.** 31337 by default, as before, but HTTP: it works through ordinary reverse proxies
   and load balancers ([guide](/guides/load-balancers/)).
 - **The names**, below.
@@ -137,8 +137,8 @@ Every option also has a YAML key: the flag without its leading `--`, with `_` fo
 | `--otel-enabled`, `GIZMOSQL_OTEL_*` | (none: no OpenTelemetry export yet) | (none) |
 
 Browser sign-in no longer has a port of its own: 1.x's OAuth server on port 31339 and its
-`/oauth/...` routes are gone, and sign-in runs on the server's own port as part of Warp SQL. **Re-register
-the redirect URI with your identity provider**: it is now `<oauth_base_url>/warp/v1/auth/oauth/callback`
+`/oauth/...` routes are gone, and sign-in runs on the server's own port as part of Chargewire. **Re-register
+the redirect URI with your identity provider**: it is now `<oauth_base_url>/chargewire/v1/auth/oauth/callback`
 (see [Browser sign-in](/guides/sso/#browser-sign-in)), not `…:31339/oauth/callback`.
 
 Hardcharger's own administrator is set with `--admin-username` / `--admin-password`
@@ -146,8 +146,8 @@ Hardcharger's own administrator is set with `--admin-username` / `--admin-passwo
 
 ## The command-line client
 
-GizmoSQL 1.x's `gizmosql_client` is `hardcharger`. It speaks Warp SQL (HTTP), so it
-connects to `hardcharger-server` (or any Warp SQL server), not to a GizmoSQL 1.x server.
+GizmoSQL 1.x's `gizmosql_client` is `hardcharger`. It speaks Chargewire (HTTP), so it
+connects to `hardcharger-server` (or any Chargewire server), not to a GizmoSQL 1.x server.
 Its options mean what they meant in 1.x; only the names of the environment variables,
 files and URI scheme change. It reads no `GIZMOSQL_*` variable.
 
@@ -161,7 +161,7 @@ files and URI scheme change. It reads no `GIZMOSQL_*` variable.
 | `--tls-roots` | `--tls-roots` | `GIZMOSQL_TLS_ROOTS` → `HARDCHARGER_TLS_ROOTS` |
 | `--tls-skip-verify` | `--tls-skip-verify` | |
 | `--mtls-cert`, `--mtls-key` | `--mtls-cert`, `--mtls-key` (also with `--tls-skip-verify`, which 1.x refused: Arrow Flight dropped the certificate then) | |
-| `--auth-type password\|external` | `--auth-type password\|external` (the server's [browser sign-in](/guides/sso/#browser-sign-in), Warp SQL's `oauth_browser`, on the server's own port) | |
+| `--auth-type password\|external` | `--auth-type password\|external` (the server's [browser sign-in](/guides/sso/#browser-sign-in), Chargewire's `oauth_browser`, on the server's own port) | |
 | `--oauth-port` | (none: browser sign-in is on the server's own port) | (none) |
 | `--command`, `-c`; `--file`, `-f`; `--output`, `-o` | the same | |
 | `--init` (default `~/.gizmosqlrc`), `--no-init` | `--init` (default `~/.hardchargerrc`), `--no-init` | |
@@ -179,7 +179,7 @@ current `catalog.schema`, as in 1.x.
 
 The dot commands and output modes are 1.x's. What behaves differently, and why:
 
-- **Statements with rows show them.** Warp SQL answers rows or a statement document, so
+- **Statements with rows show them.** Chargewire answers rows or a statement document, so
   the server decides, not the statement's first word: `INSERT … RETURNING` shows its rows
   (1.x printed `OK`).
 - **No row-count line in machine-readable output.** 1.x printed `N rows (M columns)` after
@@ -190,14 +190,14 @@ The dot commands and output modes are 1.x's. What behaves differently, and why:
   and **`.read FILE`** runs the file (1.x answered that it was "handled by the shell loop").
 - **A dot command that fails** (unknown, or `.read` of a missing file) makes a script exit
   with status 1, as a failed statement does.
-- **Ctrl-C** cancels the running statement through Warp SQL's cancel, and the shell (or
+- **Ctrl-C** cancels the running statement through Chargewire's cancel, and the shell (or
   the script) goes on, as in 1.x. In a script that isn't running a statement, Ctrl-C stops
   the client (status 130); 1.x ignored it there.
 - **A lost session is reopened.** When the server no longer has the session (idle too
   long, restarted) or ended it (`KILL SESSION`), the client opens a new one, says so, and
   goes on; a statement that never ran is run in it. Temporary tables and session settings
   don't survive this, as the warning says.
-- **`.show`** reads the engine and Arrow versions from Warp SQL's server-info document and
+- **`.show`** reads the engine and Arrow versions from Chargewire's server-info document and
   has no `edition` line (Hardcharger has no editions).
 
 ## SQL
@@ -216,7 +216,7 @@ The dot commands and output modes are 1.x's. What behaves differently, and why:
 | `_gizmosql_logs` | `_hardcharger_logs` |
 | `gizmosql_instrumentation.db`, `gizmosql_logs.db` (default files) | `hardcharger_instrumentation.db`, `hardcharger_logs.db` |
 | `instances.gizmosql_version`, `instances.gizmosql_edition` | `instances.hardcharger_version` (no edition column) |
-| `sql_statements.statement_id`, `sql_executions.execution_id` (UUIDs) | the Warp SQL ids clients hold: a statement's `q_...`, a prepared statement's `p_...` ([Instrumentation](/guides/instrumentation-and-audit/#statement-and-execution-ids)) |
+| `sql_statements.statement_id`, `sql_executions.execution_id` (UUIDs) | the Chargewire ids clients hold: a statement's `q_...`, a prepared statement's `p_...` ([Instrumentation](/guides/instrumentation-and-audit/#statement-and-execution-ids)) |
 
 Hardcharger creates its own instrumentation and log tables; it does not migrate tables a
 GizmoSQL 1.x server created.
@@ -225,7 +225,7 @@ GizmoSQL 1.x server created.
 
 | GizmoSQL 1.x | Hardcharger |
 |---|---|
-| table metadata key `GIZMOSQL:COLUMN_DEFAULT` | `WARP:SQL:COLUMN_DEFAULT` (Warp SQL's key) |
+| table metadata key `GIZMOSQL:COLUMN_DEFAULT` | `CHARGEWIRE:SQL:COLUMN_DEFAULT` (Chargewire's key) |
 | `gizmosql_*` Prometheus metrics (`gizmosql_statements_total`, ...) | `hardcharger_*` (`hardcharger_statements_total`, ...); `gizmosql_license_expiry_seconds` is gone |
 | server tokens with `iss=gizmosql` | only tokens this server signs (`iss=hardcharger`) |
 | the `.gizmosql-metrics-state` exit marker | `.hardcharger-metrics-state` |

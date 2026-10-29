@@ -7,7 +7,7 @@ import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Hardcharger has a web UI compiled into `hardcharger-server`. There is nothing extra to install:
 the server serves it at `/ui` on its own port, with its own TLS certificate, and the page
-talks [Warp SQL](/concepts/warp-sql/) back to the same origin. It is off by default.
+talks [Chargewire](/concepts/chargewire/) back to the same origin. It is off by default.
 
 ![The web UI in its dark theme: the schema browser, a revenue query, and its results](../../../assets/web-ui/query-dark.png)
 
@@ -39,7 +39,7 @@ talks [Warp SQL](/concepts/warp-sql/) back to the same origin. It is off by defa
   editor session's effective values alongside global values, then edit or reset settings
   at supported runtime scopes. Startup settings identify when a restart is required.
   See [Server Configuration](/guides/server-configuration/).
-- **API**: the server's Warp SQL API in Swagger UI, where **Try it out** runs requests as you.
+- **API**: the server's Chargewire API in Swagger UI, where **Try it out** runs requests as you.
 - **About**: the server's version, protocol and capabilities, and when your sign-in expires.
   **How the editor works** (the **?** at the end of the tab bar) sums up sessions,
   transactions, statements and results, with this server's session idle timeout.
@@ -105,7 +105,7 @@ $ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:31337/ui/
 ```
 
 Without `web_ui`, nothing answers under `/ui`: the server's usual `404`, as for any path that
-isn't Warp SQL.
+isn't Chargewire.
 
 ```bash test server=self background stop
 HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb --health-port 31338
@@ -119,7 +119,7 @@ $ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:31337/ui/
 ## Signing in
 
 The sign-in page uses the server's own sign-in: the user name and password go once to
-`POST /warp/v1/auth/token`, and the page keeps only the short-lived access token, in memory
+`POST /chargewire/v1/auth/token`, and the page keeps only the short-lived access token, in memory
 and in that tab's session storage (so a reload stays signed in). It never writes a credential
 to `localStorage` or a cookie. When the token expires, or an administrator ends the session
 (`KILL SESSION`), the page goes back to the sign-in form and says why.
@@ -130,15 +130,15 @@ With [browser sign-in](/guides/sso/#browser-sign-in) configured (`oauth_client_i
 also shows **Sign in with *provider*** (the server's `oauth_provider_name`, or "single sign-on").
 It sends the tab to your identity provider, which sends it back to the UI; the page then collects
 its access token with a secret only that tab holds, so the token never appears in a URL. Register
-`<oauth_base_url>/warp/v1/auth/oauth/callback` as the redirect URI with the provider: the UI uses
+`<oauth_base_url>/chargewire/v1/auth/oauth/callback` as the redirect URI with the provider: the UI uses
 the same one as every other client.
 
 ## The API page
 
-**API** shows the server's own Warp SQL API: every endpoint, with
+**API** shows the server's own Chargewire API: every endpoint, with
 its parameters, request and response schemas and examples, in [Swagger UI](https://swagger.io/tools/swagger-ui/).
-It reads the OpenAPI 3.1 document the server serves at `GET /warp/v1/openapi.json` (described
-on the [Warp SQL](/concepts/warp-sql/#the-api-description) page), and like the rest of the UI
+It reads the OpenAPI 3.1 document the server serves at `GET /chargewire/v1/openapi.json` (described
+on the [Chargewire](/concepts/chargewire/#the-api-description) page), and like the rest of the UI
 it is there only when `web_ui` is on.
 
 ![The API page in its dark theme: the statement-submission endpoint and its request schema](../../../assets/web-ui/api-dark.png)
@@ -158,7 +158,7 @@ it is there only when `web_ui` is on.
 ## With TLS
 
 With [`--tls-cert` and `--tls-key`](/guides/tls/), the UI is served over HTTPS with the same
-certificate as Warp SQL, at `https://<host>:31337/ui`. For a quick local try, a self-signed
+certificate as Chargewire, at `https://<host>:31337/ui`. For a quick local try, a self-signed
 certificate for `localhost` is enough (the browser will ask you to accept it):
 
 ```bash test server=none
@@ -228,7 +228,7 @@ $ curl -s --cacert ca.crt --cert client.crt --key client.key -o /dev/null -w '%{
 
 ```console test server=none
 $ curl -s --cacert ca.crt --cert client.crt --key client.key -X POST -H 'Content-Type: application/json' \
-    -d '{"grant_type": "client_certificate"}' https://localhost:31337/warp/v1/auth/token | jq -r .token_type
+    -d '{"grant_type": "client_certificate"}' https://localhost:31337/chargewire/v1/auth/token | jq -r .token_type
 Bearer
 ```
 
@@ -336,7 +336,7 @@ version is available. Files are sent gzipped to browsers that accept it.
 
 ## Sessions and transactions
 
-Each editor tab has its own Warp SQL session, kept from one run to the next: temporary tables,
+Each editor tab has its own Chargewire session, kept from one run to the next: temporary tables,
 `USE` and `SET` carry over, and a `BEGIN` stays open across runs until `COMMIT` or `ROLLBACK`.
 **New session** ends a tab's session (rolling back an open transaction), and so does closing
 the tab. The tab's session chip shows the session's id, the one the server's log lines and
@@ -356,9 +356,9 @@ HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb -
 
 ```console test server=none
 $ H='Content-Type: application/json'
-$ TOKEN=$(curl -s localhost:31337/warp/v1/auth/token -H "$H" \
+$ TOKEN=$(curl -s localhost:31337/chargewire/v1/auth/token -H "$H" \
     -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
-$ curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $TOKEN" -H "$H" -d '{}' | jq .idle_timeout_s
+$ curl -s localhost:31337/chargewire/v1/sessions -H "Authorization: Bearer $TOKEN" -H "$H" -d '{}' | jq .idle_timeout_s
 3600
 ```
 

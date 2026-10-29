@@ -1,13 +1,13 @@
 ---
 title: "Error codes"
-description: "Every Warp SQL error code Hardcharger returns, with its HTTP status, what it means and what to do, plus the problem document format."
+description: "Every Chargewire error code Hardcharger returns, with its HTTP status, what it means and what to do, plus the problem document format."
 ---
 
 Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem document:
 
 ```json
 {
-  "type": "urn:warp-sql:error:permission_denied",
+  "type": "urn:chargewire:error:permission_denied",
   "title": "Permission denied",
   "status": 403,
   "code": "permission_denied",
@@ -21,9 +21,9 @@ Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem doc
 every error with that code, and `detail` says what happened this time; both are for people, and
 `detail` may change. `sqlstate` is the
 SQL standard's code when there is one. `request_id` is also in the server's logs (and the
-`Warp-Request-Id` header), so quote it when you report a problem. The drivers carry all of it:
-Python's exception message, JDBC's `SQLException` (`getSQLState()`, `WarpProblem.codeOf(e)`), Go's
-`warpsql.ErrorCode(err)`. A code a client doesn't know is handled by its HTTP status: `4xx` means
+`Chargewire-Request-Id` header), so quote it when you report a problem. The drivers carry all of it:
+Python's exception message, JDBC's `SQLException` (`getSQLState()`, `ChargewireProblem.codeOf(e)`), Go's
+`chargewire.ErrorCode(err)`. A code a client doesn't know is handled by its HTTP status: `4xx` means
 the request or its statement ended because of what it asked for, `5xx` that the server failed or
 can't serve now. A statement's own failure is never `5xx`.
 
@@ -50,9 +50,9 @@ can't serve now. A statement's own failure is never `5xx`.
 | `flow_not_found` | 404 | No such browser sign-in, a wrong poll secret, or one already collected or expired (sign-ins last 10 minutes) | Start the sign-in again |
 | `method_not_allowed` | 405 | The endpoint exists, but not for this method | |
 | `result_not_ready` | 409 | The statement has no result schema yet | Retry |
-| `result_not_resumable` | 409 | Re-reading a result that wasn't retained | Submit with `Warp-Retain-Result: true` |
+| `result_not_resumable` | 409 | Re-reading a result that wasn't retained | Submit with `Chargewire-Retain-Result: true` |
 | `result_expired` | 410 | The retained result expired | Run the statement again |
-| `ingest_incomplete`, `ingest_part_exists` | 409 | A [partitioned upload](/concepts/warp-sql/#partitioned-uploads) committed before every part arrived, or a part sent twice | Send the missing parts; send each part once |
+| `ingest_incomplete`, `ingest_part_exists` | 409 | A [partitioned upload](/concepts/chargewire/#partitioned-uploads) committed before every part arrived, or a part sent twice | Send the missing parts; send each part once |
 | `ingest_expired` | 410 | A partitioned upload waited too long between parts and was dropped | Start the upload again |
 | `payload_too_large` | 413 | A JSON body over the server's limit | Use Arrow parameters or ingest |
 | `unsupported_arrow_type` | 415 | An Arrow type DuckDB can't store without losing values | Cast the column before uploading |
@@ -70,12 +70,12 @@ can't serve now. A statement's own failure is never `5xx`.
 | `server_draining` | 503 | The server is shutting down | Retry after `Retry-After`, elsewhere |
 
 A statement that has failed, or was cancelled, by the time the server answers its submission
-gets one of these as an error response, with the statement's id in the `Warp-Statement-Id` header
+gets one of these as an error response, with the statement's id in the `Chargewire-Statement-Id` header
 (and `cancel_reason` in the problem document of a cancelled one):
 
 ```json
 {
-  "type": "urn:warp-sql:error:statement_cancelled",
+  "type": "urn:chargewire:error:statement_cancelled",
   "title": "Statement cancelled",
   "status": 409,
   "code": "statement_cancelled",
@@ -154,15 +154,15 @@ other reasons. Any reason a client doesn't know is a generic one: the session is
 ```console test profile=rbac
 $ export HARDCHARGER_PASSWORD='change-me'
 $ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "CREATE USER joe WITH PASSWORD 'old-secret'" < /dev/null > /dev/null
-$ token() { curl -s localhost:31337/warp/v1/auth/token -H 'Content-Type: application/json' \
+$ token() { curl -s localhost:31337/chargewire/v1/auth/token -H 'Content-Type: application/json' \
     -d "{\"grant_type\": \"password\", \"username\": \"joe\", \"password\": \"$1\"}" | jq -r .access_token; }
 $ TOKEN=$(token old-secret)
-$ SESSION=$(curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $TOKEN" \
+$ SESSION=$(curl -s localhost:31337/chargewire/v1/sessions -H "Authorization: Bearer $TOKEN" \
     -H 'Content-Type: application/json' -d '{}' | jq -r .session_id)
 $ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "ALTER USER joe WITH PASSWORD 'new-secret'" > /dev/null; sleep 2
-$ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $TOKEN" | jq -c '{code, reason}'
+$ curl -s localhost:31337/chargewire/v1/sessions/$SESSION -H "Authorization: Bearer $TOKEN" | jq -c '{code, reason}'
 {"code":"invalid_token","reason":"credentials_changed"}
-$ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $(token new-secret)" | jq -c '{code, reason}'
+$ curl -s localhost:31337/chargewire/v1/sessions/$SESSION -H "Authorization: Bearer $(token new-secret)" | jq -c '{code, reason}'
 {"code":"session_ended","reason":"credentials_changed"}
 ```
 
@@ -173,12 +173,12 @@ the same token with its signature replaced) gets no reason at all:
 $ export HARDCHARGER_PASSWORD='change-me'
 $ SCOPED=$(hardcharger --host localhost --tls=false --username hardcharger --quiet --csv \
     --command "CREATE SCOPED TOKEN nightly FOR USER joe ALLOW SELECT VALID FOR '1 hour'" | tail -1 | cut -d, -f6)
-$ SESSION=$(curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $SCOPED" \
+$ SESSION=$(curl -s localhost:31337/chargewire/v1/sessions -H "Authorization: Bearer $SCOPED" \
     -H 'Content-Type: application/json' -d '{}' | jq -r .session_id)
 $ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "DROP SCOPED TOKEN nightly FOR USER joe" > /dev/null; sleep 2
-$ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $SCOPED" | jq -c '{code, reason}'
+$ curl -s localhost:31337/chargewire/v1/sessions/$SESSION -H "Authorization: Bearer $SCOPED" | jq -c '{code, reason}'
 {"code":"invalid_token","reason":"token_revoked"}
-$ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer ${SCOPED%.*}.forged" | jq -c '{code, reason}'
+$ curl -s localhost:31337/chargewire/v1/sessions/$SESSION -H "Authorization: Bearer ${SCOPED%.*}.forged" | jq -c '{code, reason}'
 {"code":"invalid_token","reason":null}
 ```
 
@@ -190,13 +190,13 @@ authority, preventing credentials with different permissions from sharing a sess
 ```console test profile=rbac
 $ SHORT=$(HARDCHARGER_PASSWORD='new-secret' hardcharger --host localhost --tls=false --username joe --quiet --csv \
     --command "CREATE SCOPED TOKEN short ALLOW SELECT VALID FOR '3 seconds'" | tail -1 | cut -d, -f6)
-$ SESSION=$(curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $SHORT" \
+$ SESSION=$(curl -s localhost:31337/chargewire/v1/sessions -H "Authorization: Bearer $SHORT" \
     -H 'Content-Type: application/json' -d '{}' | jq -r .session_id)
 $ sleep 5
-$ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $SHORT" | jq -c '{code, reason}'
+$ curl -s localhost:31337/chargewire/v1/sessions/$SESSION -H "Authorization: Bearer $SHORT" | jq -c '{code, reason}'
 {"code":"invalid_token","reason":"token_expired"}
-$ JOE=$(curl -s localhost:31337/warp/v1/auth/token -H 'Content-Type: application/json' \
+$ JOE=$(curl -s localhost:31337/chargewire/v1/auth/token -H 'Content-Type: application/json' \
     -d '{"grant_type": "password", "username": "joe", "password": "new-secret"}' | jq -r .access_token)
-$ curl -s localhost:31337/warp/v1/sessions/$SESSION -H "Authorization: Bearer $JOE" | jq -c '{code, reason}'
+$ curl -s localhost:31337/chargewire/v1/sessions/$SESSION -H "Authorization: Bearer $JOE" | jq -c '{code, reason}'
 {"code":"session_not_found","reason":null}
 ```

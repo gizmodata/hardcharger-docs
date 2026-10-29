@@ -176,11 +176,11 @@ $ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --us
 <TabItem label="curl">
 
 ```bash test
-TOKEN=$(curl -s localhost:31337/warp/v1/auth/token -H 'Content-Type: application/json' \
+TOKEN=$(curl -s localhost:31337/chargewire/v1/auth/token -H 'Content-Type: application/json' \
   -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
-SESSION=$(curl -s localhost:31337/warp/v1/sessions -H "Authorization: Bearer $TOKEN" \
+SESSION=$(curl -s localhost:31337/chargewire/v1/sessions -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' -d '{}' | jq -r .session_id)
-curl -s localhost:31337/warp/v1/sessions/$SESSION/statements -H "Authorization: Bearer $TOKEN" \
+curl -s localhost:31337/chargewire/v1/sessions/$SESSION/statements -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' -H 'Accept: application/vnd.apache.arrow.stream' \
   -d '{"sql": "SELECT 42 AS answer, ? AS greeting", "parameters": ["hello"]}' -o result.arrows
 python3 -c "import pyarrow.ipc as ipc; print(ipc.open_stream('result.arrows').read_all().to_pylist())"
@@ -198,10 +198,10 @@ The response body is an Arrow IPC stream: any Arrow library reads it.
 
 ## What just happened
 
-1. The client exchanged the password for a **bearer token** (`POST /warp/v1/auth/token`).
-2. It opened a **session**, the server-side state of one connection (`POST /warp/v1/sessions`).
+1. The client exchanged the password for a **bearer token** (`POST /chargewire/v1/auth/token`).
+2. It opened a **session**, the server-side state of one connection (`POST /chargewire/v1/sessions`).
 3. It **submitted the statement** with its bind parameter. The value travelled as a value,
    never spliced into the SQL, and the result streamed back as Arrow in the same response.
 
 The drivers do all of this for you, and more: retries, resumable downloads, cancel and
-partitioned reads. [Warp SQL in one page](/concepts/warp-sql/) explains the model.
+partitioned reads. [Chargewire in one page](/concepts/chargewire/) explains the model.

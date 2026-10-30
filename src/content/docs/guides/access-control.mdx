@@ -436,6 +436,41 @@ joe@example.com,42
 A certificate whose identity is no user (or a disabled one) is refused with
 `unknown_certificate_identity`.
 
+## Users and roles from init SQL
+
+In **v2.4.0+**, the server's [init SQL](/guides/configuration/) can create users and roles and
+grant privileges. These statements run as the administrator, in order with the DuckDB statements
+around them, so a grant can name a table the init SQL has just created. The init SQL runs at every
+start and on every replica, so write it to run again harmlessly:
+
+```sql test file=init.sql
+CREATE SCHEMA IF NOT EXISTS sales;
+CREATE TABLE IF NOT EXISTS sales.orders AS
+  SELECT * FROM (VALUES (1, 'EU', 120.0), (2, 'US', 80.0)) t(id, region, amount);
+CREATE ROLE IF NOT EXISTS reader;
+GRANT SELECT ON SCHEMA sales TO reader;
+CREATE USER IF NOT EXISTS ann WITH PASSWORD 'ann-secret';
+GRANT reader TO ann;
+```
+
+```bash test server=self background
+HARDCHARGER_ADMIN_PASSWORD='change-me' HARDCHARGER_RBAC_STORE_URI='duckdb:startup-rbac.duckdb' \
+  hardcharger-server --database shop.duckdb --health-port 31338 --init-sql-commands-file init.sql
+```
+
+```console test server=none
+$ HARDCHARGER_PASSWORD='ann-secret' hardcharger --host localhost --tls=false --username ann --csv \
+    --command "SELECT sum(amount) AS total FROM sales.orders"
+total
+200.0
+```
+
+Without `rbac_store_uri`, an access-control statement in the init SQL stops the server before
+any of the init SQL runs, with the error a session gets (`access control is not enabled on this
+server`). A password in the init SQL is as sensitive as the file's secrets: the server never logs
+it, and the [sensitive path guard](/concepts/security-model/#guards-that-apply-to-everyone) keeps
+the file out of reach of SQL, but keep it readable only by the server's user.
+
 ## Active roles
 
 A user's roles are all active by default. `SET ROLE analyst` narrows a session to one role,

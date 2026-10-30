@@ -7,6 +7,21 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-10-30
+
+### Changed
+
+- The reference is regenerated from Hardcharger 2.4.1: the version in the header and on the
+  Versions page, the release notes for 2.4.0 and 2.4.1, and the Chargewire protocol page's status
+  line (the specification now carries Chargewire's release version, 2.0.1; protocol version 1 is
+  unchanged).
+
+### Added
+
+- Access control: **Users and roles from init SQL** (v2.4.0+): creating users and roles and
+  granting from the server's init SQL, written to run again at every start, with a tested
+  example. The configuration guide points to it.
+
 ## [2.3.0] - 2026-10-29
 
 ### Changed

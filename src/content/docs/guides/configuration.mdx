@@ -42,7 +42,9 @@ cors_origins:            # lists are YAML sequences, or one comma-separated stri
 ```
 
 `init_sql_commands_file` runs once at startup, after `init_sql_commands`; any failure stops the
-server. Use it to attach catalogs, create secrets and set DuckDB options:
+server. Use it to attach catalogs, create secrets and set DuckDB options, and under access
+control to [create users, roles and grants](/guides/access-control/#users-and-roles-from-init-sql)
+(**v2.4.0+**):
 
 ```sql test file=init.sql
 SET threads = 4;

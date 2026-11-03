@@ -125,6 +125,7 @@ refused: UNAUTHORIZED: [chargewire] ExecuteQuery: Permission Error: Hardcharger 
 |---|---|
 | `SELECT` (optionally on columns: `SELECT (a, b)`) | a table or view, a schema, a catalog |
 | `INSERT`, `UPDATE`, `DELETE` | a table, a schema, a catalog |
+| `MAINTAIN` (`ANALYZE`, `VACUUM` of a table; see [Maintenance](#maintenance)) | a table, a schema, a catalog |
 | `CREATE TABLE`, `CREATE VIEW`, `DROP TABLE`, `DROP VIEW`, `ALTER TABLE`, `ALTER VIEW` | a schema or catalog |
 | `CREATE MACRO`, `DROP MACRO` (scalar and table macros; see [Macros](#macros)) | a schema or catalog |
 | `USAGE` (`nextval()`, `currval()`; see [Sequences](#sequences)) | a sequence (`ON SEQUENCE`), a schema, a catalog |
@@ -132,7 +133,7 @@ refused: UNAUTHORIZED: [chargewire] ExecuteQuery: Permission Error: Hardcharger 
 | `CREATE SCHEMA`, `DROP SCHEMA` | a catalog |
 | `ALL [PRIVILEGES]` | a table, a schema, a catalog: every privilege above that applies there |
 
-`ALL` means all of them. On a table it is `SELECT`, `INSERT`, `UPDATE` and `DELETE`; on a schema,
+`ALL` means all of them. On a table it is `SELECT`, `INSERT`, `UPDATE`, `DELETE` and `MAINTAIN`; on a schema,
 those, `CREATE`, `DROP` and `ALTER` `TABLE` and `VIEW`, `CREATE` and `DROP MACRO`, and `USAGE`,
 `CREATE SEQUENCE` and `DROP SEQUENCE`, so a role can build in that schema; on a catalog, all of that
 and `CREATE SCHEMA` and `DROP SCHEMA`. `GRANT ALL` is stored as the separate
@@ -373,6 +374,25 @@ has no USAGE privilege on sequence my.published.ticket_ids
 ```
 
 `duckdb_sequences()` and the views over it list only the sequences a user may use or drop.
+
+### Maintenance
+
+`MAINTAIN` lets a role run `ANALYZE` and `VACUUM` of a table and nothing else: no `SELECT`, no
+writes. It is granted on a table, a schema or a catalog, and a table's owner holds it. `ANALYZE` or
+`VACUUM` without a table stays the administrator's, since it would touch tables the user can't see.
+
+```sql test profile=rbac
+GRANT MAINTAIN ON published.tickets TO viewer;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "ANALYZE published.tickets"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "ANALYZE" 2>&1 | grep -o "ANALYZE or VACUUM of every table needs an administrator"
+ANALYZE or VACUUM of every table needs an administrator
+```
 
 ### Comments
 

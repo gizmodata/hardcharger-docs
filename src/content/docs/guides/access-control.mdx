@@ -127,12 +127,15 @@ refused: UNAUTHORIZED: [chargewire] ExecuteQuery: Permission Error: Hardcharger 
 | `INSERT`, `UPDATE`, `DELETE` | a table, a schema, a catalog |
 | `CREATE TABLE`, `CREATE VIEW`, `DROP TABLE`, `DROP VIEW`, `ALTER TABLE`, `ALTER VIEW` | a schema or catalog |
 | `CREATE MACRO`, `DROP MACRO` (scalar and table macros; see [Macros](#macros)) | a schema or catalog |
+| `USAGE` (`nextval()`, `currval()`; see [Sequences](#sequences)) | a sequence (`ON SEQUENCE`), a schema, a catalog |
+| `CREATE SEQUENCE`, `DROP SEQUENCE` (`DROP SEQUENCE` also allows `setval()`) | a schema or catalog |
 | `CREATE SCHEMA`, `DROP SCHEMA` | a catalog |
 | `ALL [PRIVILEGES]` | a table, a schema, a catalog: every privilege above that applies there |
 
 `ALL` means all of them. On a table it is `SELECT`, `INSERT`, `UPDATE` and `DELETE`; on a schema,
-those, `CREATE`, `DROP` and `ALTER` `TABLE` and `VIEW`, and `CREATE` and `DROP MACRO`, so a role can
-build in that schema; on a catalog, all of that and `CREATE SCHEMA` and `DROP SCHEMA`. `GRANT ALL` is stored as the separate
+those, `CREATE`, `DROP` and `ALTER` `TABLE` and `VIEW`, `CREATE` and `DROP MACRO`, and `USAGE`,
+`CREATE SEQUENCE` and `DROP SEQUENCE`, so a role can build in that schema; on a catalog, all of that
+and `CREATE SCHEMA` and `DROP SCHEMA`. `GRANT ALL` is stored as the separate
 privileges it stands for (`SHOW GRANTS` lists each), and `REVOKE ALL` takes back the same set.
 
 ```sql test profile=rbac
@@ -343,6 +346,33 @@ $ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --u
     --command "CREATE TEMP MACRO mine(x) AS x"
 Error: Permission Error: Hardcharger blocked this statement: creating temporary macros needs an administrator: …
 ```
+
+### Sequences
+
+`nextval()` and `currval()` need `USAGE` on the sequence, granted `ON SEQUENCE`, `ON SCHEMA` or `ON
+CATALOG` (or owning its schema); `setval()` resets a sequence, which dropping and recreating it
+would do too, so it needs `DROP SEQUENCE` on its schema. `CREATE SEQUENCE` and `DROP SEQUENCE` are
+granted on a schema or catalog. A table's own column default is part of writing the table: `INSERT`
+on it covers the sequence its default advances, so an ordinary insert needs no grant on the
+sequence, while writing such a default (`CREATE TABLE`, `ALTER TABLE ... SET DEFAULT`) needs `USAGE`
+on it. Inside a view the view owner's `USAGE` counts; inside a macro, the caller's.
+
+```sql test profile=rbac
+CREATE SEQUENCE published.ticket_ids;
+CREATE TABLE published.tickets (id BIGINT DEFAULT nextval('published.ticket_ids'), title VARCHAR);
+GRANT INSERT, SELECT ON published.tickets TO viewer;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "INSERT INTO published.tickets (title) VALUES ('first')"
+OK, 1 row affected
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT nextval('published.ticket_ids') AS n" 2>&1 | grep -o "has no USAGE privilege on sequence [a-z_.]*ticket_ids"
+has no USAGE privilege on sequence my.published.ticket_ids
+```
+
+`duckdb_sequences()` and the views over it list only the sequences a user may use or drop.
 
 ## What users can see
 

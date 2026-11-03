@@ -374,6 +374,26 @@ has no USAGE privilege on sequence my.published.ticket_ids
 
 `duckdb_sequences()` and the views over it list only the sequences a user may use or drop.
 
+### Comments
+
+`COMMENT ON` follows the right to change the object: a table, a column of one, or an index on one
+needs `ALTER TABLE` on the table (its owner holds it); a view or a column of one, `ALTER VIEW`; a
+sequence, `DROP SEQUENCE` on its schema; a macro, `DROP MACRO` on its schema. Comments on types stay
+the administrator's.
+
+```sql test profile=rbac
+GRANT ALTER TABLE ON SCHEMA published TO view_maker;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "COMMENT ON TABLE published.tickets IS 'support tickets'"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "COMMENT ON TABLE analytics.orders IS 'x'" 2>&1 | grep -o "may not comment on table [a-z_.]*orders"
+may not comment on table my.analytics.orders
+```
+
 ## What users can see
 
 Metadata follows privileges, table by table. A user sees a table or view only when they hold a

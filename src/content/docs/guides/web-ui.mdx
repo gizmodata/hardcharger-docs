@@ -28,6 +28,8 @@ talks [Chargewire](/concepts/chargewire/) back to the same origin. It is off by 
 - **Run as**: under access control, a tab acts with one of the user's roles, or all of them.
 - **Downloads**: CSV, TSV, JSON and Excel (.xlsx) of the rows as shown, Parquet and Arrow IPC
   of the whole result with its exact types, all written in the browser.
+- **Geometry and maps (v2.5.0+)**: `GEOMETRY` values as WKT, and a **Map** view of the rows
+  shown, on a world basemap that ships with the UI ([below](#geometry-and-maps)).
 - **Upload data**: a CSV, TSV, Excel, Parquet, JSON or Arrow file into a table, read in the
   browser and sent over [bulk ingest](/guides/bulk-ingest/) ([below](#upload-data)).
 - **Sessions**: the sessions you may see, and, for an administrator, a button that ends one.
@@ -132,6 +134,14 @@ It sends the tab to your identity provider, which sends it back to the UI; the p
 its access token with a secret only that tab holds, so the token never appears in a URL. Register
 `<oauth_base_url>/chargewire/v1/auth/oauth/callback` as the redirect URI with the provider: the UI uses
 the same one as every other client.
+
+A link can start that sign-in itself (v2.5.0+): `https://<host>/ui/?sign_in=browser` opens the
+identity provider at once, as if **Sign in with *provider*** had been clicked, so a portal's
+**Connect** button can take someone straight in. It starts only when the server offers browser
+sign-in and nobody is signed in in that tab, and only once: the parameter leaves the address bar
+before the flow starts, so a reload, **Back** or a failed sign-in comes back to the sign-in page
+(with the reason, after a failure) instead of the provider. The provider still asks the person to
+confirm; the link signs no one in by itself.
 
 ## The API page
 
@@ -294,12 +304,49 @@ Excel workbooks are read with [SheetJS Community Edition](https://git.sheetjs.co
 (Apache-2.0), part of the UI's build like everything else on the page, and loaded only when a
 file is read.
 
+## Geometry and maps
+
+`GEOMETRY` columns (v2.5.0+) show as Well-Known Text, exactly as DuckDB's `ST_AsText` writes it
+(`POINT (-80.8431 35.2271)`), and the column header names the type and its coordinate reference
+system: `GEOMETRY`, or `GEOMETRY('EPSG:4326')`. The row filter, **Copy** and the CSV, TSV, JSON
+and Excel downloads use the same text; the Parquet and Arrow IPC downloads keep the geometry
+itself. Geometries inside lists and structs read the same way.
+
+```sql test
+SELECT 'Charlotte' AS name, 'POINT (-80.8431 35.2271)'::GEOMETRY AS geom
+UNION ALL
+SELECT 'Charlotte to London', 'LINESTRING (-80.8431 35.2271, -40 50, -0.1276 51.5072)'::GEOMETRY;
+```
+
+When a result has a `GEOMETRY` column, **Grid** and **Map** appear in its toolbar. **Map** draws
+the rows the grid shows (its filter and sort apply) from one geometry column, chosen from a list
+when there are several. Hover a shape for its row number; click it for the row's values.
+Double-clicking a geometry cell shows it on a small map too, with its WKT and its GeoJSON to copy.
+
+![A query's results on the Map view: cities and a route on the world basemap](../../../assets/web-ui/map-dark.png)
+
+How a column is drawn depends on its coordinate reference system, and the line under the map says
+which applies:
+
+| The column | Drawn |
+|---|---|
+| A geographic CRS (`EPSG:4326`, `OGC:CRS84`), or no CRS with every coordinate within ±180, ±90 | as longitude, latitude on the world basemap |
+| Web Mercator (`EPSG:3857`) | converted to longitude, latitude, on the world basemap |
+| Any other projected CRS (UTM, a national grid), or no CRS with larger coordinates | as plain x, y, without a basemap |
+
+The map draws up to 100,000 shapes; it says how many rows it left out, and how many were NULL or
+empty. The basemap is [Natural Earth](https://www.naturalearthdata.com/)'s land and country
+borders (public domain), at 1:110m, and 1:50m once zoomed in. It is part of the UI, loaded with
+the map's code only when a map first opens, and nothing is fetched from a tile server or any
+other site, so maps work on a server with no internet access.
+
 ## Content-Security-Policy
 
 Every answer under `/ui` carries a strict Content-Security-Policy and the usual security
 headers. Nothing loads from another origin: the scripts, the editor's and the upload's
-workers, the styles, the fonts (Inter is part of the build) and the Parquet reader's and
-writer's WebAssembly are all files under `/ui/`, and the page talks only to its own origin.
+workers, the styles, the fonts (Inter is part of the build), the Parquet reader's and
+writer's WebAssembly and the maps' basemap are all files under `/ui/`, and the page talks
+only to its own origin.
 
 ```bash test server=self background stop
 HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb --web-ui --health-port 31338

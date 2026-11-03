@@ -126,12 +126,13 @@ refused: UNAUTHORIZED: [chargewire] ExecuteQuery: Permission Error: Hardcharger 
 | `SELECT` (optionally on columns: `SELECT (a, b)`) | a table or view, a schema, a catalog |
 | `INSERT`, `UPDATE`, `DELETE` | a table, a schema, a catalog |
 | `CREATE TABLE`, `CREATE VIEW`, `DROP TABLE`, `DROP VIEW`, `ALTER TABLE`, `ALTER VIEW` | a schema or catalog |
+| `CREATE MACRO`, `DROP MACRO` (scalar and table macros; see [Macros](#macros)) | a schema or catalog |
 | `CREATE SCHEMA`, `DROP SCHEMA` | a catalog |
 | `ALL [PRIVILEGES]` | a table, a schema, a catalog: every privilege above that applies there |
 
 `ALL` means all of them. On a table it is `SELECT`, `INSERT`, `UPDATE` and `DELETE`; on a schema,
-those and `CREATE`, `DROP` and `ALTER` `TABLE` and `VIEW`, so a role can build in that schema; on a
-catalog, all of that and `CREATE SCHEMA` and `DROP SCHEMA`. `GRANT ALL` is stored as the separate
+those, `CREATE`, `DROP` and `ALTER` `TABLE` and `VIEW`, and `CREATE` and `DROP MACRO`, so a role can
+build in that schema; on a catalog, all of that and `CREATE SCHEMA` and `DROP SCHEMA`. `GRANT ALL` is stored as the separate
 privileges it stands for (`SHOW GRANTS` lists each), and `REVOKE ALL` takes back the same set.
 
 ```sql test profile=rbac
@@ -164,7 +165,7 @@ clause:
 | `READ HTTP` | reading `http://`, `https://`, `hf://` |
 | `WRITE HTTP` | `COPY … TO` an `http(s)://` URL |
 | `MANAGE CATALOGS` | `ATTACH`, `DETACH` |
-| `MANAGE EXTENSIONS` | `INSTALL`, `LOAD`, extension repositories |
+| `MANAGE EXTENSIONS` | `INSTALL`, `LOAD`, `UPDATE EXTENSIONS`, extension repositories |
 | `MANAGE SECRETS` | `CREATE`/`DROP SECRET`, `duckdb_secrets()` |
 | `MANAGE CONFIG` | `SET GLOBAL`, instance-wide settings, reading settings that hold credentials |
 | `EXPORT DATABASE`, `IMPORT DATABASE` | those statements |
@@ -297,6 +298,51 @@ Error: Permission Error: Hardcharger blocked this statement: user vic may create
 
 Once created, a view still reads with its owner's rights, so one granted to others keeps working,
 and revoking the owner's access closes it.
+
+### Macros
+
+`CREATE MACRO` on a schema (or its catalog, or owning the schema) lets a role create scalar and
+table macros there; `DROP MACRO` lets it drop them, and replacing one (`CREATE OR REPLACE`) needs
+both. Anyone may call a macro: DuckDB expands it into the statement that calls it, so what its body
+reads is checked as part of that statement, with the caller's rights. A macro over a table only
+some users may read works for them and is refused to the rest.
+
+```sql test profile=rbac
+GRANT CREATE MACRO, DROP MACRO ON SCHEMA published TO view_maker;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE MACRO published.cents(amount) AS CAST(amount * 100 AS INTEGER)"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT published.cents(1.25) AS cents"
+cents
+125
+```
+
+A user's macro must not change what anyone else's SQL computes, so Hardcharger refuses, to
+everyone but the administrator:
+
+- **temporary macros**: a session's macro is found before every other function, also inside a
+  view that reads with its owner's rights;
+- **a built-in function's name**, or that of a function an extension autoloads (`lower`,
+  `read_csv`, `st_area`): DuckDB would find the macro instead, in every query and view;
+- **replacing, or standing in for, a function that a view, a row or masking policy, or a macro
+  one of them uses calls**: the view reads with its owner's rights, and a row policy could be
+  made true;
+- **a body that calls what its creator may not**: `query()`, `query_table()`, remote queries, and
+  files, URLs or object storage beyond the creator's system privileges. (DuckDB binds the body
+  where the macro is called, and binding a table function already reads.)
+
+```console test profile=rbac exit=1
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE MACRO published.lower(x) AS 'mine'"
+Error: Permission Error: Hardcharger blocked this statement: a macro named lower would replace the built-in function lower wherever it is called, in queries and views alike; give the macro a name of its own. …
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TEMP MACRO mine(x) AS x"
+Error: Permission Error: Hardcharger blocked this statement: creating temporary macros needs an administrator: …
+```
 
 ## What users can see
 

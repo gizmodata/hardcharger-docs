@@ -13,6 +13,106 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+### Fixed
+
+- Flaky tests from the 2.5.0 release gate, each fixed rather than re-run:
+  - The desktop test `network_listener_credentials_and_tls_with_real_server` (macOS arm64)
+    reserved a free port and released it, and a test running alongside took the port before
+    the server bound it ("Port 49228 is already in use"). The real-server tests now pick
+    another port when that happens.
+  - Three iOS UI tests ran into a slow CI simulator:
+    - `testShareOnLocalNetworkServesTLSOnTheLAN` gave the web UI 30 s to open, and a passing
+      gate measured it at about 25 s; the web UI now gets 90 s.
+    - `testSplashThenWebUIRunsSelect42` checked the splash's bull without waiting and found
+      the splash already gone; it now waits, and the splash stays up 10 s.
+    - `testAccessibilityAudit` fails on any issue the audit finds, but an audit that can't
+      finish in time (`Code=-56`) now runs again, twice at most.
+
+## [2.5.0] - 2026-11-03
+
+### Added
+
+- **Macros for users: the `CREATE MACRO` and `DROP MACRO` privileges.** Under access control,
+  `GRANT CREATE MACRO, DROP MACRO ON SCHEMA tools TO analyst` (or `ON CATALOG`) lets a role create
+  and drop scalar and table macros there; replacing one needs both, and a schema's owner holds
+  them. Until now only the administrator could create a macro. Anyone may call one: DuckDB expands
+  a macro into the statement that calls it, so its body is checked as part of that statement,
+  with the caller's rights. So that a user's macro can't change what anyone else's SQL computes,
+  Hardcharger refuses, to everyone but the administrator: temporary macros (a session's macro is
+  found first, also inside views that read with their owners' rights); the name of a built-in
+  function or of one an extension autoloads (`lower`, `read_csv`, `st_area`); replacing, or
+  standing in for, a function that a view, a row or masking policy, or a macro one of them uses
+  calls; and a body that calls what its creator may not (`query()`, `query_table()`, files, URLs
+  or object storage beyond their system privileges). `GRANT ALL ON SCHEMA` and `ON CATALOG` now
+  include both (grants made before keep what they were), and so do a tenant's `tenant_admin`
+  grants. Tokens with `catalog_access` rules still create no macros.
+- `UPDATE EXTENSIONS` runs for a user with the `MANAGE EXTENSIONS` system privilege; it was
+  refused to everyone but the administrator.
+- **Sequences: the `USAGE`, `CREATE SEQUENCE` and `DROP SEQUENCE` privileges.** `GRANT USAGE ON
+  SEQUENCE app.ids` (or `ON SCHEMA` / `ON CATALOG`) lets a role call `nextval()` and `currval()`;
+  `GRANT CREATE SEQUENCE, DROP SEQUENCE ON SCHEMA app` lets it create and drop sequences there
+  (replacing one needs both), and `setval()`, which resets a sequence, needs `DROP SEQUENCE`. A
+  schema's owner holds all three. A table's own column default is part of writing the table:
+  `INSERT` on `app.orders` covers the sequence its `id DEFAULT nextval('app.ids')` advances, also
+  through `VALUES (DEFAULT)`, so ordinary inserts need no new grant; writing such a default
+  (`CREATE TABLE`, temporary tables included, and `ALTER TABLE ... DEFAULT`) needs `USAGE` on the
+  sequence. Inside a view the view owner's `USAGE` counts; inside a macro, the caller's. A user may
+  not create (or replace) a sequence whose name a table default, a view or a macro gives
+  `nextval()`, since it would hand out that sequence's numbers instead. `duckdb_sequences()` (and
+  the views over it) lists only the sequences a user may use or drop. `GRANT ALL ON SCHEMA` and `ON
+  CATALOG`, and a tenant's `tenant_admin` grants, include the three; grants made before keep what
+  they were.
+- **`COMMENT ON` for users.** What may change an object may describe it: a table, a column of one
+  or an index on one with `ALTER TABLE` (its owner holds it), a view or a column of one with `ALTER
+  VIEW`, a sequence with `DROP SEQUENCE` and a macro with `DROP MACRO` on its schema. Until now only
+  the administrator could comment. Types stay the administrator's.
+- **`ANALYZE` and `VACUUM` for users: the `MAINTAIN` privilege**, as in PostgreSQL 17. `GRANT
+  MAINTAIN ON app.events` (or `ON SCHEMA` / `ON CATALOG`) lets a role run `ANALYZE` and `VACUUM`
+  of the table and nothing else (no `SELECT`, no writes); a table's owner holds it, and `GRANT ALL`
+  now includes it (grants made before keep what they were). `ANALYZE` or `VACUUM` with no table
+  stays the administrator's, since it would touch tables the user can't see. Both were refused to
+  every user until now.
+- **Web UI: a link can start the browser sign-in (`/ui/?sign_in=browser`).** The sign-in page
+  then goes straight to the identity provider, as if **Sign in with <provider>** had been
+  clicked, so someone arriving from GizmoData Cloud's **Connect** no longer clicks it first
+  (gizmodata/hardcharger#16). It starts once, only when the server offers browser sign-in,
+  nobody is signed in and the page isn't the way back from a flow. The parameter leaves the
+  address bar before the flow starts, so a reload, Back or a failed sign-in can't loop back to
+  the provider, and a failure shows the sign-in page with the reason, as a failed click does.
+- Web UI: GEOMETRY columns show as WKT (`POINT (-80.8431 35.2271)`), exactly as DuckDB's
+  `ST_AsText` writes it, instead of escaped WKB bytes, and the header names the type and its CRS
+  (`GEOMETRY('EPSG:4326')`). The filter, Copy and the CSV, TSV, JSON and Excel downloads use the
+  WKT; Parquet and Arrow downloads keep the geometry. Nested geometries (lists, structs) too.
+- Web UI: a **Map** view of a result with a GEOMETRY column: the rows shown (the grid's filter and
+  sort) on a world basemap, hover for a row, click for its values, and a choice of column when
+  there are several. The cell inspector maps a single geometry and gives it as GeoJSON. Web
+  Mercator (EPSG:3857) is unprojected onto the basemap; other projected CRSs are drawn as plain
+  x, y. The basemap (Natural Earth, public domain) ships with the UI and loads only when a map
+  opens: nothing is fetched from another site, and the Content-Security-Policy is unchanged.
+
+### Changed
+
+- **Under access control, `nextval()` and `currval()` need `USAGE` on the sequence.** Until now
+  any user could advance (or read) any sequence in a catalog they could see, and `setval()` reset
+  one. Inserts that take an id from a table's own column default keep working with `INSERT` on the
+  table alone; a statement that calls `nextval()` itself needs `GRANT USAGE ON SEQUENCE` (or `ON
+  SCHEMA`). Tokens with `catalog_access` rules are unchanged (the catalog's read or write access).
+- Arrow C++ 26.0.1 (Chargewire 2.0.2), Arrow's patch release of 2026-11-03, instead of 26.0.0.
+  Among its fixes, reading an invalid map array from an Arrow IPC stream no longer crashes
+  (apache/arrow GH-54936): the server reads clients' uploads as IPC streams. Arrow's bundled zstd,
+  LZ4, uriparser and xsimd are unchanged.
+
+### Fixed
+
+- Web UI: **Alt+W** pressed straight after typing could close a tab without asking about its
+  unsaved text: the check read the tab's text from the last render, which the keystroke could
+  beat (seen as a flaky test under load). It now reads the editor's text as it is.
+- Under access control, a table macro called with its schema (`FROM tools.first_rows(3)`) was
+  refused to every user as an unknown table function: the check looked the macro up by its
+  name alone.
+- Desktop: the **DESKTOP** caption in the sidebar is centered under the Hardcharger logo; it sat
+  at a fixed offset to the left of the logo's center.
+
 ## [2.4.1] - 2026-10-29
 
 ### Changed

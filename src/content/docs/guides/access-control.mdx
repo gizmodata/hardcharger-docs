@@ -128,14 +128,16 @@ refused: UNAUTHORIZED: [chargewire] ExecuteQuery: Permission Error: Hardcharger 
 | `MAINTAIN` (`ANALYZE`, `VACUUM` of a table; see [Maintenance](#maintenance)) | a table, a schema, a catalog |
 | `CREATE TABLE`, `CREATE VIEW`, `DROP TABLE`, `DROP VIEW`, `ALTER TABLE`, `ALTER VIEW` | a schema or catalog |
 | `CREATE MACRO`, `DROP MACRO` (scalar and table macros; see [Macros](#macros)) | a schema or catalog |
+| `CREATE TYPE`, `DROP TYPE` (enums, structs, aliases; see [Types](#types)) | a schema or catalog |
+| `CREATE TRIGGER`, `DROP TRIGGER` (on a table the role owns; see [Triggers](#triggers)) | a schema or catalog |
 | `USAGE` (`nextval()`, `currval()`; see [Sequences](#sequences)) | a sequence (`ON SEQUENCE`), a schema, a catalog |
 | `CREATE SEQUENCE`, `DROP SEQUENCE` (`DROP SEQUENCE` also allows `setval()`) | a schema or catalog |
 | `CREATE SCHEMA`, `DROP SCHEMA` | a catalog |
 | `ALL [PRIVILEGES]` | a table, a schema, a catalog: every privilege above that applies there |
 
 `ALL` means all of them. On a table it is `SELECT`, `INSERT`, `UPDATE`, `DELETE` and `MAINTAIN`; on a schema,
-those, `CREATE`, `DROP` and `ALTER` `TABLE` and `VIEW`, `CREATE` and `DROP MACRO`, and `USAGE`,
-`CREATE SEQUENCE` and `DROP SEQUENCE`, so a role can build in that schema; on a catalog, all of that
+those, `CREATE`, `DROP` and `ALTER` `TABLE` and `VIEW`, `CREATE` and `DROP` `MACRO`, `TYPE` and `TRIGGER`,
+and `USAGE`, `CREATE SEQUENCE` and `DROP SEQUENCE`, so a role can build in that schema; on a catalog, all of that
 and `CREATE SCHEMA` and `DROP SCHEMA`. `GRANT ALL` is stored as the separate
 privileges it stands for (`SHOW GRANTS` lists each), and `REVOKE ALL` takes back the same set.
 
@@ -332,9 +334,9 @@ everyone but the administrator:
   view that reads with its owner's rights;
 - **a built-in function's name**, or that of a function an extension autoloads (`lower`,
   `read_csv`, `st_area`): DuckDB would find the macro instead, in every query and view;
-- **replacing, or standing in for, a function that a view, a row or masking policy, or a macro
-  one of them uses calls**: the view reads with its owner's rights, and a row policy could be
-  made true;
+- **replacing, or standing in for, a function that a view, a trigger, a row or masking policy,
+  or a macro one of them uses calls**: the view reads with its owner's rights, a trigger's body
+  with its owner's, and a row policy could be made true;
 - **a body that calls what its creator may not**: `query()`, `query_table()`, remote queries, and
   files, URLs or object storage beyond the creator's system privileges. (DuckDB binds the body
   where the macro is called, and binding a table function already reads.)
@@ -346,6 +348,112 @@ Error: Permission Error: Hardcharger blocked this statement: a macro named lower
 $ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE TEMP MACRO mine(x) AS x"
 Error: Permission Error: Hardcharger blocked this statement: creating temporary macros needs an administrator: …
+```
+
+### Types
+
+`CREATE TYPE` on a schema (or its catalog, or owning the schema) lets a role create enums, structs
+and type aliases there; `DROP TYPE` lets it drop them, and replacing one (`CREATE OR REPLACE`) needs
+both. Anyone may use a type. An enum made from a query (`CREATE TYPE t AS ENUM (SELECT ...)`) reads
+with its creator's rights.
+
+```sql test profile=rbac
+GRANT CREATE TYPE, DROP TYPE ON SCHEMA published TO view_maker;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TYPE published.priority AS ENUM ('low', 'high')"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT typeof('high'::published.priority) AS t"
+t
+"ENUM('low', 'high')"
+```
+
+A type is found by name where SQL is bound (a view's query, a macro's or trigger's body, a policy, a
+column default or `CHECK` constraint), so a user's type could stand in for one of those, and dropping
+or replacing a type they name would change what they compute. Hardcharger refuses, to everyone but
+the administrator:
+
+- **temporary types**: a session's type is found before every other type, also inside a view that
+  reads with its owner's rights;
+- **a built-in type's name**, or that of a type an extension provides (`integer`, `json`): DuckDB
+  finds a schema's type before the built-in one;
+- **a name that a view, a macro, a trigger, a row or masking policy, or a column default or check
+  constraint resolves to another type**, and dropping or replacing such a type.
+
+A table's columns pin nothing: DuckDB copies the type into the column at `CREATE TABLE`, so dropping
+or replacing the type changes nothing there. `duckdb_types()` lists a user's own schemas' types and
+the built-in ones.
+
+```console test profile=rbac exit=1
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TYPE published.integer AS VARCHAR"
+Error: Permission Error: Hardcharger blocked this statement: a type named integer would replace the built-in type integer wherever it is named, in queries and views alike; give the type a name of its own. …
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TEMP TYPE mine AS INTEGER"
+Error: Permission Error: Hardcharger blocked this statement: creating temporary types needs an administrator: …
+```
+
+### Triggers
+
+A trigger's body runs inside every write of its table, so creating one takes ownership of the
+table and `CREATE TRIGGER` on its schema (or its catalog, or owning the schema). The creator owns
+the trigger: only the owner, or a role granted `DROP TRIGGER` on the schema, drops or replaces it.
+
+Whose rights a body runs with depends on who made the trigger:
+
+- **A user's trigger runs with its owner's rights**, whoever writes the table (definer rights). The
+  body is checked, and row and masking policies applied, as if the owner ran it: a writer who may
+  only `INSERT` into the table still fires a trigger that writes the owner's log table, and an
+  administrator's write lends the body no administrator rights. A body that does what its owner may
+  not do refuses the write, naming the trigger and its owner.
+- **An administrator's trigger runs with the writer's rights**, as DuckDB runs it: a user who
+  inserts into such a table needs the rights for everything the trigger does, and is refused
+  otherwise.
+
+What a body calls is checked when the trigger is created, as a macro's body is: no `query()`,
+`query_table()` or remote queries, and files, URLs or object storage only within the creator's
+storage privileges. The functions a body calls are pinned like the ones a view calls: no user's
+macro can take their place. `duckdb_triggers()` lists the triggers of the tables a user may access.
+
+```sql test profile=rbac
+GRANT CREATE TABLE, CREATE TRIGGER ON SCHEMA published TO view_maker;
+CREATE USER wes WITH PASSWORD 'wes-secret';
+GRANT viewer TO wes;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TABLE published.ticket_notes (ticket_id BIGINT, note VARCHAR)"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TABLE published.note_log (what VARCHAR)"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TRIGGER log_notes AFTER INSERT ON published.ticket_notes FOR EACH STATEMENT INSERT INTO published.note_log VALUES ('note added')"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "GRANT INSERT ON published.ticket_notes TO viewer"
+result
+Granted INSERT on my.published.ticket_notes to viewer
+```
+
+wes may write `ticket_notes` and nothing else in `published`; the trigger's body writes `note_log`
+with vic's rights:
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+    --command "INSERT INTO published.ticket_notes VALUES (1, 'called back')"
+OK, 1 row affected
+$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+    --command "INSERT INTO published.note_log VALUES ('by wes')" 2>&1 | grep -o "has no INSERT privilege on table [a-z_.]*note_log"
+has no INSERT privilege on table my.published.note_log
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT what FROM published.note_log"
+what
+note added
 ```
 
 ### Sequences
@@ -398,8 +506,8 @@ ANALYZE or VACUUM of every table needs an administrator
 
 `COMMENT ON` follows the right to change the object: a table, a column of one, or an index on one
 needs `ALTER TABLE` on the table (its owner holds it); a view or a column of one, `ALTER VIEW`; a
-sequence, `DROP SEQUENCE` on its schema; a macro, `DROP MACRO` on its schema. Comments on types stay
-the administrator's.
+sequence, `DROP SEQUENCE` on its schema; a macro, `DROP MACRO` on its schema; a type, `DROP TYPE` on
+its schema.
 
 ```sql test profile=rbac
 GRANT ALTER TABLE ON SCHEMA published TO view_maker;
@@ -429,7 +537,9 @@ stay listed. `vic` sees the view he may read and the table his role may write:
 $ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT table_schema, table_name FROM information_schema.tables WHERE table_catalog = 'my' ORDER BY table_name"
 table_schema,table_name
+published,note_log
 published,revenue_by_region
+published,ticket_notes
 published,tickets
 ```
 

@@ -248,7 +248,7 @@ for every other tenant:
 | INSTALL / LOAD, CREATE / DROP SECRET, EXPORT / IMPORT DATABASE | allowed | refused |
 | read the instrumentation / log catalogs | allowed (read-only) | refused (a read exposes every session's SQL text, with denied-catalog literals); hidden, as for a non-administrator |
 | `hardcharger_sessions()`, `KILL SESSION` | every session | only its own session; KILL needs an administrator without rules |
-| CREATE MACRO / TYPE | allowed | refused (as for every non-superuser under the plan check) |
+| CREATE MACRO / TYPE / TRIGGER | allowed | refused (as for every non-superuser under the plan check) |
 | table functions such as `pragma_storage_info('c.t')` | allowed | only those any rules principal gets |
 | `nextval()` / `currval()` on a sequence | any | by the rules of the sequence's catalog |
 | a claim that isn't a non-empty list (`[]`, a string, an object, `null`) | no rules: unrestricted | grants nothing |

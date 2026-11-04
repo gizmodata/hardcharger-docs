@@ -9,6 +9,14 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ### Added
 
+- Access control (v2.7.0+): **Types** (`CREATE TYPE` and `DROP TYPE` on a schema, the names a
+  user's type may not take, and why a type in use can't be dropped or replaced; issue #18) and
+  **Triggers** (`CREATE TRIGGER` and `DROP TRIGGER`, the owner's rights in a trigger's body, and
+  the two cases that refuse a write; issue #17), with tested examples.
+- Statement control (v2.7.0+): **Idle sessions** and **Idle in a transaction**
+  (`idle_in_transaction_session_timeout`, as a startup option and with `SET
+  hardcharger.idle_in_transaction_session_timeout`; what keeps a session alive; issue #26).
+- CLI guide: **Geometry and binary values** (GEOMETRY as WKT, BLOB as `\xHH`; issue #22).
 - Access control (v2.7.0+), each with a tested example: **Table functions** (`GRANT EXECUTE ON
   TABLE FUNCTION name (PATH ARGUMENT n, ...)`: an extension's table function opened to a role,
   its path arguments checked through the storage privileges; issue #24) and **Nested schemas**

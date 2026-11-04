@@ -33,7 +33,7 @@ Besides the options below, the server takes these command-line actions, which ru
 | `--verify-tls URL` | Fetch a URL over HTTPS with the system's CA bundle, then exit 0 or 1 |
 | `--verify-audit-log FILE [--verify-audit-log-partial]` | Check an [audit log](/guides/instrumentation-and-audit/#the-audit-log)'s hash chain |
 
-97 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
+98 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
 
 ## Listener
 
@@ -661,7 +661,7 @@ Most non-admin sessions at once (0: unlimited)
 
 ### `session_idle_timeout`
 
-A session is evicted within 5 s after this many seconds without requests (0: never), unless a statement of it is running, an ingest of it is in progress, a result of it is being read, or it holds a retained result that hasn't expired (result_retention_seconds)
+A session is evicted within 5 s after this many seconds without requests (0: never), unless an ingest of it is in progress, a result of it is being read, a request is waiting on a statement of it, or it holds a retained result that hasn't expired (result_retention_seconds); a statement still running is then cancelled and its transaction rolled back, so a client that died mid-write doesn't hold the write's transaction open for as long as it runs. With 0, a dead client's session and its open transaction live until the server restarts (or KILL SESSION)
 
 | | |
 |---|---|
@@ -670,6 +670,18 @@ A session is evicted within 5 s after this many seconds without requests (0: nev
 | YAML | `session_idle_timeout: …` |
 | Type | integer |
 | Default | `900` |
+
+### `idle_in_transaction_session_timeout`
+
+A session that holds a transaction open (BEGIN, or autocommit off) with nothing running and no request for this many seconds is ended, within 5 s, and its transaction rolled back (0: never), as PostgreSQL's setting of the same name does; its next request gets session_ended with reason idle_in_transaction. SET [GLOBAL] hardcharger.idle_in_transaction_session_timeout changes it at runtime.
+
+| | |
+|---|---|
+| Flag | `--idle-in-transaction-session-timeout <n>` |
+| Environment | `HARDCHARGER_IDLE_IN_TRANSACTION_SESSION_TIMEOUT` |
+| YAML | `idle_in_transaction_session_timeout: …` |
+| Type | integer |
+| Default | `0` |
 
 ### `result_retention_seconds`
 

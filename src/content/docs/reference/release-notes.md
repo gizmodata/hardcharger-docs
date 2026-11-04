@@ -13,6 +13,42 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+### Added
+
+- **`idle_in_transaction_session_timeout`, as PostgreSQL has it
+  ([#26](https://github.com/gizmodata/hardcharger/issues/26)).** A session that holds a
+  transaction open (`BEGIN`, or autocommit off) with nothing running and no request for this
+  many seconds is ended, within 5 s, and its transaction rolled back; its next request gets
+  `session_ended` with the new reason `idle_in_transaction`, and the instrumentation sessions
+  table records `stop_reason` `idle_in_transaction`. Off (0) by default. A startup option
+  (`idle_in_transaction_session_timeout` in the configuration file,
+  `--idle-in-transaction-session-timeout`, `HARDCHARGER_IDLE_IN_TRANSACTION_SESSION_TIMEOUT`),
+  and at runtime `SET hardcharger.idle_in_transaction_session_timeout` for one session or
+  `SET GLOBAL` (administrators) for every session that hasn't set its own. The session document
+  shows a session's limit as `idle_in_transaction_timeout_s`.
+
+### Changed
+
+- **A dead client's running write no longer keeps its session, and the write's open
+  transaction, alive ([#26](https://github.com/gizmodata/hardcharger/issues/26)).** A
+  replication loader's pod was killed at its deadline mid-`MERGE`; the server ran the `MERGE`
+  to its end 9 hours later and then kept the session, `idle_in_transaction` with the
+  uncommitted staging table, for 20+ hours, and every later run failed with "Catalog
+  write-write conflict on create" until an administrator ran `KILL SESSION`. A running
+  statement kept the session out of the idle sweep's reach. Now a request waiting on a
+  statement (`Prefer: wait`), a read of a result, a bulk ingest in progress or an unexpired
+  retained result keeps a session; a statement that runs with nobody waiting on it or reading
+  it does not. So with `session_idle_timeout` 900 (the default) a client that vanished
+  mid-write loses its session 15 minutes later: the statement is cancelled (`cancel_reason`
+  `session_closed`) and its transaction rolled back, while a client whose connection blipped
+  and that polls its statement within the window keeps everything. A client that polls a long
+  statement less often than `session_idle_timeout` loses its session; with
+  `session_idle_timeout` 0 a dead client's session and transaction still live until the server
+  restarts, which the option now says. The instrumentation sessions table records an idle
+  eviction's `stop_reason` as `idle` (it was `closed`).
+- Chargewire 2.0.2 plus the two changes above (spec §5.6, §5.7): the session document's
+  `idle_in_transaction_timeout_s`, and the `idle_in_transaction` reason.
+
 ### Fixed
 
 - Flaky tests from the 2.5.0 release gate, each fixed rather than re-run:

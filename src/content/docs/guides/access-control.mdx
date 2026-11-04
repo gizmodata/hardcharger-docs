@@ -599,13 +599,17 @@ server, without keeping a copy of the store's credentials.
 
 It reads one JSON object on stdin, exactly what a client sends to the token endpoint (a password
 grant, a scoped token as the password of user `token`, or a `token_exchange` grant), prints one
-JSON line on stdout, and logs to stderr:
+JSON line on stdout, and logs to stderr. Here a server with its store in a DuckDB file creates a
+user:
 
-```sql test profile=rbac stop
+```sql test profile=rbac_duckdb stop
 CREATE USER ops WITH PASSWORD 'ops-secret';
 ```
 
-```console test profile=rbac
+Then, with that server stopped, the check runs with the same configuration:
+
+```console test server=self
+$ export HARDCHARGER_ADMIN_PASSWORD=change-me HARDCHARGER_RBAC_STORE_URI=duckdb:rbac.duckdb
 $ echo '{"grant_type": "password", "username": "ops", "password": "ops-secret"}' | hardcharger-server --verify-credentials 2>/dev/null
 {"verified":true,"user":"ops","role":"user","method":"password","would_provision":false}
 $ echo '{"grant_type": "password", "username": "ops", "password": "wrong"}' | hardcharger-server --verify-credentials 2>/dev/null; echo "exit $?"
@@ -613,14 +617,15 @@ $ echo '{"grant_type": "password", "username": "ops", "password": "wrong"}' | ha
 exit 1
 ```
 
-The exit code is 0 for a credential that signs in, 1 for one that does not (`reason` is the
-error code the client would get, or a token's reason such as `token_expired`), 2 for bad input,
-and 3 when nothing could be decided: the store is unreachable (`store_unavailable`), has no
-schema yet (`store_uninitialized`), belongs to another cluster
-(`store_belongs_to_another_cluster`), or the configuration is wrong. A scoped token is bound to
-the process that issued it unless `allow_cross_instance_tokens` is on, so without it, and without
-a configured `secret_key`, no earlier token verifies, which is also what the server would say
-after a restart. The credential never appears in the output or the log.
+The exit code is 0 for a credential that signs in, 1 for one that does not (`reason` is the error
+code the client would get, or a token's reason such as `token_expired`), 2 for bad input, and 3 when
+nothing could be decided: the store is unreachable (`store_unavailable`), has no schema yet
+(`store_uninitialized`), belongs to another cluster (`store_belongs_to_another_cluster`), or the
+configuration is wrong. A DuckDB file store can be checked only while no server has it open
+(DuckDB's file lock); a PostgreSQL store can be checked at any time. A scoped token is bound to the
+process that issued it unless `allow_cross_instance_tokens` is on, so without it, and without a
+configured `secret_key`, no earlier token verifies, which is also what the server would say after a
+restart. The credential never appears in the output or the log.
 
 ## Active roles
 

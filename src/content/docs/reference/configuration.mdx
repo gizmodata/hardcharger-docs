@@ -121,6 +121,18 @@ Serve the web UI at /ui on this port (a build that embeds it)
 | Type | boolean |
 | Default | `false` |
 
+### `web_ui_remote_servers`
+
+Let the web UI connect to other Hardcharger servers through this one (its Add server); off: the UI works with this server alone.
+
+| | |
+|---|---|
+| Flag | `--web-ui-remote-servers` |
+| Environment | `HARDCHARGER_WEB_UI_REMOTE_SERVERS` |
+| YAML | `web_ui_remote_servers: …` |
+| Type | boolean |
+| Default | `true` |
+
 ### `trusted_proxies`
 
 Reverse proxies (CIDRs such as 10.0.0.0/8 or fd00::/8, or single addresses) whose X-Forwarded-For or Forwarded header names the client; from them, the client's address in logs, audit, sessions and the per-address browser sign-in bound is the rightmost forwarded hop that is not itself a trusted proxy. Never used for authentication or TLS. Empty: trust none (the TCP peer is the client)

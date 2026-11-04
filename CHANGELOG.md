@@ -15,6 +15,17 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
   (what a grant on a nested schema or its parent covers, `CREATE SCHEMA` on a schema for the
   schemas nested in it, how names are read, and how listings and metadata name a nested schema;
   issue #19). The SQL reference lists both statements.
+- Web UI (v2.7.0+): **Other servers** (the servers list in the schema browser, the three locks,
+  signing in to a remote, tabs bound to a server, the relay under `/ui/v1/remotes` and the
+  `web_ui_remote_servers` option, with a tested YAML example) and **The UI on its own**
+  (`hardcharger ui`, with tested examples), plus the storage table's new rows.
+- Desktop app: the workspace without the local server, and **Settings › Remote servers**.
+- CLI guide and reference: `hardcharger ui`, with tested examples of its address line and of
+  the plain-HTTP refusal; the reference's help listing is regenerated from the client.
+
+### Changed
+
+- The configuration reference is regenerated from the server: `web_ui_remote_servers`.
 
 ## [2.5.0] - 2026-11-03
 

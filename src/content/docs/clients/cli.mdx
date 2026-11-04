@@ -285,6 +285,33 @@ connection.
 `--session-tag JSON` and `--query-tag JSON` (or `HARDCHARGER_SESSION_TAG`,
 `HARDCHARGER_QUERY_TAG`) tag what the client runs, for [instrumentation](/guides/instrumentation-and-audit/).
 
+## The web UI from the client: `hardcharger ui`
+
+`hardcharger ui` (v2.7.0+) serves Hardcharger's [web UI](/guides/web-ui/#the-ui-on-its-own)
+from the client itself, with no server behind it, and opens it in your browser: add the servers
+you work with there. A free loopback port by default; `--listen HOST:PORT` to choose one,
+`--no-open` to only print the address, `--tls-cert`/`--tls-key` to serve HTTPS to others.
+
+```bash test server=none background
+hardcharger ui --no-open --listen 127.0.0.1:8080
+```
+
+```console test server=none
+$ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/ui/
+200
+```
+
+```bash test server=none stop
+true
+```
+
+It refuses plain HTTP on an address other computers can reach:
+
+```console test server=none exit=1
+$ hardcharger ui --no-open --listen 0.0.0.0:0
+Error: refusing to serve the UI in plain HTTP on 0.0.0.0, which other computers can reach: give it a certificate (--tls-cert and --tls-key), or --allow-plaintext for a network you trust.
+```
+
 ## Coming from gizmosql_client
 
 `hardcharger` is GizmoSQL 1.x's `gizmosql_client`, on Chargewire, with the same options under

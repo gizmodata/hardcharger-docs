@@ -1,4 +1,5 @@
 Usage: hardcharger [OPTIONS] [URI]
+       hardcharger ui [OPTIONS]      the web UI on its own (hardcharger ui --help)
 
 Examples:
   hardcharger --username admin             localhost:31337, over TLS (the default)

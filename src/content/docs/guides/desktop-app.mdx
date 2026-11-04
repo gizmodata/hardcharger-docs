@@ -64,6 +64,19 @@ dashboard still leaves the server running in the menu bar or system tray.
 On macOS, the **Window** menu lists open workspaces and query inspectors, including
 windows behind the dashboard.
 
+### The workspace without the local server (v2.7.0+)
+
+**Open SQL workspace** works while the local server is stopped too. The app then runs the
+bundled client's `hardcharger ui` on a loopback port of its own (plain HTTP on this computer
+only; the relay still speaks TLS to the servers you add), opens the workspace on it with the
+**Remote servers** you saved in Settings, and stops it when the workspace closes. Such a
+workspace lists no local server and no admin pages: it is for the other servers. Start the
+local server and choose **Open SQL workspace** again to get the workspace on it, with the
+same saved servers listed beneath it.
+
+The dashboard says which workspace the button opens; the **Window** menu and the tray's
+**Open SQL Workspace** open the same one.
+
 ## Settings and logs
 
 **Settings** exposes options from the bundled server, grouped by category. Search setting
@@ -83,6 +96,18 @@ to read the app's saved credential, especially after an ad hoc preview rebuild.
 The SQL workspace's [Server Configuration tab](/guides/server-configuration/) edits
 supported runtime settings. Those changes are separate from saved desktop settings and
 do not survive a server restart.
+
+### Remote servers (v2.7.0+)
+
+**Settings › Remote servers** keeps the other Hardcharger servers the SQL workspace lists:
+a name, the URL (`https://db.example.com:31337`, or `http://…` for a server without TLS), and
+how its certificate is trusted: **Verified** against the system's trusted roots, **Trusted by
+fingerprint** (paste the certificate's SHA-256 fingerprint; the workspace shows it the first
+time it connects), or **None** for plain `http://`. No password or token is stored here: you
+sign in to each server in the workspace, where the list shows up with a lock beside each
+server ([the web UI guide](/guides/web-ui/#other-servers) describes the locks and the relay).
+The list is saved with the settings; a remote whose own `/ui` is off works too, since the
+workspace reaches it through the relay, over Chargewire alone.
 
 ## Allow connections from other computers
 

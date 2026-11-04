@@ -13,6 +13,52 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+### Added
+
+- **Other servers in the web UI.** The schema browser's root is now a list of servers: this
+  server first (with the admin pages, as before), then the Hardcharger servers you add with
+  **Add a server** (a name, the URL, and how its certificate is trusted). Each server shows a
+  lock beside its name: green when its certificate was verified against trusted roots, amber
+  when you trusted it by its SHA-256 fingerprint (shown to you first, like an SSH host key),
+  red and open for plain HTTP. Sign in with a password or a token; the schema browser, its
+  search, autocomplete, previews, uploads and editor tabs then work on that server (a tab is
+  bound to one server, shown on the tab; **New tab on…** picks it). The list of servers is
+  kept in the browser; sign-ins last for the tab only. A browser can't reach a second server
+  itself (Chargewire's CORS allow-list is exact by design), so the server serving the UI relays
+  the remote's Chargewire requests under `/ui/v1/remotes/<id>/chargewire/...`, streaming
+  results and uploads both ways; `web_ui_remote_servers: false` turns the relay off.
+- **`hardcharger ui`: the web UI on its own.** The command-line client serves the same web UI
+  (and the relay) on a port of its own, with no engine behind it, and opens it in the browser:
+  the UI then opens on Add a server and works with the servers you add. `--listen HOST:PORT`
+  (default `127.0.0.1:0`, a free loopback port), `--no-open`, `--tls-cert`/`--tls-key` to serve
+  HTTPS for others, and `--allow-plaintext` before it will serve plain HTTP on an address
+  other computers can reach. A client built without the UI says so and exits with code 2.
+- Desktop: **Open SQL workspace** no longer needs the local server. With it stopped, the app
+  starts `hardcharger ui` on a loopback port, opens the workspace on it with the remote servers
+  you saved in **Settings › Remote servers**, and stops it when the workspace closes. With the
+  server running, the workspace opens on it as before, with the same saved servers listed
+  ([#20](https://github.com/gizmodata/hardcharger/issues/20)).
+- Web UI: nested schemas (DuckDB 2.0's `CREATE SCHEMA a.b`) show as a tree under their parent,
+  a top-level schema whose name holds a dot (`"x.y"`) as its own node, and double-click or drag
+  inserts the full path, each part quoted as SQL needs; the search finds tables under their
+  path ([#19](https://github.com/gizmodata/hardcharger/issues/19)).
+- Chargewire SDK: `ServerOptions::app_endpoints`, an application's own endpoints beside the
+  protocol's on the same listener, with streamed request bodies and streamed answers (the
+  relay is one); `GET /ui/v1/app` tells the UI what serves it (`local_server`,
+  `remote_servers`, `version`).
+
+### Fixed
+
+- Web UI: a query that returned no rows failed with "Cannot read properties of undefined
+  (reading 'byteLength')" when a column was a LIST (or a LIST of STRUCTs): apache-arrow makes
+  one empty batch of a stream with a schema and no record batches, and the client's byte
+  count walked into the LIST's missing child. It reads as 0 rows now (chargewire-js)
+  ([#23](https://github.com/gizmodata/hardcharger/issues/23)).
+- Web UI: an editor tab whose session the server ended because its transaction sat idle past
+  `idle_in_transaction_session_timeout` says so (the transaction was rolled back; the next run
+  starts a new session) instead of staying dead: chargewire-js treats `session_ended` with
+  reason `idle_in_transaction` like a session the server no longer has.
+
 ### Fixed
 
 - Flaky tests from the 2.5.0 release gate, each fixed rather than re-run:

@@ -81,6 +81,16 @@
       "description": "serve the web UI at /ui on this port (a build that embeds it)"
     },
     {
+      "name": "web_ui_remote_servers",
+      "group": "Listener",
+      "flag": "--web-ui-remote-servers",
+      "env": "HARDCHARGER_WEB_UI_REMOTE_SERVERS",
+      "yaml_key": "web_ui_remote_servers",
+      "type": "boolean",
+      "default": "true",
+      "description": "let the web UI connect to other Hardcharger servers through this one (its Add server); off: the UI works with this server alone"
+    },
+    {
       "name": "trusted_proxies",
       "group": "Listener",
       "flag": "--trusted-proxies",

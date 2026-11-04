@@ -423,13 +423,14 @@ or in it or own something there. That covers the drivers' metadata calls (ADBC `
 `DatabaseMetaData`) and SQL's own listings: `information_schema`, `duckdb_tables()`,
 `duckdb_columns()` and the other `duckdb_*()` functions, `SHOW TABLES`, `SHOW ALL TABLES`,
 `pragma_table_info()`. DuckDB's own views (catalog `system`) and the session's temporary objects
-stay listed. `vic` sees the one view he may read:
+stay listed. `vic` sees the view he may read and the table his role may write:
 
 ```console test profile=rbac
 $ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
-    --command "SELECT table_schema, table_name FROM information_schema.tables WHERE table_catalog = 'my'"
+    --command "SELECT table_schema, table_name FROM information_schema.tables WHERE table_catalog = 'my' ORDER BY table_name"
 table_schema,table_name
 published,revenue_by_region
+published,tickets
 ```
 
 `DESCRIBE` (and `SHOW <table>`) of a table the user holds no privilege on is refused, and so is

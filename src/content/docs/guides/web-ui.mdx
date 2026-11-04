@@ -312,7 +312,7 @@ system: `GEOMETRY`, or `GEOMETRY('EPSG:4326')`. The row filter, **Copy** and the
 and Excel downloads use the same text; the Parquet and Arrow IPC downloads keep the geometry
 itself. Geometries inside lists and structs read the same way.
 
-```sql test
+```sql test stop
 SELECT 'Charlotte' AS name, 'POINT (-80.8431 35.2271)'::GEOMETRY AS geom
 UNION ALL
 SELECT 'Charlotte to London', 'LINESTRING (-80.8431 35.2271, -40 50, -0.1276 51.5072)'::GEOMETRY;

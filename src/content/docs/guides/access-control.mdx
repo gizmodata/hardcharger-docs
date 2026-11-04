@@ -125,13 +125,18 @@ refused: UNAUTHORIZED: [chargewire] ExecuteQuery: Permission Error: Hardcharger 
 |---|---|
 | `SELECT` (optionally on columns: `SELECT (a, b)`) | a table or view, a schema, a catalog |
 | `INSERT`, `UPDATE`, `DELETE` | a table, a schema, a catalog |
+| `MAINTAIN` (`ANALYZE`, `VACUUM` of a table; see [Maintenance](#maintenance)) | a table, a schema, a catalog |
 | `CREATE TABLE`, `CREATE VIEW`, `DROP TABLE`, `DROP VIEW`, `ALTER TABLE`, `ALTER VIEW` | a schema or catalog |
+| `CREATE MACRO`, `DROP MACRO` (scalar and table macros; see [Macros](#macros)) | a schema or catalog |
+| `USAGE` (`nextval()`, `currval()`; see [Sequences](#sequences)) | a sequence (`ON SEQUENCE`), a schema, a catalog |
+| `CREATE SEQUENCE`, `DROP SEQUENCE` (`DROP SEQUENCE` also allows `setval()`) | a schema or catalog |
 | `CREATE SCHEMA`, `DROP SCHEMA` | a catalog |
 | `ALL [PRIVILEGES]` | a table, a schema, a catalog: every privilege above that applies there |
 
-`ALL` means all of them. On a table it is `SELECT`, `INSERT`, `UPDATE` and `DELETE`; on a schema,
-those and `CREATE`, `DROP` and `ALTER` `TABLE` and `VIEW`, so a role can build in that schema; on a
-catalog, all of that and `CREATE SCHEMA` and `DROP SCHEMA`. `GRANT ALL` is stored as the separate
+`ALL` means all of them. On a table it is `SELECT`, `INSERT`, `UPDATE`, `DELETE` and `MAINTAIN`; on a schema,
+those, `CREATE`, `DROP` and `ALTER` `TABLE` and `VIEW`, `CREATE` and `DROP MACRO`, and `USAGE`,
+`CREATE SEQUENCE` and `DROP SEQUENCE`, so a role can build in that schema; on a catalog, all of that
+and `CREATE SCHEMA` and `DROP SCHEMA`. `GRANT ALL` is stored as the separate
 privileges it stands for (`SHOW GRANTS` lists each), and `REVOKE ALL` takes back the same set.
 
 ```sql test profile=rbac
@@ -164,7 +169,7 @@ clause:
 | `READ HTTP` | reading `http://`, `https://`, `hf://` |
 | `WRITE HTTP` | `COPY … TO` an `http(s)://` URL |
 | `MANAGE CATALOGS` | `ATTACH`, `DETACH` |
-| `MANAGE EXTENSIONS` | `INSTALL`, `LOAD`, extension repositories |
+| `MANAGE EXTENSIONS` | `INSTALL`, `LOAD`, `UPDATE EXTENSIONS`, extension repositories |
 | `MANAGE SECRETS` | `CREATE`/`DROP SECRET`, `duckdb_secrets()` |
 | `MANAGE CONFIG` | `SET GLOBAL`, instance-wide settings, reading settings that hold credentials |
 | `EXPORT DATABASE`, `IMPORT DATABASE` | those statements |
@@ -298,6 +303,117 @@ Error: Permission Error: Hardcharger blocked this statement: user vic may create
 Once created, a view still reads with its owner's rights, so one granted to others keeps working,
 and revoking the owner's access closes it.
 
+### Macros
+
+`CREATE MACRO` on a schema (or its catalog, or owning the schema) lets a role create scalar and
+table macros there; `DROP MACRO` lets it drop them, and replacing one (`CREATE OR REPLACE`) needs
+both. Anyone may call a macro: DuckDB expands it into the statement that calls it, so what its body
+reads is checked as part of that statement, with the caller's rights. A macro over a table only
+some users may read works for them and is refused to the rest.
+
+```sql test profile=rbac
+GRANT CREATE MACRO, DROP MACRO ON SCHEMA published TO view_maker;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE MACRO published.cents(amount) AS CAST(amount * 100 AS INTEGER)"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT published.cents(1.25) AS cents"
+cents
+125
+```
+
+A user's macro must not change what anyone else's SQL computes, so Hardcharger refuses, to
+everyone but the administrator:
+
+- **temporary macros**: a session's macro is found before every other function, also inside a
+  view that reads with its owner's rights;
+- **a built-in function's name**, or that of a function an extension autoloads (`lower`,
+  `read_csv`, `st_area`): DuckDB would find the macro instead, in every query and view;
+- **replacing, or standing in for, a function that a view, a row or masking policy, or a macro
+  one of them uses calls**: the view reads with its owner's rights, and a row policy could be
+  made true;
+- **a body that calls what its creator may not**: `query()`, `query_table()`, remote queries, and
+  files, URLs or object storage beyond the creator's system privileges. (DuckDB binds the body
+  where the macro is called, and binding a table function already reads.)
+
+```console test profile=rbac exit=1
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE MACRO published.lower(x) AS 'mine'"
+Error: Permission Error: Hardcharger blocked this statement: a macro named lower would replace the built-in function lower wherever it is called, in queries and views alike; give the macro a name of its own. …
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TEMP MACRO mine(x) AS x"
+Error: Permission Error: Hardcharger blocked this statement: creating temporary macros needs an administrator: …
+```
+
+### Sequences
+
+`nextval()` and `currval()` need `USAGE` on the sequence, granted `ON SEQUENCE`, `ON SCHEMA` or `ON
+CATALOG` (or owning its schema); `setval()` resets a sequence, which dropping and recreating it
+would do too, so it needs `DROP SEQUENCE` on its schema. `CREATE SEQUENCE` and `DROP SEQUENCE` are
+granted on a schema or catalog. A table's own column default is part of writing the table: `INSERT`
+on it covers the sequence its default advances, so an ordinary insert needs no grant on the
+sequence, while writing such a default (`CREATE TABLE`, `ALTER TABLE ... SET DEFAULT`) needs `USAGE`
+on it. Inside a view the view owner's `USAGE` counts; inside a macro, the caller's.
+
+```sql test profile=rbac
+CREATE SEQUENCE published.ticket_ids;
+CREATE TABLE published.tickets (id BIGINT DEFAULT nextval('published.ticket_ids'), title VARCHAR);
+GRANT INSERT, SELECT ON published.tickets TO viewer;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "INSERT INTO published.tickets (title) VALUES ('first')"
+OK, 1 row affected
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT nextval('published.ticket_ids') AS n" 2>&1 | grep -o "has no USAGE privilege on sequence [a-z_.]*ticket_ids"
+has no USAGE privilege on sequence my.published.ticket_ids
+```
+
+`duckdb_sequences()` and the views over it list only the sequences a user may use or drop.
+
+### Maintenance
+
+`MAINTAIN` lets a role run `ANALYZE` and `VACUUM` of a table and nothing else: no `SELECT`, no
+writes. It is granted on a table, a schema or a catalog, and a table's owner holds it. `ANALYZE` or
+`VACUUM` without a table stays the administrator's, since it would touch tables the user can't see.
+
+```sql test profile=rbac
+GRANT MAINTAIN ON published.tickets TO viewer;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "ANALYZE published.tickets"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "ANALYZE" 2>&1 | grep -o "ANALYZE or VACUUM of every table needs an administrator"
+ANALYZE or VACUUM of every table needs an administrator
+```
+
+### Comments
+
+`COMMENT ON` follows the right to change the object: a table, a column of one, or an index on one
+needs `ALTER TABLE` on the table (its owner holds it); a view or a column of one, `ALTER VIEW`; a
+sequence, `DROP SEQUENCE` on its schema; a macro, `DROP MACRO` on its schema. Comments on types stay
+the administrator's.
+
+```sql test profile=rbac
+GRANT ALTER TABLE ON SCHEMA published TO view_maker;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "COMMENT ON TABLE published.tickets IS 'support tickets'"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "COMMENT ON TABLE analytics.orders IS 'x'" 2>&1 | grep -o "may not comment on table [a-z_.]*orders"
+may not comment on table my.analytics.orders
+```
+
 ## What users can see
 
 Metadata follows privileges, table by table. A user sees a table or view only when they hold a
@@ -307,13 +423,14 @@ or in it or own something there. That covers the drivers' metadata calls (ADBC `
 `DatabaseMetaData`) and SQL's own listings: `information_schema`, `duckdb_tables()`,
 `duckdb_columns()` and the other `duckdb_*()` functions, `SHOW TABLES`, `SHOW ALL TABLES`,
 `pragma_table_info()`. DuckDB's own views (catalog `system`) and the session's temporary objects
-stay listed. `vic` sees the one view he may read:
+stay listed. `vic` sees the view he may read and the table his role may write:
 
 ```console test profile=rbac
 $ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
-    --command "SELECT table_schema, table_name FROM information_schema.tables WHERE table_catalog = 'my'"
+    --command "SELECT table_schema, table_name FROM information_schema.tables WHERE table_catalog = 'my' ORDER BY table_name"
 table_schema,table_name
 published,revenue_by_region
+published,tickets
 ```
 
 `DESCRIBE` (and `SHOW <table>`) of a table the user holds no privilege on is refused, and so is

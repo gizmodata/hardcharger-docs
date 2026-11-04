@@ -7,6 +7,25 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-11-03
+
+### Added
+
+- Access control (v2.5.0+), each with a tested example: **Macros** (the `CREATE MACRO` and
+  `DROP MACRO` privileges on a schema or catalog), **Sequences** (`USAGE`, `CREATE SEQUENCE`,
+  `DROP SEQUENCE`), **Maintenance** (`MAINTAIN`: `ANALYZE` and `VACUUM` of a table) and
+  **Comments** (what `COMMENT ON` needs for each kind of object).
+- Web UI: **Geometry and maps** (v2.5.0+): `GEOMETRY` values as WKT, the results' **Map** view
+  (how each coordinate reference system is drawn, the bundled basemap, no off-origin requests),
+  the cell inspector's map and GeoJSON, with a screenshot from the 2.5.0 release. Also the
+  `?sign_in=browser` link that starts a browser sign-in by itself.
+
+### Changed
+
+- The reference is regenerated from Hardcharger 2.5.0: the version in the header and on the
+  Versions page, the 2.5.0 release notes, and the Chargewire protocol page's status line
+  (Chargewire 2.0.2; protocol version 1 is unchanged).
+
 ## [2.4.1] - 2026-10-30
 
 ### Changed

@@ -811,6 +811,45 @@ server`). A password in the init SQL is as sensitive as the file's secrets: the 
 it, and the [sensitive path guard](/concepts/security-model/#guards-that-apply-to-everyone) keeps
 the file out of reach of SQL, but keep it readable only by the server's user.
 
+## Checking a credential without the server
+
+`hardcharger-server --verify-credentials` decides a credential the way `/chargewire/v1/auth/token`
+would, with the server's own configuration (the administrator, the store, the token keys, the
+secret key) and nothing written anywhere: the store is opened read-only, never claimed, created
+or upgraded, and a user that `token_auto_provision_users` would create is reported, not created.
+It is for a control plane that must know whether a credential is good before it starts a stopped
+server, without keeping a copy of the store's credentials.
+
+It reads one JSON object on stdin, exactly what a client sends to the token endpoint (a password
+grant, a scoped token as the password of user `token`, or a `token_exchange` grant), prints one
+JSON line on stdout, and logs to stderr. Here a server with its store in a DuckDB file creates a
+user:
+
+```sql test profile=rbac_duckdb stop
+CREATE USER ops WITH PASSWORD 'ops-secret';
+```
+
+Then, with that server stopped, the check runs with the same configuration:
+
+```console test server=self
+$ export HARDCHARGER_ADMIN_PASSWORD=change-me HARDCHARGER_RBAC_STORE_URI=duckdb:rbac.duckdb
+$ echo '{"grant_type": "password", "username": "ops", "password": "ops-secret"}' | hardcharger-server --verify-credentials 2>/dev/null
+{"verified":true,"user":"ops","role":"user","method":"password","would_provision":false}
+$ echo '{"grant_type": "password", "username": "ops", "password": "wrong"}' | hardcharger-server --verify-credentials 2>/dev/null; echo "exit $?"
+{"verified":false,"reason":"invalid_credentials","message":"the user name or password is not correct"}
+exit 1
+```
+
+The exit code is 0 for a credential that signs in, 1 for one that does not (`reason` is the error
+code the client would get, or a token's reason such as `token_expired`), 2 for bad input, and 3 when
+nothing could be decided: the store is unreachable (`store_unavailable`), has no schema yet
+(`store_uninitialized`), belongs to another cluster (`store_belongs_to_another_cluster`), or the
+configuration is wrong. A DuckDB file store can be checked only while no server has it open
+(DuckDB's file lock); a PostgreSQL store can be checked at any time. A scoped token is bound to the
+process that issued it unless `allow_cross_instance_tokens` is on, so without it, and without a
+configured `secret_key`, no earlier token verifies, which is also what the server would say after a
+restart. The credential never appears in the output or the log.
+
 ## Active roles
 
 A user's roles are all active by default. `SET ROLE analyst` narrows a session to one role,

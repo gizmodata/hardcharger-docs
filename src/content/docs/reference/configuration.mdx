@@ -32,6 +32,7 @@ Besides the options below, the server takes these command-line actions, which ru
 | `--print-options-json` | Print every option as JSON (what this page is built from) |
 | `--verify-tls URL` | Fetch a URL over HTTPS with the system's CA bundle, then exit 0 or 1 |
 | `--verify-audit-log FILE [--verify-audit-log-partial]` | Check an [audit log](/guides/instrumentation-and-audit/#the-audit-log)'s hash chain |
+| `--verify-credentials` | Decide a credential read from stdin as the token endpoint would, [writing nothing](/guides/access-control/#checking-a-credential-without-the-server); exit 0 verified, 1 refused, 2 bad input, 3 undecided |
 
 98 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
 

@@ -442,8 +442,10 @@ class Page:
                      float(block.meta.get("timeout", 60)), process)
             return ""
         try:
+            # A program may print bytes that aren't UTF-8 (a binary column): show them escaped, so the
+            # block passes or fails on its output instead of crashing the run.
             done = subprocess.run(args=args, cwd=self.dir, env=env, input=stdin, capture_output=True, text=True,
-                                  timeout=float(block.meta.get("timeout", 180)))
+                                  errors="backslashreplace", timeout=float(block.meta.get("timeout", 180)))
         except subprocess.TimeoutExpired:
             raise Failure(f"{block.where}: timed out")
         # Programs are judged by what they print; shells (console, bash) by everything a
@@ -499,7 +501,8 @@ class Page:
         try:
             # No pipefail: an interactive shell doesn't have it, and a console block is a terminal.
             done = subprocess.run(args=["bash", "-c", "\n".join(script)], cwd=self.dir, env=env,
-                                  capture_output=True, text=True, timeout=float(block.meta.get("timeout", 180)))
+                                  capture_output=True, text=True, errors="backslashreplace",
+                                  timeout=float(block.meta.get("timeout", 180)))
         except subprocess.TimeoutExpired:
             raise Failure(f"{block.where}: timed out")
         out = done.stdout

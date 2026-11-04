@@ -7,6 +7,18 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-11-04
+
+### Added
+
+- Access control: **Checking a credential without the server**, the guide section for
+  `hardcharger-server --verify-credentials` (v2.6.0+), with a tested example, and the flag's row
+  in the configuration reference.
+
+### Changed
+
+- Reference pages regenerated from Hardcharger 2.6.0.
+
 ## [2.5.0] - 2026-11-03
 
 ### Added

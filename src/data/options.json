@@ -831,6 +831,16 @@
       "description": "how long a graceful shutdown waits for running work (0: forever)"
     },
     {
+      "name": "stop_on_stdin_close",
+      "group": "Operations",
+      "flag": "--stop-on-stdin-close",
+      "env": "HARDCHARGER_STOP_ON_STDIN_CLOSE",
+      "yaml_key": "stop_on_stdin_close",
+      "type": "boolean",
+      "default": "false",
+      "description": "stop (as the first stop signal would) when standard input reaches its end: for a parent process that holds the server's stdin open and may die without stopping it"
+    },
+    {
       "name": "health_check_query",
       "group": "Operations",
       "flag": "--health-check-query",

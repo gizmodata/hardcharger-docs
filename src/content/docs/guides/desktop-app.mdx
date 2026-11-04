@@ -106,15 +106,23 @@ do not survive a server restart.
 
 ### Remote servers (v2.7.0+)
 
-**Settings › Remote servers** keeps the other Hardcharger servers the SQL workspace lists:
-a name, the URL (`https://db.example.com:31337`, or `http://…` for a server without TLS), and
-how its certificate is trusted: **Verified** against the system's trusted roots, **Trusted by
-fingerprint** (paste the certificate's SHA-256 fingerprint; the workspace shows it the first
-time it connects), or **None** for plain `http://`. No password or token is stored here: you
-sign in to each server in the workspace, where the list shows up with a lock beside each
-server ([the web UI guide](/guides/web-ui/#other-servers) describes the locks and the relay).
-The list is saved with the settings; a remote whose own `/ui` is off works too, since the
-workspace reaches it through the relay, over Chargewire alone.
+**Settings › Remote servers** keeps the other Hardcharger servers the SQL workspace lists, with
+the same fields as the workspace's **Add a server** dialog: a display name, **Host** and
+**Port** (31337 by default), **Use TLS**, and **Trust this server's certificate** for a private or
+self-signed one (paste its SHA-256 fingerprint, or leave it empty to see the certificate the
+first time the workspace connects). The list is saved with the settings and handed to the
+workspace when it opens, where each server shows with its lock
+([the web UI guide](/guides/web-ui/#other-servers) describes the dialog, the locks and the
+relay). A remote whose own `/ui` is off works too: the workspace reaches it through the relay,
+over Chargewire alone.
+
+You sign in to each server in the workspace. Its **Remember password** box (only the desktop
+app offers it) keeps the password in your operating system's keychain (macOS Keychain, Windows
+Credential Manager, or the Secret Service on Linux) under the saved connection, and fills it in
+when you pick the connection again. Unchecking the box, forgetting the connection in the dialog,
+or removing the server here removes the password from the keychain. The workspace window can
+reach only those keychain entries, through three commands the app grants it on its own address;
+it has no other access to your computer.
 
 ## Allow connections from other computers
 

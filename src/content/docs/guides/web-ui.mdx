@@ -422,11 +422,36 @@ that serves the UI. The servers you add can be older: the relay speaks plain Cha
 </Aside>
 
 The schema browser's root is a list of servers: **This server** first, then the ones you add.
-**Add a server** (the **+** in the Data panel's head) asks for a name, the server's URL
-(`https://db.example.com:31337`, or `http://…` for a server without TLS) and then your sign-in
-there: a user name and password, or an access token you made on that server (`CREATE SCOPED
-TOKEN`). A server that signs people in only through its identity provider in a browser can't be
-signed in to through the relay yet; use a token for it.
+**Add a server** (the **+** in the Data panel's head) is one page, top to bottom:
+
+- **Saved connections**: the servers you saved, as rows that fill the form when clicked (the
+  icon at the right of **Display name** opens the same list); the **×** on a row forgets it.
+- **Display name**, then **Host** and **Port** (31337 by default). Pasting a URI into Host fills
+  the fields: `hardcharger://host[:port][/prefix][?tls=false]` and `chargewire://…` (port 31337,
+  TLS unless `tls=false`), `jdbc:hardcharger://host[:port][/catalog]`, and `https://` or
+  `http://` URLs (ports 443 and 80 unless given). A user name in the URI fills Username; a
+  password in it is never kept. **Advanced** shows the path prefix, for a proxy that serves
+  Chargewire somewhere other than `/chargewire`.
+- **Authentication**: **Username & Password**, side by side. A scoped token signs in as user
+  `token` with the token as the password (`CREATE SCOPED TOKEN` on that server makes one).
+  **SSO / OAuth** is shown but off: browser sign-in to another server isn't supported through
+  the relay yet, and a server that offers only SSO says so when you connect.
+- **Use TLS** (on by default; off means plain HTTP) and **Trust this server's certificate**,
+  for a private or self-signed certificate: Connect then shows the certificate's SHA-256
+  fingerprint, subject, issuer and expiry, and **Trust and connect** pins it. Unchecked, the
+  certificate must verify against trusted roots, and a failure suggests the checkbox.
+- **Query timeout (seconds)**: the server cancels a statement of yours on that server after it
+  (0 = unlimited).
+- **Save connection for later** (on by default) and **Remember password**, which only the
+  [desktop app](/guides/desktop-app/) offers: it keeps the password in your operating system's
+  keychain. In a browser it stays off, since browser storage is readable by any script on the
+  page and kept in clear text.
+
+Errors show under the field they concern: a server that can't be reached or isn't a
+Hardcharger server under Host, wrong credentials under Password, a certificate that didn't
+verify or changed under Use TLS.
+
+![The Add a server dialog, filled from a pasted hardcharger:// URI](../../../assets/web-ui/add-server-light.png)
 
 The lock beside a server's name says how the connection to it is protected:
 
@@ -461,9 +486,10 @@ web_ui: true
 web_ui_remote_servers: false
 ```
 
-The list of servers you added (names, addresses and accepted fingerprints, never a password
-or token) is kept in the browser, per user; your sign-ins to them last for the tab, like your
-sign-in to this server.
+The connections you save (display name, host, port, TLS, path prefix, accepted fingerprint,
+user name and query timeout; never a password or token) are kept in the browser, per user, and
+a connection not saved for later lasts for the tab. Your sign-ins to them last for the tab, like
+your sign-in to this server.
 
 ## The UI on its own
 
@@ -510,7 +536,7 @@ server's address:
 |---|---|---|
 | The access token | the tab's session storage | that tab, until it closes or you sign out |
 | Your sign-ins to other servers (their tokens) | the tab's session storage | that tab |
-| The other servers you added (name, address, accepted fingerprint) | local storage | each user of the server |
+| Saved connections (name, host, port, TLS, prefix, accepted fingerprint, user name, query timeout) | local storage | each user of the server |
 | Saved queries | IndexedDB | each user of the server |
 | Open tabs, their text, catalog, schema and row limit | local storage | each user of the server |
 | The theme, the sizes of the side panel and the editor, whether the panel is hidden and which of its tabs shows, the phone-screen note dismissed | local storage | everyone using that browser |

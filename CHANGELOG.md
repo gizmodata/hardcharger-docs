@@ -24,10 +24,14 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
   schemas nested in it, how names are read, and how listings and metadata name a nested schema;
   issue #19). The SQL reference lists both statements.
 - Web UI (v2.7.0+): **Other servers** (the servers list in the schema browser, the three locks,
-  signing in to a remote, tabs bound to a server, the relay under `/ui/v1/remotes` and the
-  `web_ui_remote_servers` option, with a tested YAML example) and **The UI on its own**
+  the one-page **Add a server** dialog with a screenshot (saved connections, host and port with
+  pasted URIs, a scoped token as user `token`'s password, Use TLS and Trust this server's
+  certificate, the query timeout, Remember password in the desktop app only), tabs bound to a
+  server, the relay under `/ui/v1/remotes` and the `web_ui_remote_servers` option, with a tested
+  YAML example) and **The UI on its own**
   (`hardcharger ui`, with tested examples), plus the storage table's new rows.
-- Desktop app: the workspace without the local server, and **Settings › Remote servers**.
+- Desktop app: the workspace without the local server, **Settings › Remote servers** (the
+  dialog's Host, Port, Use TLS and Trust fields), and Remember password in the keychain.
 - CLI guide and reference: `hardcharger ui`, with tested examples of its address line and of
   the plain-HTTP refusal; the reference's help listing is regenerated from the client.
 

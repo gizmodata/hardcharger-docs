@@ -7,6 +7,15 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+### Added
+
+- Access control (v2.7.0+), each with a tested example: **Table functions** (`GRANT EXECUTE ON
+  TABLE FUNCTION name (PATH ARGUMENT n, ...)`: an extension's table function opened to a role,
+  its path arguments checked through the storage privileges; issue #24) and **Nested schemas**
+  (what a grant on a nested schema or its parent covers, `CREATE SCHEMA` on a schema for the
+  schemas nested in it, how names are read, and how listings and metadata name a nested schema;
+  issue #19). The SQL reference lists both statements.
+
 ## [2.5.0] - 2026-11-03
 
 ### Added

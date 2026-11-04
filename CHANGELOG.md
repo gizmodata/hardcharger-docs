@@ -7,6 +7,8 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-11-04
+
 ### Added
 
 - Access control (v2.7.0+): **Types** (`CREATE TYPE` and `DROP TYPE` on a schema, the names a

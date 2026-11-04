@@ -33,7 +33,7 @@ Besides the options below, the server takes these command-line actions, which ru
 | `--verify-tls URL` | Fetch a URL over HTTPS with the system's CA bundle, then exit 0 or 1 |
 | `--verify-audit-log FILE [--verify-audit-log-partial]` | Check an [audit log](/guides/instrumentation-and-audit/#the-audit-log)'s hash chain |
 
-97 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
+98 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
 
 ## Listener
 
@@ -1018,6 +1018,18 @@ How long a graceful shutdown waits for running work (0: forever)
 | YAML | `shutdown_grace_period_seconds: …` |
 | Type | integer |
 | Default | `300` |
+
+### `stop_on_stdin_close`
+
+Stop (as the first stop signal would) when standard input reaches its end: for a parent process that holds the server's stdin open and may die without stopping it.
+
+| | |
+|---|---|
+| Flag | `--stop-on-stdin-close` |
+| Environment | `HARDCHARGER_STOP_ON_STDIN_CLOSE` |
+| YAML | `stop_on_stdin_close: …` |
+| Type | boolean |
+| Default | `false` |
 
 ### `health_check_query`
 

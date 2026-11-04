@@ -7,6 +7,14 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+### Changed
+
+- Desktop app: quitting from the Dock, a logout or a shutdown stops the server too, a crash
+  or forced quit of the app no longer leaves it running, and a server a previous run left
+  behind is named on the Local server page with **Stop it** (v2.7.0+,
+  [hardcharger#28](https://github.com/gizmodata/hardcharger/issues/28)). Configuration
+  reference: `stop_on_stdin_close`, regenerated.
+
 ## [2.5.0] - 2026-11-03
 
 ### Added

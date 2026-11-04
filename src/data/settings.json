@@ -72,6 +72,15 @@
     "description": "Record DuckDB's query profile with each execution in instrumentation (off, standard, detailed)."
   },
   {
+    "name": "hardcharger.idle_in_transaction_session_timeout",
+    "scope": "SESSION_OR_GLOBAL",
+    "input_type": "INTEGER",
+    "default_value": "0",
+    "cli_flag": "--idle-in-transaction-session-timeout",
+    "env_var": "HARDCHARGER_IDLE_IN_TRANSACTION_SESSION_TIMEOUT",
+    "description": "Seconds a session may hold a transaction open with nothing running and no request before it is ended and the transaction rolled back (0: never), as PostgreSQL's setting of the same name. SESSION sets this session's; GLOBAL every session that hasn't set its own."
+  },
+  {
     "name": "hardcharger.max_queue_wait",
     "scope": "SESSION_OR_GLOBAL",
     "input_type": "INTEGER",

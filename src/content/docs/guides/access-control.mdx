@@ -128,15 +128,18 @@ refused: UNAUTHORIZED: [chargewire] ExecuteQuery: Permission Error: Hardcharger 
 | `MAINTAIN` (`ANALYZE`, `VACUUM` of a table; see [Maintenance](#maintenance)) | a table, a schema, a catalog |
 | `CREATE TABLE`, `CREATE VIEW`, `DROP TABLE`, `DROP VIEW`, `ALTER TABLE`, `ALTER VIEW` | a schema or catalog |
 | `CREATE MACRO`, `DROP MACRO` (scalar and table macros; see [Macros](#macros)) | a schema or catalog |
+| `CREATE TYPE`, `DROP TYPE` (enums, structs, aliases; see [Types](#types)) | a schema or catalog |
+| `CREATE TRIGGER`, `DROP TRIGGER` (on a table the role owns; see [Triggers](#triggers)) | a schema or catalog |
 | `USAGE` (`nextval()`, `currval()`; see [Sequences](#sequences)) | a sequence (`ON SEQUENCE`), a schema, a catalog |
 | `CREATE SEQUENCE`, `DROP SEQUENCE` (`DROP SEQUENCE` also allows `setval()`) | a schema or catalog |
-| `CREATE SCHEMA`, `DROP SCHEMA` | a catalog |
-| `ALL [PRIVILEGES]` | a table, a schema, a catalog: every privilege above that applies there |
+| `CREATE SCHEMA`, `DROP SCHEMA` | a catalog, or a schema for the schemas nested in it (see [Nested schemas](#nested-schemas)) |
+| `EXECUTE` (calling a table function; see [Table functions](#table-functions)) | a table function (`ON TABLE FUNCTION name`) |
+| `ALL [PRIVILEGES]` | a table, a schema, a catalog: every privilege above that applies there (never `EXECUTE`) |
 
 `ALL` means all of them. On a table it is `SELECT`, `INSERT`, `UPDATE`, `DELETE` and `MAINTAIN`; on a schema,
-those, `CREATE`, `DROP` and `ALTER` `TABLE` and `VIEW`, `CREATE` and `DROP MACRO`, and `USAGE`,
-`CREATE SEQUENCE` and `DROP SEQUENCE`, so a role can build in that schema; on a catalog, all of that
-and `CREATE SCHEMA` and `DROP SCHEMA`. `GRANT ALL` is stored as the separate
+those, `CREATE`, `DROP` and `ALTER` `TABLE` and `VIEW`, `CREATE` and `DROP` `MACRO`, `TYPE` and `TRIGGER`,
+`USAGE`, `CREATE SEQUENCE` and `DROP SEQUENCE`, and `CREATE SCHEMA` and `DROP SCHEMA` for the schemas nested in
+it, so a role can build in that schema; on a catalog, all of that. `GRANT ALL` is stored as the separate
 privileges it stands for (`SHOW GRANTS` lists each), and `REVOKE ALL` takes back the same set.
 
 ```sql test profile=rbac
@@ -154,6 +157,51 @@ REVOKE SELECT ON analytics.orders FROM PUBLIC RESTRICT;
 `WITH GRANT OPTION` lets the grantee pass a privilege on; `WITH ADMIN OPTION` lets a role
 member grant the role. A revoke cascades to the grants made through it unless you say
 `RESTRICT`. A grant on a schema or catalog covers objects created there later.
+
+### Nested schemas
+
+DuckDB 2.0 nests schemas: `CREATE SCHEMA analytics.archive` makes `archive` inside `analytics`,
+and its objects are reached only by their whole path, `analytics.archive.orders_2024`. A grant
+records that whole path. A grant on `analytics` covers every schema nested in it; a grant on
+`analytics.archive` covers `analytics.archive.*` and nothing alike: not `reports.archive`, not a
+top-level schema named `"analytics.archive"` (quoted, with the dot in its name), not
+`analytics_eu`. Names in `GRANT`, `REVOKE`, the policy statements and `ALTER ... OWNER TO` are read
+the way DuckDB binds them in a query: the first part is a catalog when one by that name is
+attached, else the whole qualifier is a schema path of the session's catalog. A name that reads
+both ways is refused rather than guessed; write the nested one with its catalog
+(`my.analytics.archive.orders_2024`).
+
+```sql test profile=rbac
+CREATE SCHEMA analytics.archive;
+CREATE TABLE analytics.archive.orders_2024 AS SELECT * FROM analytics.orders;
+GRANT CREATE SCHEMA ON SCHEMA analytics TO analyst;      -- schemas nested in analytics
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe --csv \
+    --command "SELECT count(*) AS n FROM analytics.archive.orders_2024"
+n
+2
+$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe --csv \
+    --command "CREATE SCHEMA analytics.joes"
+OK
+$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe --csv \
+    --command "CREATE SCHEMA joes" 2>&1 | grep -o "no CREATE SCHEMA privilege on catalog my"
+no CREATE SCHEMA privilege on catalog my
+```
+
+A child schema is created with `CREATE SCHEMA` on its parent (granted `ON SCHEMA`, `ON CATALOG`, or
+by owning the parent), and its creator owns it: `joe` may now create and drop schemas inside
+`analytics.joes` too. `DROP SCHEMA` of a child needs the same as any schema's (owning it, owning its
+parent, or `DROP SCHEMA` on it or above it), and `DROP SCHEMA ... CASCADE` needs that for every
+schema nested below it.
+
+DuckDB's own listings (`duckdb_schemas()`, `duckdb_tables()`, `information_schema`) show a nested
+schema by its leaf name, with `parent_schema` telling two `archive`s apart; Hardcharger lists
+nested objects to whoever may see them. `hardcharger_grants()`, `SHOW GRANTS` and the drivers'
+metadata calls name a nested schema by its path, `analytics.archive`, writing a part quoted when it
+contains a dot or a double quote, so that `"analytics.archive"` (a top-level schema of that name)
+reads differently.
 
 ### System privileges
 
@@ -332,9 +380,9 @@ everyone but the administrator:
   view that reads with its owner's rights;
 - **a built-in function's name**, or that of a function an extension autoloads (`lower`,
   `read_csv`, `st_area`): DuckDB would find the macro instead, in every query and view;
-- **replacing, or standing in for, a function that a view, a row or masking policy, or a macro
-  one of them uses calls**: the view reads with its owner's rights, and a row policy could be
-  made true;
+- **replacing, or standing in for, a function that a view, a trigger, a row or masking policy,
+  or a macro one of them uses calls**: the view reads with its owner's rights, a trigger's body
+  with its owner's, and a row policy could be made true;
 - **a body that calls what its creator may not**: `query()`, `query_table()`, remote queries, and
   files, URLs or object storage beyond the creator's system privileges. (DuckDB binds the body
   where the macro is called, and binding a table function already reads.)
@@ -346,6 +394,112 @@ Error: Permission Error: Hardcharger blocked this statement: a macro named lower
 $ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE TEMP MACRO mine(x) AS x"
 Error: Permission Error: Hardcharger blocked this statement: creating temporary macros needs an administrator: …
+```
+
+### Types
+
+`CREATE TYPE` on a schema (or its catalog, or owning the schema) lets a role create enums, structs
+and type aliases there; `DROP TYPE` lets it drop them, and replacing one (`CREATE OR REPLACE`) needs
+both. Anyone may use a type. An enum made from a query (`CREATE TYPE t AS ENUM (SELECT ...)`) reads
+with its creator's rights.
+
+```sql test profile=rbac
+GRANT CREATE TYPE, DROP TYPE ON SCHEMA published TO view_maker;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TYPE published.priority AS ENUM ('low', 'high')"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT typeof('high'::published.priority) AS t"
+t
+"ENUM('low', 'high')"
+```
+
+A type is found by name where SQL is bound (a view's query, a macro's or trigger's body, a policy, a
+column default or `CHECK` constraint), so a user's type could stand in for one of those, and dropping
+or replacing a type they name would change what they compute. Hardcharger refuses, to everyone but
+the administrator:
+
+- **temporary types**: a session's type is found before every other type, also inside a view that
+  reads with its owner's rights;
+- **a built-in type's name**, or that of a type an extension provides (`integer`, `json`): DuckDB
+  finds a schema's type before the built-in one;
+- **a name that a view, a macro, a trigger, a row or masking policy, or a column default or check
+  constraint resolves to another type**, and dropping or replacing such a type.
+
+A table's columns pin nothing: DuckDB copies the type into the column at `CREATE TABLE`, so dropping
+or replacing the type changes nothing there. `duckdb_types()` lists a user's own schemas' types and
+the built-in ones.
+
+```console test profile=rbac exit=1
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TYPE published.integer AS VARCHAR"
+Error: Permission Error: Hardcharger blocked this statement: a type named integer would replace the built-in type integer wherever it is named, in queries and views alike; give the type a name of its own. …
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TEMP TYPE mine AS INTEGER"
+Error: Permission Error: Hardcharger blocked this statement: creating temporary types needs an administrator: …
+```
+
+### Triggers
+
+A trigger's body runs inside every write of its table, so creating one takes ownership of the
+table and `CREATE TRIGGER` on its schema (or its catalog, or owning the schema). The creator owns
+the trigger: only the owner, or a role granted `DROP TRIGGER` on the schema, drops or replaces it.
+
+Whose rights a body runs with depends on who made the trigger:
+
+- **A user's trigger runs with its owner's rights**, whoever writes the table (definer rights). The
+  body is checked, and row and masking policies applied, as if the owner ran it: a writer who may
+  only `INSERT` into the table still fires a trigger that writes the owner's log table, and an
+  administrator's write lends the body no administrator rights. A body that does what its owner may
+  not do refuses the write, naming the trigger and its owner.
+- **An administrator's trigger runs with the writer's rights**, as DuckDB runs it: a user who
+  inserts into such a table needs the rights for everything the trigger does, and is refused
+  otherwise.
+
+What a body calls is checked when the trigger is created, as a macro's body is: no `query()`,
+`query_table()` or remote queries, and files, URLs or object storage only within the creator's
+storage privileges. The functions a body calls are pinned like the ones a view calls: no user's
+macro can take their place. `duckdb_triggers()` lists the triggers of the tables a user may access.
+
+```sql test profile=rbac
+GRANT CREATE TABLE, CREATE TRIGGER ON SCHEMA published TO view_maker;
+CREATE USER wes WITH PASSWORD 'wes-secret';
+GRANT viewer TO wes;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TABLE published.ticket_notes (ticket_id BIGINT, note VARCHAR)"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TABLE published.note_log (what VARCHAR)"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TRIGGER log_notes AFTER INSERT ON published.ticket_notes FOR EACH STATEMENT INSERT INTO published.note_log VALUES ('note added')"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "GRANT INSERT ON published.ticket_notes TO viewer"
+result
+Granted INSERT on my.published.ticket_notes to viewer
+```
+
+wes may write `ticket_notes` and nothing else in `published`; the trigger's body writes `note_log`
+with vic's rights:
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+    --command "INSERT INTO published.ticket_notes VALUES (1, 'called back')"
+OK, 1 row affected
+$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+    --command "INSERT INTO published.note_log VALUES ('by wes')" 2>&1 | grep -o "has no INSERT privilege on table [a-z_.]*note_log"
+has no INSERT privilege on table my.published.note_log
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT what FROM published.note_log"
+what
+note added
 ```
 
 ### Sequences
@@ -398,8 +552,8 @@ ANALYZE or VACUUM of every table needs an administrator
 
 `COMMENT ON` follows the right to change the object: a table, a column of one, or an index on one
 needs `ALTER TABLE` on the table (its owner holds it); a view or a column of one, `ALTER VIEW`; a
-sequence, `DROP SEQUENCE` on its schema; a macro, `DROP MACRO` on its schema. Comments on types stay
-the administrator's.
+sequence, `DROP SEQUENCE` on its schema; a macro, `DROP MACRO` on its schema; a type, `DROP TYPE` on
+its schema.
 
 ```sql test profile=rbac
 GRANT ALTER TABLE ON SCHEMA published TO view_maker;
@@ -413,6 +567,70 @@ $ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --u
     --command "COMMENT ON TABLE analytics.orders IS 'x'" 2>&1 | grep -o "may not comment on table [a-z_.]*orders"
 may not comment on table my.analytics.orders
 ```
+
+### Table functions
+
+Under access control, a table function that reads no table and no file (`range()`, `generate_series()`,
+the `duckdb_*()` listings) is every user's, one that reads files (`read_csv()`, `read_parquet()`,
+`read_text()`, ...) goes through the [system privileges](#system-privileges) for storage, and any
+other, an extension's say, is the administrator's. `EXECUTE` opens one such function to a role:
+
+```sql test profile=rbac
+GRANT EXECUTE ON TABLE FUNCTION pg_timezone_names TO viewer;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT count(*) > 100 AS many FROM pg_timezone_names()"
+many
+true
+$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe --csv \
+    --command "SELECT count(*) FROM pg_timezone_names()" 2>&1 | grep -o "or to a role granted EXECUTE ON TABLE FUNCTION pg_timezone_names"
+or to a role granted EXECUTE ON TABLE FUNCTION pg_timezone_names
+```
+
+A function that reads files takes its paths as arguments, and the grant says which: `PATH ARGUMENT n`
+(the n-th positional argument, 1 the first; `PATH ARGUMENTS 1, 2` for several) or `PATH PARAMETER name`
+(a named one). The value there goes through the storage privileges as every `read_csv()` path does,
+as written, before DuckDB opens the file, and again as bound; a computed path is refused. The
+operator who loads an extension decides what its functions read, so the declaration is theirs to
+get right: an undeclared path argument is read unchecked. `sqlite_scan(path, table)` reads the
+SQLite file its first argument names:
+
+```sql test profile=rbac
+ATTACH 'tickets.sqlite' AS lite (TYPE sqlite);
+CREATE TABLE lite.open_tickets AS SELECT 1 AS id, 'first' AS title;
+DETACH lite;
+GRANT EXECUTE ON TABLE FUNCTION sqlite_scan (PATH ARGUMENT 1) TO viewer;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT * FROM sqlite_scan('tickets.sqlite', 'open_tickets')" 2>&1 | grep -o "which needs the READ FILESYSTEM system privilege"
+which needs the READ FILESYSTEM system privilege
+```
+
+```sql test profile=rbac
+GRANT READ FILESYSTEM TO viewer;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT * FROM sqlite_scan('tickets.sqlite', 'open_tickets')"
+id,title
+1,first
+```
+
+A table macro an administrator wraps around the function (`CREATE MACRO lite(p) AS TABLE SELECT *
+FROM sqlite_scan(p, 'open_tickets')`) works for the grantee the same way: DuckDB expands it, and
+the function and its paths are checked as above. `EXECUTE` is never part of `GRANT ALL`, and a
+grant made again replaces the function's path declaration. It can't be granted on a function every
+user may call already, on one the storage privileges check, or on one that stays the
+administrator's: the server's own `hardcharger_*()`, `query()` and `query_table()`,
+`duckdb_secrets()`, `checkpoint()`, and the engine's internals (`arrow_scan()`, the logging and
+profiling functions, `duckdb_logs()`, `pragma_storage_info()`, ...). `hardcharger_grants()`,
+`hardcharger_effective_privileges()` and `SHOW GRANTS` list it as `EXECUTE` on a `TABLE FUNCTION`,
+with the declared path arguments where `SELECT` lists columns.
 
 ## What users can see
 
@@ -429,7 +647,9 @@ stay listed. `vic` sees the view he may read and the table his role may write:
 $ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT table_schema, table_name FROM information_schema.tables WHERE table_catalog = 'my' ORDER BY table_name"
 table_schema,table_name
+published,note_log
 published,revenue_by_region
+published,ticket_notes
 published,tickets
 ```
 
@@ -477,12 +697,15 @@ roles they hold.
 The same, as tables to query: `hardcharger_grants()`, `hardcharger_role_members()`,
 `hardcharger_roles()`, `hardcharger_users()`, `hardcharger_policies()` and
 `hardcharger_effective_privileges([user_name])` ([SQL reference](/reference/sql/#functions)).
-`hardcharger_effective_privileges()` lists what a user may do and through which role:
+`hardcharger_effective_privileges()` lists what a user may do and through which role (the schema
+`joe` created in [Nested schemas](#nested-schemas) is his, as `OWNERSHIP`):
 
 ```console test profile=rbac
 $ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe --csv \
     --command "SELECT privilege, object_type, schema_name, object_name, column_name, via FROM hardcharger_effective_privileges() ORDER BY ALL"
 privilege,object_type,schema_name,object_name,column_name,via
+CREATE SCHEMA,SCHEMA,analytics,NULL,NULL,analyst
+OWNERSHIP,SCHEMA,analytics.joes,NULL,NULL,OWNER
 READ FILESYSTEM,SYSTEM,NULL,NULL,NULL,ingest
 SELECT,SCHEMA,analytics,NULL,NULL,analyst
 SELECT,TABLE,main,customers,email,analyst

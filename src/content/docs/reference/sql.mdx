@@ -134,6 +134,10 @@ With [access control](/guides/access-control/) on, these run like SQL, one per s
 |---|---|
 | `CREATE`/`ALTER`/`DROP USER`, `CREATE`/`DROP ROLE`, `GRANT role TO`, `REVOKE role FROM` | [Users, roles and grants](/guides/access-control/) |
 | `GRANT`/`REVOKE` privileges `ON` table, view, `SCHEMA`, `CATALOG`; system privileges | [Users, roles and grants](/guides/access-control/#privileges) |
+| `GRANT`/`REVOKE EXECUTE ON TABLE FUNCTION name [(PATH ARGUMENT n, PATH PARAMETER p, …)]` | [Table functions](/guides/access-control/#table-functions) |
+| `CREATE SCHEMA`, `DROP SCHEMA` granted `ON SCHEMA` (nested schemas) | [Nested schemas](/guides/access-control/#nested-schemas) |
+| `CREATE TYPE`, `DROP TYPE` granted `ON SCHEMA` or `ON CATALOG` | [Types](/guides/access-control/#types) |
+| `CREATE TRIGGER`, `DROP TRIGGER` granted `ON SCHEMA` or `ON CATALOG`; a trigger's body runs with its owner's rights | [Triggers](/guides/access-control/#triggers) |
 | `SHOW GRANTS`, `ALTER TABLE`/`VIEW … OWNER TO`, `SET ROLE` | [Users, roles and grants](/guides/access-control/#seeing-grants) |
 | `CREATE`/`DROP ROW POLICY`, `SHOW ROW POLICIES` | [Row policies](/guides/row-policies-and-masking/#row-policies) |
 | `CREATE`/`DROP MASKING POLICY`, `ALTER TABLE … MODIFY COLUMN … SET`/`UNSET MASKING POLICY`, `SHOW MASKING POLICIES` | [Masking](/guides/row-policies-and-masking/#masking-policies) |

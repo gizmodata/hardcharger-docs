@@ -34,7 +34,7 @@ Besides the options below, the server takes these command-line actions, which ru
 | `--verify-audit-log FILE [--verify-audit-log-partial]` | Check an [audit log](/guides/instrumentation-and-audit/#the-audit-log)'s hash chain |
 | `--verify-credentials` | Decide a credential read from stdin as the token endpoint would, [writing nothing](/guides/access-control/#checking-a-credential-without-the-server); exit 0 verified, 1 refused, 2 bad input, 3 undecided |
 
-97 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
+100 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
 
 ## Listener
 
@@ -121,6 +121,18 @@ Serve the web UI at /ui on this port (a build that embeds it)
 | YAML | `web_ui: …` |
 | Type | boolean |
 | Default | `false` |
+
+### `web_ui_remote_servers`
+
+Let the web UI connect to other Hardcharger servers through this one (its Add server); off: the UI works with this server alone.
+
+| | |
+|---|---|
+| Flag | `--web-ui-remote-servers` |
+| Environment | `HARDCHARGER_WEB_UI_REMOTE_SERVERS` |
+| YAML | `web_ui_remote_servers: …` |
+| Type | boolean |
+| Default | `true` |
 
 ### `trusted_proxies`
 
@@ -662,7 +674,7 @@ Most non-admin sessions at once (0: unlimited)
 
 ### `session_idle_timeout`
 
-A session is evicted within 5 s after this many seconds without requests (0: never), unless a statement of it is running, an ingest of it is in progress, a result of it is being read, or it holds a retained result that hasn't expired (result_retention_seconds)
+A session is evicted within 5 s after this many seconds without requests (0: never), unless an ingest of it is in progress, a result of it is being read, a request is waiting on a statement of it, or it holds a retained result that hasn't expired (result_retention_seconds); a statement still running is then cancelled and its transaction rolled back, so a client that died mid-write doesn't hold the write's transaction open for as long as it runs. With 0, a dead client's session and its open transaction live until the server restarts (or KILL SESSION)
 
 | | |
 |---|---|
@@ -671,6 +683,18 @@ A session is evicted within 5 s after this many seconds without requests (0: nev
 | YAML | `session_idle_timeout: …` |
 | Type | integer |
 | Default | `900` |
+
+### `idle_in_transaction_session_timeout`
+
+A session that holds a transaction open (BEGIN, or autocommit off) with nothing running and no request for this many seconds is ended, within 5 s, and its transaction rolled back (0: never), as PostgreSQL's setting of the same name does; its next request gets session_ended with reason idle_in_transaction. SET [GLOBAL] hardcharger.idle_in_transaction_session_timeout changes it at runtime.
+
+| | |
+|---|---|
+| Flag | `--idle-in-transaction-session-timeout <n>` |
+| Environment | `HARDCHARGER_IDLE_IN_TRANSACTION_SESSION_TIMEOUT` |
+| YAML | `idle_in_transaction_session_timeout: …` |
+| Type | integer |
+| Default | `0` |
 
 ### `result_retention_seconds`
 
@@ -1019,6 +1043,18 @@ How long a graceful shutdown waits for running work (0: forever)
 | YAML | `shutdown_grace_period_seconds: …` |
 | Type | integer |
 | Default | `300` |
+
+### `stop_on_stdin_close`
+
+Stop (as the first stop signal would) when standard input reaches its end: for a parent process that holds the server's stdin open and may die without stopping it.
+
+| | |
+|---|---|
+| Flag | `--stop-on-stdin-close` |
+| Environment | `HARDCHARGER_STOP_ON_STDIN_CLOSE` |
+| YAML | `stop_on_stdin_close: …` |
+| Type | boolean |
+| Default | `false` |
 
 ### `health_check_query`
 

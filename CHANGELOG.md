@@ -7,6 +7,45 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-11-04
+
+### Added
+
+- Access control (v2.7.0+): **Types** (`CREATE TYPE` and `DROP TYPE` on a schema, the names a
+  user's type may not take, and why a type in use can't be dropped or replaced; issue #18) and
+  **Triggers** (`CREATE TRIGGER` and `DROP TRIGGER`, the owner's rights in a trigger's body, and
+  the two cases that refuse a write; issue #17), with tested examples.
+- Statement control (v2.7.0+): **Idle sessions** and **Idle in a transaction**
+  (`idle_in_transaction_session_timeout`, as a startup option and with `SET
+  hardcharger.idle_in_transaction_session_timeout`; what keeps a session alive; issue #26).
+- CLI guide: **Geometry and binary values** (GEOMETRY as WKT, BLOB as `\xHH`; issue #22).
+- Access control (v2.7.0+), each with a tested example: **Table functions** (`GRANT EXECUTE ON
+  TABLE FUNCTION name (PATH ARGUMENT n, ...)`: an extension's table function opened to a role,
+  its path arguments checked through the storage privileges; issue #24) and **Nested schemas**
+  (what a grant on a nested schema or its parent covers, `CREATE SCHEMA` on a schema for the
+  schemas nested in it, how names are read, and how listings and metadata name a nested schema;
+  issue #19). The SQL reference lists both statements.
+- Web UI (v2.7.0+): **Other servers** (the servers list in the schema browser, the three locks,
+  the one-page **Add a server** dialog with a screenshot (saved connections, host and port with
+  pasted URIs, a scoped token as user `token`'s password, Use TLS and Trust this server's
+  certificate, the query timeout, Remember password in the desktop app only), tabs bound to a
+  server, the relay under `/ui/v1/remotes` and the `web_ui_remote_servers` option, with a tested
+  YAML example) and **The UI on its own**
+  (`hardcharger ui`, with tested examples), plus the storage table's new rows.
+- Desktop app: the workspace without the local server, **Settings › Remote servers** (the
+  dialog's Host, Port, Use TLS and Trust fields), and Remember password in the keychain.
+- CLI guide and reference: `hardcharger ui`, with tested examples of its address line and of
+  the plain-HTTP refusal; the reference's help listing is regenerated from the client.
+
+### Changed
+
+- The configuration reference is regenerated from the server: `web_ui_remote_servers`.
+- Desktop app: quitting from the Dock, a logout or a shutdown stops the server too, a crash
+  or forced quit of the app no longer leaves it running, and a server a previous run left
+  behind is named on the Local server page with **Stop it** (v2.7.0+,
+  [hardcharger#28](https://github.com/gizmodata/hardcharger/issues/28)). Configuration
+  reference: `stop_on_stdin_close`, regenerated.
+
 ## [2.6.0] - 2026-11-04
 
 ### Added

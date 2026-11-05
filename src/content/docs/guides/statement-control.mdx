@@ -120,8 +120,43 @@ statement stops. `KILL SESSION` needs the administrator; you can't kill your own
 
 [`max_sessions`](/reference/configuration/#max_sessions) caps non-administrator sessions;
 past it, opening a session fails with `429 too_many_sessions`. Administrators are never capped,
-so you can always get in to look. [`session_idle_timeout`](/reference/configuration/#session_idle_timeout)
-(15 minutes) evicts sessions with no request and nothing running.
+so you can always get in to look.
+
+### Idle sessions
+
+[`session_idle_timeout`](/reference/configuration/#session_idle_timeout) (15 minutes; 0 never)
+evicts a session with no request for that long. A request still in flight counts: a client
+waiting on a statement (`Prefer: wait`, which every driver does while a statement runs), a
+result being read, a bulk ingest in progress, or a retained result not yet expired keeps the
+session. A statement that is still running with nobody waiting on it does not: a client that is
+there polls its statement and is heard from within the timeout, while one that died mid-write
+(a pod killed at its deadline) must not keep the session, and the write's open transaction,
+alive for the hours the write runs. The eviction cancels the statement (`cancel_reason`
+`session_closed`) and rolls its transaction back. With `session_idle_timeout: 0` a dead client's
+session and its transaction live until the server restarts or an administrator runs
+[`KILL SESSION`](#kill-a-session), so keep the default unless every client polls more often
+than the timeout.
+
+### Idle in a transaction
+
+[`idle_in_transaction_session_timeout`](/reference/configuration/#idle_in_transaction_session_timeout)
+(0, off, by default), as PostgreSQL has it, ends a session that holds a transaction open (`BEGIN`,
+or autocommit off) with nothing running and no request for that many seconds, and rolls the
+transaction back. The session's next request gets `401 session_ended` with reason
+`idle_in_transaction`, and the instrumentation sessions table records the end as
+`idle_in_transaction`. A retained result does not keep such a session: the transaction's locks are
+what the limit is for. A loader that opens a transaction, stages a table and dies before its
+`COMMIT` then no longer blocks every later run on the uncommitted staging table.
+
+```sql test server=none
+SET SESSION hardcharger.idle_in_transaction_session_timeout = 300;   -- this session
+SET GLOBAL hardcharger.idle_in_transaction_session_timeout = 900;    -- every session without its own (administrators)
+RESET GLOBAL hardcharger.idle_in_transaction_session_timeout;        -- back to the startup value
+```
+
+The session document shows a session's limit as `idle_in_transaction_timeout_s`. A value of 5 to
+15 minutes suits loaders and dbt runs; interactive tools that keep a transaction open while
+someone reads results want a longer one, or none.
 
 ## The statement queue
 

@@ -208,6 +208,21 @@ miles = 12.5
 Machine-readable modes print no row-count line into files and pipes, so `--json | jq` works.
 `--no-header` drops headers, `--null TEXT` sets how NULL prints.
 
+### Geometry and binary values
+
+A `GEOMETRY` column (v2.7.0+) prints as Well-Known Text, exactly as DuckDB's `ST_AsText` writes
+it and as the [web UI](/guides/web-ui/#geometry-and-maps) shows it, and the `box` and `table`
+headers and `.describe` name its type and coordinate reference system: `GEOMETRY`, or
+`GEOMETRY('EPSG:4326')`. A `BLOB` prints as DuckDB's own CLI prints it: printable ASCII as is,
+every other byte as `\xHH`. So every mode's output is text, and the JSON modes are valid JSON;
+geometries and blobs inside lists and structs read the same way.
+
+```console
+$ hardcharger --host localhost --tls=false --username hardcharger --quiet --csv --command "LOAD spatial; SELECT 'POINT (1 2)'::GEOMETRY AS g, '\xF5\x00ab'::BLOB AS b"
+g,b
+POINT (1 2),\xF5\x00ab
+```
+
 ## Dot commands
 
 | Command | Does |
@@ -230,22 +245,15 @@ Machine-readable modes print no row-count line into files and pipes, so `--json 
 
 ```console test
 $ export HARDCHARGER_PASSWORD='change-me'
-$ printf '.tables --flat\n.describe trips\n' | hardcharger --host localhost --tls=false --username hardcharger --quiet
-┌─────────────────────┬────────────────────────────────┬─────────────────────────────┬────────────┐
-│    catalog_name     │         db_schema_name         │         table_name          │ table_type │
-│       varchar       │            varchar             │           varchar           │  varchar   │
-├─────────────────────┼────────────────────────────────┼─────────────────────────────┼────────────┤
-│ _hardcharger_system │ hardcharger_information_schema │ applicable_roles            │ VIEW       │
-│ _hardcharger_system │ hardcharger_information_schema │ column_privileges           │ VIEW       │
-│ _hardcharger_system │ hardcharger_information_schema │ enabled_roles               │ VIEW       │
-│ _hardcharger_system │ hardcharger_information_schema │ role_table_grants           │ VIEW       │
-│ _hardcharger_system │ hardcharger_information_schema │ table_privileges            │ VIEW       │
-│ _hardcharger_system │ main                           │ hardcharger_index_info      │ VIEW       │
-│ _hardcharger_system │ main                           │ hardcharger_view_definition │ VIEW       │
-│ my                  │ main                           │ trips                       │ BASE TABLE │
-├─────────────────────┴────────────────────────────────┴─────────────────────────────┴────────────┤
-│ 8 rows  4 columns                                                                               │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+$ printf '.tables trips --flat\n.describe trips\n' | hardcharger --host localhost --tls=false --username hardcharger --quiet
+┌──────────────┬────────────────┬────────────┬────────────┐
+│ catalog_name │ db_schema_name │ table_name │ table_type │
+│   varchar    │    varchar     │  varchar   │  varchar   │
+├──────────────┼────────────────┼────────────┼────────────┤
+│ my           │ main           │ trips      │ BASE TABLE │
+├──────────────┴────────────────┴────────────┴────────────┤
+│ 1 row  4 columns                                        │
+└─────────────────────────────────────────────────────────┘
 ┌─────────────┬──────────────┬─────────┬─────────┬─────────┬─────────┐
 │ column_name │ column_type  │  null   │   key   │ default │  extra  │
 │   varchar   │   varchar    │ varchar │ varchar │ varchar │ varchar │
@@ -269,6 +277,33 @@ connection.
 
 `--session-tag JSON` and `--query-tag JSON` (or `HARDCHARGER_SESSION_TAG`,
 `HARDCHARGER_QUERY_TAG`) tag what the client runs, for [instrumentation](/guides/instrumentation-and-audit/).
+
+## The web UI from the client: `hardcharger ui`
+
+`hardcharger ui` (v2.7.0+) serves Hardcharger's [web UI](/guides/web-ui/#the-ui-on-its-own)
+from the client itself, with no server behind it, and opens it in your browser: add the servers
+you work with there. A free loopback port by default; `--listen HOST:PORT` to choose one,
+`--no-open` to only print the address, `--tls-cert`/`--tls-key` to serve HTTPS to others.
+
+```bash test server=none background
+hardcharger ui --no-open --listen 127.0.0.1:8080
+```
+
+```console test server=none
+$ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/ui/
+200
+```
+
+```bash test server=none stop
+true
+```
+
+It refuses plain HTTP on an address other computers can reach:
+
+```console test server=none exit=1
+$ hardcharger ui --no-open --listen 0.0.0.0:0
+Error: refusing to serve the UI in plain HTTP on 0.0.0.0, which other computers can reach: give it a certificate (--tls-cert and --tls-key), or --allow-plaintext for a network you trust.
+```
 
 ## Coming from gizmosql_client
 

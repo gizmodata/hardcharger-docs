@@ -43,7 +43,14 @@ follow-up work.
    Stop and Restart ask for confirmation before closing SQL windows, interrupting active
    work and disconnecting clients. Cancel or Escape leaves the server running.
 4. Close the dashboard to keep the server running. Choose **Quit Hardcharger** to shut down
-   the server and app. **Launch at login** is optional, under Settings.
+   the server and app. Quitting any other way (the Dock, a logout, a shutdown) stops the
+   server too, and if the app ever goes away without stopping it (a crash, a forced quit),
+   the server notices and stops on its own. **Launch at login** is optional, under Settings.
+
+If a server from a previous run of the app is still running when the app opens (one left by
+an older version, for example), the Local server page says so, with its process id and port,
+and offers **Stop it**. Until it is stopped, Start refuses with that message rather than
+"port already in use".
 
 The controller starts the same `hardcharger-server` executable as the command-line package,
 as a child process. The SQL workspace connects to it over Chargewire. The app bundles the
@@ -64,6 +71,19 @@ dashboard still leaves the server running in the menu bar or system tray.
 On macOS, the **Window** menu lists open workspaces and query inspectors, including
 windows behind the dashboard.
 
+### The workspace without the local server (v2.7.0+)
+
+**Open SQL workspace** works while the local server is stopped too. The app then runs the
+bundled client's `hardcharger ui` on a loopback port of its own (plain HTTP on this computer
+only; the relay still speaks TLS to the servers you add), opens the workspace on it with the
+**Remote servers** you saved in Settings, and stops it when the workspace closes. Such a
+workspace lists no local server and no admin pages: it is for the other servers. Start the
+local server and choose **Open SQL workspace** again to get the workspace on it, with the
+same saved servers listed beneath it.
+
+The dashboard says which workspace the button opens; the **Window** menu and the tray's
+**Open SQL Workspace** open the same one.
+
 ## Settings and logs
 
 **Settings** exposes options from the bundled server, grouped by category. Search setting
@@ -83,6 +103,26 @@ to read the app's saved credential, especially after an ad hoc preview rebuild.
 The SQL workspace's [Server Configuration tab](/guides/server-configuration/) edits
 supported runtime settings. Those changes are separate from saved desktop settings and
 do not survive a server restart.
+
+### Remote servers (v2.7.0+)
+
+**Settings › Remote servers** keeps the other Hardcharger servers the SQL workspace lists, with
+the same fields as the workspace's **Add a server** dialog: a display name, **Host** and
+**Port** (31337 by default), **Use TLS**, and **Trust this server's certificate** for a private or
+self-signed one (paste its SHA-256 fingerprint, or leave it empty to see the certificate the
+first time the workspace connects). The list is saved with the settings and handed to the
+workspace when it opens, where each server shows with its lock
+([the web UI guide](/guides/web-ui/#other-servers) describes the dialog, the locks and the
+relay). A remote whose own `/ui` is off works too: the workspace reaches it through the relay,
+over Chargewire alone.
+
+You sign in to each server in the workspace. Its **Remember password** box (only the desktop
+app offers it) keeps the password in your operating system's keychain (macOS Keychain, Windows
+Credential Manager, or the Secret Service on Linux) under the saved connection, and fills it in
+when you pick the connection again. Unchecking the box, forgetting the connection in the dialog,
+or removing the server here removes the password from the keychain. The workspace window can
+reach only those keychain entries, through three commands the app grants it on its own address;
+it has no other access to your computer.
 
 ## Allow connections from other computers
 

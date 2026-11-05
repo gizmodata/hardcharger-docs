@@ -112,6 +112,7 @@ Some options are also SQL settings, which an administrator can change without a 
 ```sql test server=none
 SET GLOBAL hardcharger.max_concurrent_statements = 8;   -- every session, now
 SET SESSION hardcharger.query_timeout = 60;             -- this session only
+SET SESSION hardcharger.idle_in_transaction_session_timeout = 300;  -- end this session's forgotten transaction
 RESET SESSION hardcharger.query_timeout;
 ```
 

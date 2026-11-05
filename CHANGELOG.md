@@ -34,7 +34,7 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 - Versions: **Drivers**, the client releases that go with 2.8.0 (`@gizmodata/chargewire` 2.2.1,
   `@gizmodata/hardcharger` 2.3.0, `chargewire-adbc` 2.2.2, `hardcharger-adbc` 2.4.0,
   `chargewire-jdbc` 2.2.3, `hardcharger-jdbc` 2.4.1, `chargewire-odbc` 2.3.1, the Hardcharger ODBC
-  Driver 1.4.0, `hardcharger-mcp` 2.4.0, `adbc-replicate-hardcharger` 2.3.1).
+  Driver 1.4.1, `hardcharger-mcp` 2.4.0, `adbc-replicate-hardcharger` 2.3.1).
 
 ### Changed
 

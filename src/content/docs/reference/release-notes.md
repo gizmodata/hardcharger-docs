@@ -13,6 +13,61 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-11-05
+
+### Added
+
+- **The CLI waits for a server that is resuming.** A stopped server starting again, such as a
+  GizmoData Cloud cluster with auto-resume, answers `server_resuming` (503 with `Retry-After`,
+  Chargewire 2.2.0 §11.2) while it starts. The CLI sends the sign-in, the session and the
+  statement again as the server asks, and shows where it stands while it waits: a countdown in a
+  terminal (`The server is resuming (…): retrying in 4 s, 0:21 so far. Ctrl-C stops waiting.`), a
+  line per answer in a log, nothing with `--quiet`. Ctrl-C stops waiting within a second.
+  `--resume-timeout SECONDS` (`HARDCHARGER_RESUME_TIMEOUT`) sets how long, 600 by default; `0`
+  reports the first answer.
+- **The web UI waits for a remote server that is resuming.** Signing in to a remote, or opening a
+  session on one, while its GizmoData Cloud holder answers `server_resuming` waits as the
+  server asks instead of failing: the Add a server dialog shows a countdown (`The server is
+  resuming (…): retrying in 4 s, 0:21 so far.`) with **Stop waiting**, and the server's row in
+  the tree shows `resuming… 0:21` while one of its sessions waits. Each saved connection has a
+  **Resume timeout** (600 s by default, 0 not to wait). The UI's client is chargewire-js 2.2.0.
+
+### Changed
+
+- **The dialog for other servers is "Add a Hardcharger server"**, its button too, so nobody takes
+  it for a general one: and a server that isn't Hardcharger is refused saying that only
+  Hardcharger servers can be added (not GizmoSQL or other Flight SQL servers).
+- Chargewire 2.2.0: `server_resuming` (§11.2) and the C++ client's wait for it, with a progress
+  callback; the tables listing and idle-in-transaction fixes above.
+
+### Fixed
+
+- **Table listings showed DuckDB's internal catalog.** In 2.7.0 the tables metadata
+  (`GET /chargewire/v1/metadata/tables`, which ADBC's `GetObjects`, JDBC's `getTables`, BI tools'
+  table browsers and the CLI's `.tables` use) also listed the `system` catalog's internal views:
+  `information_schema`, `pg_catalog` and the `duckdb_*` views. Chargewire 2.1.0 had built the
+  listing from `duckdb_tables()` and `duckdb_views()`, to name nested schemas by their path,
+  without the `internal` filter that `information_schema.tables` applies. It matches
+  `information_schema.tables` again (Chargewire 2.2.0).
+- **A session evicted as idle while it held a transaction open now says so** (#29). When
+  `session_idle_timeout` evicted a session that had run SQL `BEGIN`, its next request got
+  `session_not_found`, which doesn't say a transaction was rolled back, and a client that opens
+  a new session could run its next statement there alone, in autocommit, without the
+  transaction's earlier statements. Such a session now ends with `session_ended`, reason
+  `idle_in_transaction`, as the idle-in-transaction timeout ends one, and instrumentation
+  records `stop_reason` `idle_in_transaction`. A session with no transaction open still gets
+  `session_not_found`. Since 2.7.0 the sweep also evicts a session whose client stopped
+  polling a running statement, so this happened more often (Chargewire 2.2.0).
+- **The CLI ran a statement again after losing a session that held a transaction open.**
+  When the server no longer had the session (an idle eviction, or a restart), the CLI opened a
+  new one and ran the statement there, so after `BEGIN; INSERT …;` and a restart, the next
+  `INSERT` committed alone while the earlier one was rolled back. It now runs a statement again
+  only when it knows the old session held no transaction (it reads the session's state after
+  statements that can open or end one), and otherwise says the transaction was rolled back
+  and that the statement was not run. The 2.7.0 drivers (chargewire-js, chargewire-adbc,
+  chargewire-jdbc, chargewire-odbc) and the web UI already behave this way.
+
+
 ## [2.7.0] - 2026-11-04
 
 ### Added

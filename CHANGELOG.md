@@ -7,8 +7,29 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-11-05
+
+### Added
+
+- CLI guide: **A server that is resuming** (v2.8.0+): the wait for a stopped server that starts
+  again on demand (`server_resuming`), the terminal countdown and the log lines (both as the
+  2.8.0 client prints them against a stand-in auto-resume holder), Ctrl-C, `--quiet`, and
+  `--resume-timeout` / `HARDCHARGER_RESUME_TIMEOUT` with a tested example; the reference lists
+  the variable.
+- Web UI: **A server that is resuming** (v2.8.0+): the dialog's countdown with **Stop waiting**,
+  the tree's `resuming… 0:21`, and each saved connection's **Resume timeout** (600 by default, 0
+  not to wait), checked against the 2.8.0 UI through a stand-in holder.
+- Statement control: a session evicted as idle while it held a transaction open ends with
+  `session_ended`, reason `idle_in_transaction` (v2.8.0+, hardcharger#29), with a tested example.
+- Error codes: `server_resuming`, and the `idle_in_transaction` reason of `session_ended`.
+
 ### Changed
 
+- Web UI: the dialog is **Add a Hardcharger server** (v2.8.0+), refusing an address that isn't a
+  Hardcharger server (GizmoSQL or other Flight SQL servers) and saying so; its screenshot is
+  retaken from the 2.8.0 UI. The desktop app's Remote servers section names it too.
+- CLI guide and concepts: after losing a session that may have held a transaction open, the CLI
+  doesn't run the statement again and says the transaction was rolled back (v2.8.0+).
 - The JavaScript examples run on `@gizmodata/hardcharger` 2.3.0 (`@gizmodata/chargewire` 2.2.1), which
   waits for a resuming server (`resumeTimeout`, `onResuming`), types `idle_in_transaction`, never
   runs a request again on a replacement session when a transaction may have been open or SQL
@@ -18,11 +39,15 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
   for a GizmoData Cloud cluster with auto-resume while it starts (`server_resuming`), with
   `resumeTimeout` in the properties table and the 30 s minimum wait on `networkTimeout`'s row.
 - The Chargewire protocol reference is Chargewire 2.2.0's (§11.2 Resuming, `server_resuming`).
+- The reference is regenerated from Hardcharger 2.8.0: the version, the release notes and the CLI
+  help (`--resume-timeout`).
 
 ### Fixed
 
 - JDBC properties: `ipcCompression`'s default is `auto` and `resultPartitions`' is `32`, as in the
   driver; the table said `none` and `8`.
+- Web UI: `hardcharger ui` opens without a sign-in on **No servers yet** and an **Add a
+  Hardcharger server** button, not on the dialog itself as the 2.7.0 page said.
 
 ## [2.7.0] - 2026-11-04
 

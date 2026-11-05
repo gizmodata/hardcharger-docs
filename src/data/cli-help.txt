@@ -36,6 +36,7 @@ Tags:
       --session-tag JSON        Session tag sent after connecting (env: HARDCHARGER_SESSION_TAG)
       --query-tag JSON          Query tag sent after connecting (env: HARDCHARGER_QUERY_TAG)
       --result-partitions N     Read large results in up to N partitions at once, over N connections (env: HARDCHARGER_RESULT_PARTITIONS; default 8; 1: one stream)
+      --resume-timeout SECONDS  Wait up to SECONDS for a stopped server that is starting again (a GizmoData Cloud cluster with auto-resume), sending each request again as it asks (env: HARDCHARGER_RESUME_TIMEOUT; default 600; 0: don't wait)
 
 Output modes:
       --csv                     Set output mode to CSV

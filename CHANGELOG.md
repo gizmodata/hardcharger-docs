@@ -12,6 +12,15 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 - The JavaScript examples run on `@gizmodata/hardcharger` 2.2.0 (`@gizmodata/chargewire` 2.2.0), which
   waits for a resuming server (`resumeTimeout`, `onResuming`), types `idle_in_transaction`, and
   never runs a request again on a replacement session when a transaction may have been open.
+- JDBC: **A stopped cluster that resumes**: `hardcharger-jdbc` 2.3.0 (`chargewire-jdbc` 2.2.0) waits
+  for a GizmoData Cloud cluster with auto-resume while it starts (`server_resuming`), with
+  `resumeTimeout` in the properties table and the 30 s minimum wait on `networkTimeout`'s row.
+- The Chargewire protocol reference is Chargewire 2.2.0's (§11.2 Resuming, `server_resuming`).
+
+### Fixed
+
+- JDBC properties: `ipcCompression`'s default is `auto` and `resultPartitions`' is `32`, as in the
+  driver; the table said `none` and `8`.
 
 ## [2.7.0] - 2026-11-04
 

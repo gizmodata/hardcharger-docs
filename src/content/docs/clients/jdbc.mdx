@@ -100,15 +100,34 @@ Boston 12.5
 | `clientCertificate`, `clientKey` | | Mutual TLS: PEM certificate and unencrypted key (PKCS#8, PKCS#1 RSA or SEC1 EC) |
 | `disableCertificateVerification` | `false` | Accept any certificate. Development only. |
 | `connectTimeout` | `30000` | Milliseconds to connect |
-| `networkTimeout` | `0` | Milliseconds to wait for each response's headers |
+| `networkTimeout` | `0` | Milliseconds to wait for each response's headers; every request but discovery waits at least 30 s ([a cluster that resumes](#a-stopped-cluster-that-resumes)) |
+| `resumeTimeout` | `600` | Seconds to keep retrying while a stopped cluster resumes (`server_resuming`); `0` reports the first such answer at once |
 | `async` | `false` | Submit, long-poll, fetch: for long queries behind proxies |
 | `retainResults` | server's | `true` keeps results on the server, so a broken download resumes |
-| `ipcCompression` | `none` | `zstd` |
-| `resultPartitions` | `8` | Read a large result over up to n connections at once ([partitions](/concepts/chargewire/#partitioned-results)); `1`: one stream |
+| `ipcCompression` | `auto` | `lz4_frame` on a near link, `zstd` on a far one; or `lz4_frame`, `zstd`, `none` |
+| `resultPartitions` | `32` | Read a large result over up to n connections at once ([partitions](/concepts/chargewire/#partitioned-results)); `1`: one stream |
 | `resultOrder` | `preserve` | `any`: rows in arrival order |
 | `resultBufferSize` | `134217728` | Bytes an unread result may buffer when another statement needs its session |
 
 Per statement: `statement.unwrap(com.gizmodata.chargewire.jdbc.ChargewireStatement.class).setResultPartitions(8)`.
+
+## A stopped cluster that resumes
+
+A GizmoData Cloud cluster with auto-resume stops while nobody uses it and starts again at the
+next sign-in. While it starts, its address answers `503 server_resuming` with `Retry-After`, and
+the driver (2.3.0 and later) waits and sends the same request again, the sign-in included, so
+`getConnection` takes longer and then returns a working connection:
+
+- It waits the `Retry-After` (3 s without one, at least 1 s, at most 60 s), until `resumeTimeout`
+  (600 s by default) runs out; then the error has SQLSTATE `08001` and code `server_resuming`.
+  `resumeTimeout=0` turns the retries off.
+- A resuming cluster may hold an answer for up to 25 s, so every request but discovery waits at
+  least 30 s for its answer, whatever `connectTimeout` or `networkTimeout` say.
+- `isValid(timeout)` and a statement's query timeout stop the retries at their own limit, and
+  `cancel()` ends them. Closing a connection, statement or result doesn't wait.
+- A connection pool's own connection timeout may need to allow for a resume.
+
+A server with nothing in front of it never answers `server_resuming`, so nothing changes for one.
 
 ## How statements run
 

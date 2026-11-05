@@ -69,7 +69,8 @@ with hardcharger.connect(uri="hardcharger://localhost?tls=false",
 | URI | Means |
 |---|---|
 | `hardcharger://host` | HTTPS to `host:31337` |
-| `hardcharger://host:port` | HTTPS to another port |
+| `hardcharger://mycluster.us-east-1.aws.gizmodata.com` | HTTPS to port 443: a GizmoData Cloud host (`gizmodata.com` or a name under it) defaults to 443 (2.4.0+) |
+| `hardcharger://host:port` | HTTPS to another port (a port in the URI always wins) |
 | `hardcharger://host?tls=false` | Plain HTTP (your own machine) |
 | `hardcharger://host:port/custom/prefix` | The protocol is mounted under `/custom/prefix` |
 | `chargewire://…`, `https://…`, `http://…` | The Chargewire driver's own spellings |

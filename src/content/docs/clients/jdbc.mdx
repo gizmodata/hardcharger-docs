@@ -41,7 +41,8 @@ Download `hardcharger-jdbc.jar`, the standalone jar with every dependency inside
 jdbc:hardcharger://host[:port][/catalog][?key=value&...]
 ```
 
-The port defaults to 31337, and TLS is on unless `useEncryption=false`. Options can also follow
+The port defaults to 31337 (443 for a GizmoData Cloud host, `gizmodata.com` or a name under it,
+from 2.4.0; 2.4.1 also takes such a name with a final dot), and TLS is on unless `useEncryption=false`. Options can also follow
 semicolons or come in the `Properties`; keys are case-insensitive.
 
 ```java test

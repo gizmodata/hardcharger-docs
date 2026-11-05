@@ -101,7 +101,7 @@ The database and connection options are the same in every ADBC language:
 
 | Option | Meaning |
 |---|---|
-| `uri` | `hardcharger://host[:port][/prefix][?tls=false]`, or `chargewire://`, `https://`, `http://` |
+| `uri` | `hardcharger://host[:port][/prefix][?tls=false]` (port 31337; 443 for a GizmoData Cloud host, `*.gizmodata.com`, from 2.4.0), or `chargewire://`, `https://`, `http://` |
 | `username`, `password` | Password sign-in (`token` with an ID token as the password for SSO) |
 | `adbc.hardcharger.query_tag`, `adbc.hardcharger.session_tag` | JSON tags recorded in instrumentation |
 | `adbc.hardcharger.setting.NAME` | `SET SESSION hardcharger.NAME` on every session (database) or now (connection) |
@@ -113,7 +113,8 @@ The database and connection options are the same in every ADBC language:
 | `adbc.chargewire.statement.async`, `adbc.chargewire.statement.retain_result` | Submit, poll, fetch; resumable results |
 | `adbc.chargewire.statement.timeout_seconds` | Per-statement timeout |
 
-The Go package exports the Hardcharger names as constants (`hardcharger.OptionQueryTag`, ...).
+The Go package exports the Hardcharger names as constants (`hardcharger.OptionQueryTag`, ...),
+and `hardcharger.ToChargewireURI` shows the address a URI stands for.
 Bind parameters with `stmt.Bind` or `stmt.BindStream`; bulk-load with the standard
 `adbc.ingest.target_table` and `adbc.ingest.mode` options and `BindStream`.
 

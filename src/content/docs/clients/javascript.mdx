@@ -92,13 +92,31 @@ marker throws: a short table is never taken for a complete one.
 | URL | Meaning |
 |---|---|
 | `hardcharger://host` | HTTPS to `host:31337` |
-| `hardcharger://host:port` | HTTPS to another port |
+| `hardcharger://mycluster.us-east-1.aws.gizmodata.com` | HTTPS to port 443: a GizmoData Cloud host (`gizmodata.com` or a name under it) defaults to 443 (2.3.0+) |
+| `hardcharger://host:port` | HTTPS to another port (a port in the URL always wins) |
 | `hardcharger://host?tls=false` | Plain HTTP (development, loopback) |
 | `hardcharger://host:port/custom/prefix` | The server mounts Chargewire under `/custom/prefix` |
 | `chargewire://…`, `https://…`, `http://…` | The Chargewire client's own spellings |
 
 `hardcharger+http://`, credentials in the URL and unknown parameters (`useEncryption` included)
 are refused before anything is sent, with a `client_invalid_argument` error that says what to write.
+`parseUrl` shows the Chargewire address a URL stands for, without connecting:
+
+```js test server=none
+import { parseUrl } from '@gizmodata/hardcharger';
+
+for (const url of ['hardcharger://db.example.com', 'hardcharger://mycluster.us-east-1.aws.gizmodata.com',
+                   'hardcharger://mycluster.us-east-1.aws.gizmodata.com:31337', 'hardcharger://evilgizmodata.com']) {
+  console.log(parseUrl(url).href);
+}
+```
+
+```text output
+https://db.example.com:31337/chargewire
+https://mycluster.us-east-1.aws.gizmodata.com/chargewire
+https://mycluster.us-east-1.aws.gizmodata.com:31337/chargewire
+https://evilgizmodata.com:31337/chargewire
+```
 
 ## TLS
 

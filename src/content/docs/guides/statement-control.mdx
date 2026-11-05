@@ -137,6 +137,33 @@ session and its transaction live until the server restarts or an administrator r
 [`KILL SESSION`](#kill-a-session), so keep the default unless every client polls more often
 than the timeout.
 
+A session evicted while it held a transaction open (v2.8.0+) ends with `401 session_ended`,
+reason `idle_in_transaction`, as [the limit below](#idle-in-a-transaction) ends one, and the
+instrumentation sessions table records `idle_in_transaction`. Its next request says the
+transaction was rolled back, so a client doesn't run its next statement alone in a new session.
+A session with no transaction open still gets `404 session_not_found`:
+
+```bash test server=self background
+HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb \
+  --session-idle-timeout 5 --health-port 31338
+```
+
+```console test server=none
+$ H='Content-Type: application/json'
+$ TOKEN=$(curl -s localhost:31337/chargewire/v1/auth/token -H "$H" \
+    -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
+$ session() { curl -s localhost:31337/chargewire/v1/sessions -H "Authorization: Bearer $TOKEN" -H "$H" -d '{}' | jq -r .session_id; }
+$ IN_TRANSACTION=$(session); IDLE=$(session)
+$ curl -s localhost:31337/chargewire/v1/sessions/$IN_TRANSACTION/statements -H "Authorization: Bearer $TOKEN" \
+    -H "$H" -H 'Prefer: wait=10' -d '{"sql": "BEGIN"}' -o /dev/null -w '%{http_code}\n'
+201
+$ sleep 15
+$ curl -s localhost:31337/chargewire/v1/sessions/$IN_TRANSACTION -H "Authorization: Bearer $TOKEN" | jq -c '{code, reason}'
+{"code":"session_ended","reason":"idle_in_transaction"}
+$ curl -s localhost:31337/chargewire/v1/sessions/$IDLE -H "Authorization: Bearer $TOKEN" | jq -c '{code, reason}'
+{"code":"session_not_found","reason":null}
+```
+
 ### Idle in a transaction
 
 [`idle_in_transaction_session_timeout`](/reference/configuration/#idle_in_transaction_session_timeout)
@@ -175,7 +202,7 @@ A statement that finds the queue full, or waits longer than `max_queue_wait`, fa
 `queued` in their statement document and in instrumentation, which records how long each
 waited. An administrator can change the limits live:
 
-```sql test profile=queue
+```sql test profile=queue stop
 SET GLOBAL hardcharger.max_concurrent_statements = 4;
 SET GLOBAL hardcharger.max_queue_wait = 60;
 ```

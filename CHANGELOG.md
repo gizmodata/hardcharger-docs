@@ -7,6 +7,12 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+### Changed
+
+- The JavaScript examples run on `@gizmodata/hardcharger` 2.2.0 (`@gizmodata/chargewire` 2.2.0), which
+  waits for a resuming server (`resumeTimeout`, `onResuming`), types `idle_in_transaction`, and
+  never runs a request again on a replacement session when a transaction may have been open.
+
 ## [2.7.0] - 2026-11-04
 
 ### Added

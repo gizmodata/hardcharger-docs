@@ -245,22 +245,15 @@ POINT (1 2),\xF5\x00ab
 
 ```console test
 $ export HARDCHARGER_PASSWORD='change-me'
-$ printf '.tables --flat\n.describe trips\n' | hardcharger --host localhost --tls=false --username hardcharger --quiet
-┌─────────────────────┬────────────────────────────────┬─────────────────────────────┬────────────┐
-│    catalog_name     │         db_schema_name         │         table_name          │ table_type │
-│       varchar       │            varchar             │           varchar           │  varchar   │
-├─────────────────────┼────────────────────────────────┼─────────────────────────────┼────────────┤
-│ _hardcharger_system │ hardcharger_information_schema │ applicable_roles            │ VIEW       │
-│ _hardcharger_system │ hardcharger_information_schema │ column_privileges           │ VIEW       │
-│ _hardcharger_system │ hardcharger_information_schema │ enabled_roles               │ VIEW       │
-│ _hardcharger_system │ hardcharger_information_schema │ role_table_grants           │ VIEW       │
-│ _hardcharger_system │ hardcharger_information_schema │ table_privileges            │ VIEW       │
-│ _hardcharger_system │ main                           │ hardcharger_index_info      │ VIEW       │
-│ _hardcharger_system │ main                           │ hardcharger_view_definition │ VIEW       │
-│ my                  │ main                           │ trips                       │ BASE TABLE │
-├─────────────────────┴────────────────────────────────┴─────────────────────────────┴────────────┤
-│ 8 rows  4 columns                                                                               │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+$ printf '.tables trips --flat\n.describe trips\n' | hardcharger --host localhost --tls=false --username hardcharger --quiet
+┌──────────────┬────────────────┬────────────┬────────────┐
+│ catalog_name │ db_schema_name │ table_name │ table_type │
+│   varchar    │    varchar     │  varchar   │  varchar   │
+├──────────────┼────────────────┼────────────┼────────────┤
+│ my           │ main           │ trips      │ BASE TABLE │
+├──────────────┴────────────────┴────────────┴────────────┤
+│ 1 row  4 columns                                        │
+└─────────────────────────────────────────────────────────┘
 ┌─────────────┬──────────────┬─────────┬─────────┬─────────┬─────────┐
 │ column_name │ column_type  │  null   │   key   │ default │  extra  │
 │   varchar   │   varchar    │ varchar │ varchar │ varchar │ varchar │

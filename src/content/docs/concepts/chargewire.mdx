@@ -187,9 +187,10 @@ open a new session, replay the options they set, and tell you (a warning, and a 
 connection). When the lost session may have held a transaction open, a statement is not run
 again on the new one, since half a transaction must not commit: the
 [`hardcharger` CLI](/clients/cli/) and the [web UI](/guides/web-ui/#sessions-and-transactions)
-(v2.8.0+) and the drivers' current releases refuse instead and say the transaction was rolled
-back. The CLI and the web UI also refuse after `USE`, `SET`, `RESET` or `PRAGMA`, which a new
-session doesn't carry.
+(v2.8.0+) and the drivers released alongside 2.8.0 ([Versions](/reference/versions/#drivers))
+refuse instead and say the transaction was rolled back. They also refuse after `USE`, `SET`,
+`RESET` or `PRAGMA`, which a new session doesn't carry. The ODBC driver never runs a statement
+again.
 
 An administrator's `KILL SESSION`, a password change or a dropped or disabled user ends a
 session. Its requests then get `401 session_ended` with a

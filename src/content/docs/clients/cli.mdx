@@ -30,16 +30,36 @@ $ hardcharger --host localhost --tls=false --username hardcharger --command "SEL
 
 | What | Option | Environment |
 |---|---|---|
-| Server | `--host`, `-h` (default `localhost`), `--port`, `-p` (default 31337) | `HARDCHARGER_HOST`, `HARDCHARGER_PORT` |
+| Server | `--host`, `-h` (default `localhost`), `--port`, `-p` (default 31337; 443 for a [GizmoData Cloud host](#gizmodata-cloud-hosts), v2.8.0+) | `HARDCHARGER_HOST`, `HARDCHARGER_PORT` |
 | User | `--username`, `-u` | `HARDCHARGER_USER` |
 | Password | asked for, or `--password`/`-W` to force the prompt | `HARDCHARGER_PASSWORD` |
 | TLS | on by default; `--tls=false` for plain HTTP (a server without `--tls-cert`, like the ones on these pages); `--tls-roots FILE`, `--tls-skip-verify` | `HARDCHARGER_TLS` (`true` or `false`), `HARDCHARGER_TLS_ROOTS` |
 | Mutual TLS | `--mtls-cert FILE`, `--mtls-key FILE` | |
 | SSO | `--auth-type external` ([browser sign-in](/guides/sso/#browser-sign-in)) | |
-| Host, port and TLS in one URI | `hardcharger://HOST[:PORT][/PREFIX][?tls=false]` (or `--uri`): HTTPS unless `?tls=false`, port 31337, as in the [Python](/clients/python/) and [Go](/clients/go/) drivers. `tls` is its only parameter; the user and the other settings are the flags above | |
+| Host, port and TLS in one URI | `hardcharger://HOST[:PORT][/PREFIX][?tls=false]` (or `--uri`): HTTPS unless `?tls=false`, port 31337 (443 for a GizmoData Cloud host, v2.8.0+), as in the [Python](/clients/python/) and [Go](/clients/go/) drivers. `tls` is its only parameter; the user and the other settings are the flags above | |
 
 `HARDCHARGER_PASSWORD` is the user's own password; the client never falls back to the server's
 `HARDCHARGER_ADMIN_PASSWORD`.
+
+### GizmoData Cloud hosts
+
+A GizmoData Cloud host needs no port (v2.8.0+). When the host is `gizmodata.com` or a name
+under it (in any case, with or without a final dot), given with `--host`, `HARDCHARGER_HOST` or
+a `hardcharger://` URI, and no port is given, the client connects to 443, where GizmoData
+Cloud's clusters answer, instead of 31337. A port from `--port`, `HARDCHARGER_PORT` or the URI
+always wins, and every other host keeps 31337 (`evilgizmodata.com` and
+`gizmodata.com.example.org` included):
+
+```bash
+hardcharger hardcharger://mycluster.us-east-1.aws.gizmodata.com --username analyst   # port 443
+```
+
+The [web UI](/guides/web-ui/#other-servers), the [desktop app](/guides/desktop-app/#remote-servers-v270)
+and the Hardcharger drivers do the same: `hardcharger-adbc` 2.4.0 ([Python](/clients/python/#uris),
+[Go](/clients/go/#options)), `hardcharger-jdbc` 2.4.0 ([JDBC](/clients/jdbc/#connect)),
+`@gizmodata/hardcharger` 2.3.0 ([JavaScript](/clients/javascript/#urls)), the Hardcharger ODBC
+Driver 1.4.0 and `hardcharger-mcp` 2.4.0. The Chargewire drivers have no such rule: their
+`chargewire://` URIs default to 443 for every host.
 
 The client uses TLS unless told otherwise, as the drivers do. Against a server without TLS it
 stops, sends nothing in plaintext, and says what to add:
@@ -275,7 +295,8 @@ $ printf '.tables trips --flat\n.describe trips\n' | hardcharger --host localhos
 The client reads a large result over up to 8 connections at once, in the same order
 ([partitions](/concepts/chargewire/#partitioned-results)); small results come as one stream.
 `--result-partitions N` (or `HARDCHARGER_RESULT_PARTITIONS`) changes the 8; `1` reads over one
-connection.
+connection. A value that isn't a whole number from 1 to 256 is an error at startup (v2.8.0+; it
+used to fall back to 8).
 
 ## A server that is resuming
 
@@ -315,7 +336,9 @@ answer
 
 The drivers wait for a resuming server too, each with a resume timeout of its own: JDBC's
 `resumeTimeout` ([A stopped cluster that resumes](/clients/jdbc/#a-stopped-cluster-that-resumes)),
-and the JavaScript driver's `resumeTimeout` and `onResuming`.
+the ADBC driver's `adbc.hardcharger.resume_timeout` (Python `connect(resume_timeout=...)`;
+`hardcharger-adbc` 2.3.0+), the JavaScript driver's `resumeTimeout` and `onResuming`, and the
+ODBC driver's `ResumeTimeout` (1.3.0+).
 
 ## Tags
 

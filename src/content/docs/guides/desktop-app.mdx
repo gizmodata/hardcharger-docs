@@ -108,7 +108,8 @@ do not survive a server restart.
 
 **Settings › Remote servers** keeps the other Hardcharger servers the SQL workspace lists, with
 these fields of the workspace's **Add a Hardcharger server** dialog: a display name, **Host**
-and **Port** (31337 by default), **Use TLS**, and **Trust this server's certificate** for a private or
+and **Port** (31337 by default; until you type one, a GizmoData Cloud host such as
+`mycluster.us-east-1.aws.gizmodata.com` sets it to 443, v2.8.0+), **Use TLS**, and **Trust this server's certificate** for a private or
 self-signed one (paste its SHA-256 fingerprint, or leave it empty to see the certificate the
 first time the workspace connects). The list is saved with the settings and handed to the
 workspace when it opens, where each server shows with its lock

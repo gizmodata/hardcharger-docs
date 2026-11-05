@@ -37,6 +37,21 @@ runs against a server of that version in CI.
 - `HARDCHARGER_VERSION()` and `hardcharger-server --version` report the server's version.
 - [Upgrading](/guides/upgrading/) covers moving between versions and rolling back.
 
+## Drivers
+
+The client releases that go with Hardcharger 2.8.0 (each one's GitHub release has its notes).
+The Hardcharger drivers are the Chargewire ones under Hardcharger's names, with `hardcharger://`
+URIs (port 31337; 443 for a GizmoData Cloud host).
+
+| Client | Chargewire | Hardcharger |
+|---|---|---|
+| [JavaScript](/clients/javascript/) | `@gizmodata/chargewire` 2.2.1 | `@gizmodata/hardcharger` 2.3.0 |
+| ADBC: [Python](/clients/python/), [Go](/clients/go/), [the driver manager](/clients/adbc-driver-manager/) | `chargewire-adbc` 2.2.2 | `hardcharger-adbc` 2.4.0 |
+| [JDBC](/clients/jdbc/) | `chargewire-jdbc` 2.2.3 | `hardcharger-jdbc` 2.4.1 |
+| ODBC | `chargewire-odbc` 2.3.1 | Hardcharger ODBC Driver 1.4.0 |
+| MCP server | | `hardcharger-mcp` 2.4.0 |
+| Replication into Hardcharger | | `adbc-replicate-hardcharger` 2.3.1 |
+
 ## What changed in each release
 
 The [release notes](/reference/release-notes/) list every change, release by release.

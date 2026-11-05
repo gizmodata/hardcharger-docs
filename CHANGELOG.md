@@ -22,6 +22,19 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 - Statement control: a session evicted as idle while it held a transaction open ends with
   `session_ended`, reason `idle_in_transaction` (v2.8.0+, hardcharger#29), with a tested example.
 - Error codes: `server_resuming`, and the `idle_in_transaction` reason of `session_ended`.
+- CLI guide: **GizmoData Cloud hosts** (v2.8.0+): `gizmodata.com` and the names under it (any
+  case, a final dot allowed) default to port 443 with `--host`, `HARDCHARGER_HOST` or a
+  `hardcharger://` URI; an explicit port or `HARDCHARGER_PORT` wins. The web UI's dialog (the port
+  follows the host until typed, with a **GizmoData Cloud** hint), the desktop app's remote
+  servers, and the Python, Go, JDBC and JavaScript pages say the same, with the driver versions
+  that do it, and the JavaScript page a tested `parseUrl` example.
+- Web UI: **The schema browser** (v2.8.0+): DuckDB's `system` catalog is no longer listed (its
+  views still answer by name, with a tested example), and previewing a table of the
+  instrumentation or log catalog runs in the tab's own catalog with a note.
+- Versions: **Drivers**, the client releases that go with 2.8.0 (`@gizmodata/chargewire` 2.2.1,
+  `@gizmodata/hardcharger` 2.3.0, `chargewire-adbc` 2.2.2, `hardcharger-adbc` 2.4.0,
+  `chargewire-jdbc` 2.2.3, `hardcharger-jdbc` 2.4.1, `chargewire-odbc` 2.3.1, the Hardcharger ODBC
+  Driver 1.4.0, `hardcharger-mcp` 2.4.0, `adbc-replicate-hardcharger` 2.3.1).
 
 ### Changed
 
@@ -31,7 +44,10 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 - CLI guide, web UI and concepts: after losing a session that may have held a transaction open,
   or had run `USE`, `SET`, `RESET` or `PRAGMA`, the CLI and the web UI don't run the statement
   again and say why (v2.8.0+); the CLI signs in again after a server restart. The concepts page
-  no longer says the drivers already refused inside a transaction: their current releases do.
+  no longer says the drivers already refused inside a transaction: the releases alongside 2.8.0
+  do, after `USE`, `SET`, `RESET` and `PRAGMA` too.
+- CLI guide: the ADBC driver's and the ODBC driver's resume timeouts next to JDBC's and
+  JavaScript's; `HARDCHARGER_RESULT_PARTITIONS` that isn't a whole number is an error (v2.8.0+).
 - The JavaScript examples run on `@gizmodata/hardcharger` 2.3.0 (`@gizmodata/chargewire` 2.2.1), which
   waits for a resuming server (`resumeTimeout`, `onResuming`), types `idle_in_transaction`, never
   runs a request again on a replacement session when a transaction may have been open or SQL
@@ -40,9 +56,9 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 - JDBC: **A stopped cluster that resumes**: `hardcharger-jdbc` 2.3.0 (`chargewire-jdbc` 2.2.0) waits
   for a GizmoData Cloud cluster with auto-resume while it starts (`server_resuming`), with
   `resumeTimeout` in the properties table and the 30 s minimum wait on `networkTimeout`'s row.
-- The Chargewire protocol reference is Chargewire 2.2.0's (§11.2 Resuming, `server_resuming`).
-- The reference is regenerated from Hardcharger 2.8.0: the version, the release notes and the CLI
-  help (`--resume-timeout`).
+- The Chargewire protocol reference is Chargewire 2.2.3's (§11.2 Resuming, `server_resuming`).
+- The reference is regenerated from the published Hardcharger 2.8.0 binaries: the version, the
+  release notes and the CLI help (`--resume-timeout`, port 443 for a GizmoData Cloud host).
 
 ### Fixed
 

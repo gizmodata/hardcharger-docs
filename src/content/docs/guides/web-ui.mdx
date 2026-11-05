@@ -24,7 +24,7 @@ talks [Chargewire](/concepts/chargewire/) back to the same origin. It is off by 
 - **Schema browser and autocomplete**: catalogs, schemas (nested ones as a tree, v2.7.0+),
   tables, views and columns with their types, as access control lets the user see them.
   Double-click or drag a name into the editor, preview a table in a new tab, show a view's
-  definition, search every table and view by name.
+  definition, search every table and view by name ([below](#the-schema-browser)).
 - **Other servers (v2.7.0+)**: add other Hardcharger servers to the schema browser, sign in to
   each, and query them from tabs bound to them; a lock beside each server says how the
   connection is protected ([below](#other-servers)). A server that is starting again on demand
@@ -417,6 +417,30 @@ $ curl -s localhost:31337/chargewire/v1/sessions -H "Authorization: Bearer $TOKE
 3600
 ```
 
+## The schema browser
+
+The schema browser and a tab's **Catalog** picker leave out DuckDB's own `system` catalog
+(v2.8.0+): it holds only the engine's internal views, which no listing shows. They are still
+there to query by name:
+
+```console test server=none
+$ export HARDCHARGER_PASSWORD='change-me'
+$ hardcharger --host localhost --tls=false --username hardcharger --csv --command \
+    "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = 'system' ORDER BY ALL"
+catalog_name,schema_name
+system,information_schema
+system,main
+system,pg_catalog
+```
+
+The server never makes its [instrumentation](/guides/instrumentation-and-audit/) and
+[log](/guides/instrumentation-and-audit/#catalog-logging) catalogs a session's catalog: they are
+for querying by name (`_hardcharger_instr.schema.table`). Previewing one of their tables
+(**Preview data**, v2.8.0+) runs the preview, which names the catalog, in a tab that stays in
+its own catalog, with a note that says so. Asking a tab to use such a catalog (**Use this
+catalog and schema**, or the tab's **Catalog** picker) shows the same note and puts the pickers
+back where they were. Both work with a server of any version.
+
 ## Other servers
 
 <Aside type="note" title="v2.7.0+">
@@ -430,10 +454,14 @@ is one page, top to bottom:
 
 - **Saved connections**: the servers you saved, as rows that fill the form when clicked (the
   icon at the right of **Display name** opens the same list); the **×** on a row forgets it.
-- **Display name**, then **Host** and **Port** (31337 by default). Pasting a URI into Host fills
-  the fields: `hardcharger://host[:port][/prefix][?tls=false]` and `chargewire://…` (port 31337,
-  TLS unless `tls=false`), `jdbc:hardcharger://host[:port][/catalog]`, and `https://` or
-  `http://` URLs (ports 443 and 80 unless given). A user name in the URI fills Username; a
+- **Display name**, then **Host** and **Port** (31337 by default). Until you type a port, it
+  follows the host (v2.8.0+): a GizmoData Cloud host (`gizmodata.com` or a name under it, in
+  any case, a final dot allowed) sets it to 443, where GizmoData Cloud's clusters answer, with
+  a **GizmoData Cloud** hint beside it, and any other host sets it back to 31337. Pasting a URI
+  into Host fills the fields: `hardcharger://host[:port][/prefix][?tls=false]` and
+  `chargewire://…` (port 31337, TLS unless `tls=false`), `jdbc:hardcharger://host[:port][/catalog]`,
+  and `https://` or `http://` URLs (ports 443 and 80 unless given); a `hardcharger://` or
+  `jdbc:hardcharger://` URI with a GizmoData Cloud host and no port fills in 443. A user name in the URI fills Username; a
   password in it is never kept. **Advanced** shows the path prefix, for a proxy that serves
   Chargewire somewhere other than `/chargewire`.
 - **Authentication**: **Username & Password**, side by side. A scoped token signs in as user

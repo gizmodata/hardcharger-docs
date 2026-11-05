@@ -81,9 +81,11 @@ my.main> .quit
 - **Ctrl-C** cancels the running statement on the server, and the shell goes on.
 - **A lost session is reopened.** If the server forgot the session (idle too long, restarted) or
   an administrator killed it, the client opens a new one and says so; temporary tables and
-  session settings don't survive that. When the lost session may have held a transaction open,
-  the statement that found it gone is not run again (v2.8.0+): the client says the transaction
-  was rolled back, and you run the transaction again in the new session.
+  session settings don't survive that. After a restart that refused its sign-in, it signs in
+  again with the password or certificate it has (v2.8.0+). When the lost session may have held a
+  transaction open, or had run `USE`, `SET`, `RESET` or `PRAGMA`, the statement that found it gone
+  is not run again (v2.8.0+): the client says why (the transaction was rolled back, or the
+  setting is gone), and you run the transaction, or the `USE`/`SET`, again first.
 - **`~/.hardchargerrc`** runs at startup (`--init FILE` for another, `--no-init` for none):
   `.mode`, `.timer on`, `SET hardcharger.query_tag = …`.
 

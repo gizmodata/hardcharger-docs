@@ -28,8 +28,10 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 - Web UI: the dialog is **Add a Hardcharger server** (v2.8.0+), refusing an address that isn't a
   Hardcharger server (GizmoSQL or other Flight SQL servers) and saying so; its screenshot is
   retaken from the 2.8.0 UI. The desktop app's Remote servers section names it too.
-- CLI guide and concepts: after losing a session that may have held a transaction open, the CLI
-  doesn't run the statement again and says the transaction was rolled back (v2.8.0+).
+- CLI guide, web UI and concepts: after losing a session that may have held a transaction open,
+  or had run `USE`, `SET`, `RESET` or `PRAGMA`, the CLI and the web UI don't run the statement
+  again and say why (v2.8.0+); the CLI signs in again after a server restart. The concepts page
+  no longer says the drivers already refused inside a transaction: their current releases do.
 - The JavaScript examples run on `@gizmodata/hardcharger` 2.3.0 (`@gizmodata/chargewire` 2.2.1), which
   waits for a resuming server (`resumeTimeout`, `onResuming`), types `idle_in_transaction`, never
   runs a request again on a replacement session when a transaction may have been open or SQL

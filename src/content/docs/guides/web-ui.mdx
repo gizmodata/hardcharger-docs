@@ -400,7 +400,9 @@ default; `--session-idle-timeout`, `HARDCHARGER_SESSION_IDLE_TIMEOUT`, or the YA
 reads it from the session document (`idle_timeout_s`) and **How the editor works** names it. When
 a tab's session has ended, its next run starts a new session and says so; if a transaction was
 open, that run is refused instead, with a message that the transaction was rolled back, and
-nothing from it executes. Run it again to go on in a new session.
+nothing from it executes. Run it again to go on in a new session. Since v2.8.0 a run is refused
+the same way after `USE`, `SET`, `RESET` or `PRAGMA` in the lost session, which the new one
+starts without: run those again first.
 
 ```bash test server=self background stop
 HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb --web-ui \

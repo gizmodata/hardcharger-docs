@@ -35,7 +35,7 @@ can't serve now. A statement's own failure is never `5xx`.
 | `invalid_return_to` | 400 | A [browser sign-in](/guides/sso/#browser-sign-in)'s `return_to` that isn't a path on the server itself (an absolute URL, `//host`, a backslash, a fragment, ...) | Send a path such as `/ui/` |
 | `invalid_credentials` | 401 | Sign-in failed. It never says which part was wrong. | Check the user, password or token; an identity-provider token may be expired, for the wrong audience, or for a user [not authorized](/guides/sso/#limit-who-may-sign-in) |
 | `invalid_token` | 401 | A missing, malformed, expired or foreign access token (another replica's, without `allow_cross_instance_tokens`); also a token whose user's password changed, or who was disabled or dropped, or a revoked scoped token. A token the server issued itself carries a `reason` ([below](#invalid_token-reasons)) | Sign in again; after `credentials_changed` or `principal_dropped`, the old password no longer works either |
-| `session_ended` | 401 | The server ended the session: an administrator killed it, or access control ended it; `reason` says which ([below](#session_ended-reasons)) | Open a new session; except after `killed`, sign in again first |
+| `session_ended` | 401 | The server ended the session: an administrator killed it, access control ended it, or it sat idle with a transaction open; `reason` says which ([below](#session_ended-reasons)) | Open a new session; except after `killed`, sign in again first |
 | `unsupported_grant_type` | 400 | A sign-in grant the server doesn't offer, such as `client_certificate` without [certificate sign-in](/guides/tls/#signing-in-with-the-certificate) | Sign in another way |
 | `certificate_required` | 401 | Certificate sign-in on a connection without a client certificate (where certificates are optional) | Connect with the certificate |
 | `unknown_certificate_identity` | 401 | The certificate has no identity of the kind the server maps, several, or one that is no administrator identity and no enabled user | Check `--mtls-identity-source`; create the user |
@@ -44,7 +44,7 @@ can't serve now. A statement's own failure is never `5xx`.
 | `certificate_identity_mismatch` | 401 | With `--mtls-require-identity-match`: a password or token sign-in for another identity than the connection's certificate | Sign in as the certificate's identity |
 | `permission_denied` | 403 | The user lacks a privilege; also the guards (files, secrets, admin-only commands) | Ask for the grant; `detail` names it |
 | `read_only` | 403 | The server or session is read-only | Write elsewhere |
-| `session_not_found`, `statement_not_found`, `prepared_not_found`, `ingest_not_found` | 404 | No such handle, or not yours: evicted after `session_idle_timeout`, closed, server restarted; `statement_not_found` also for a statement the server has forgotten | Open a new session (drivers do, and tell you) |
+| `session_not_found`, `statement_not_found`, `prepared_not_found`, `ingest_not_found` | 404 | No such handle, or not yours: evicted after `session_idle_timeout` with no transaction open, closed, server restarted; `statement_not_found` also for a statement the server has forgotten | Open a new session (drivers do, and tell you) |
 | `partition_not_found` | 404 | The result has no partition with that index | Read the partitions the statement document lists |
 | `not_found` | 404 | No such endpoint | Check the URL |
 | `flow_not_found` | 404 | No such browser sign-in, a wrong poll secret, or one already collected or expired (sign-ins last 10 minutes) | Start the sign-in again |
@@ -68,6 +68,7 @@ can't serve now. A statement's own failure is never `5xx`.
 | `internal_error` | 500 | The server failed in a way that isn't the request's doing (a bug) | Report it with the `request_id` |
 | `not_implemented` | 501 | The server doesn't implement this operation, such as browser sign-in without `oauth_client_id` | |
 | `server_draining` | 503 | The server is shutting down | Retry after `Retry-After`, elsewhere |
+| `server_resuming` | 503 | The server was stopped and is starting again on demand (a GizmoData Cloud cluster with auto-resume). Hardcharger never sends it: what holds the server's address while it starts does | Send the same request again after `Retry-After`. The [CLI](/clients/cli/#a-server-that-is-resuming), the [web UI](/guides/web-ui/#a-server-that-is-resuming) (v2.8.0+) and the Chargewire 2.2.0 drivers do, for up to a resume timeout (600 s by default) |
 
 A statement that has failed, or was cancelled, by the time the server answers its submission
 gets one of these as an error response, with the statement's id in the `Chargewire-Statement-Id` header
@@ -141,13 +142,15 @@ the user's password or credentials changed (credentials_changed). Sign in again 
 | `credentials_changed` | The user's password changed, or access control revoked something else the session depended on (such as its tenant's catalogs) |
 | `token_revoked` | The scoped token that opened the session was revoked |
 | `token_expired` | The scoped token that opened the session expired: the session ends then |
+| `idle_in_transaction` | The session held a transaction open with nothing running, past [`idle_in_transaction_session_timeout`](/guides/statement-control/#idle-in-a-transaction), or (v2.8.0+) past [`session_idle_timeout`](/guides/statement-control/#idle-sessions); the transaction was rolled back |
 
 A killed session answers `session_ended` at once, since its token still stands. When access
 control ends a session, the token that opened it stops working first, so its next request gets
 `invalid_token` with the same `reason`; after the client signs in again, the old session answers
 `session_ended` with the reason. After `credentials_changed`, `principal_dropped`,
 `token_revoked` or `token_expired` a client needs a new token before it opens a new session;
-after `killed` (or a reason it doesn't know) it may open one with the token it has. The drivers
+after `killed` or `idle_in_transaction` (or a reason it doesn't know) it may open one with the
+token it has. The drivers
 renew a token and open a new session on their own only after `token_expired`, and report the
 other reasons. Any reason a client doesn't know is a generic one: the session is gone.
 

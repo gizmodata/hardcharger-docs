@@ -81,7 +81,9 @@ my.main> .quit
 - **Ctrl-C** cancels the running statement on the server, and the shell goes on.
 - **A lost session is reopened.** If the server forgot the session (idle too long, restarted) or
   an administrator killed it, the client opens a new one and says so; temporary tables and
-  session settings don't survive that.
+  session settings don't survive that. When the lost session may have held a transaction open,
+  the statement that found it gone is not run again (v2.8.0+): the client says the transaction
+  was rolled back, and you run the transaction again in the new session.
 - **`~/.hardchargerrc`** runs at startup (`--init FILE` for another, `--no-init` for none):
   `.mode`, `.timer on`, `SET hardcharger.query_tag = …`.
 
@@ -273,6 +275,40 @@ The client reads a large result over up to 8 connections at once, in the same or
 `--result-partitions N` (or `HARDCHARGER_RESULT_PARTITIONS`) changes the 8; `1` reads over one
 connection.
 
+## A server that is resuming
+
+A stopped server that starts again on demand, such as a GizmoData Cloud cluster with
+auto-resume, answers `server_resuming` (503 with `Retry-After`) while it starts. The client
+(v2.8.0+) waits as the server asks, sends the sign-in, the session or the statement again, and
+goes on. In a terminal it shows a countdown on one line, rewritten each second:
+
+```text
+The server is resuming (the server is resuming; retry after 3 s): retrying in 2 s, 0:01 so far. Ctrl-C stops waiting.
+```
+
+When its messages go to a file or a pipe, it writes a line per answer instead, and with
+`--quiet` nothing:
+
+```text
+The server is resuming (the server is resuming; retry after 2 s); retrying in 2 s (0:02 so far).
+```
+
+Ctrl-C stops waiting. `--resume-timeout SECONDS` (or `HARDCHARGER_RESUME_TIMEOUT`) sets how long
+to wait, 600 seconds by default. When the next wait would pass it, the client stops and reports
+the server's answer with how long it waited (`Error: the server is resuming; retry after 2 s
+(still resuming after 4 s of retries)`); with `0` it reports the first answer without waiting.
+A server that isn't resuming answers at once, so the setting changes nothing there:
+
+```console test
+$ export HARDCHARGER_PASSWORD='change-me'
+$ hardcharger --host localhost --tls=false --username hardcharger --resume-timeout 120 --csv --command "SELECT 42 AS answer"
+answer
+42
+```
+
+The Chargewire 2.2.0 drivers wait for a resuming server too, each with a resume timeout option of
+its own.
+
 ## Tags
 
 `--session-tag JSON` and `--query-tag JSON` (or `HARDCHARGER_SESSION_TAG`,
@@ -285,7 +321,7 @@ from the client itself, with no server behind it, and opens it in your browser: 
 you work with there. A free loopback port by default; `--listen HOST:PORT` to choose one,
 `--no-open` to only print the address, `--tls-cert`/`--tls-key` to serve HTTPS to others.
 
-```bash test server=none background
+```bash test server=none background wait=http://127.0.0.1:8080/ui/v1/app
 hardcharger ui --no-open --listen 127.0.0.1:8080
 ```
 

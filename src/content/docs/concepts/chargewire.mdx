@@ -181,9 +181,11 @@ the client instead of a reset connection.
 A session idle for longer than [`session_idle_timeout`](/reference/configuration/#session_idle_timeout)
 (15 minutes by default) is evicted. The server **never** recreates a session implicitly: the next
 request gets `404 session_not_found`, because the session's temporary tables, settings and open
-transaction are gone. The drivers open a new session, replay the options they set, and tell you
-(a warning, and a counter on the connection). Inside a transaction they refuse to continue
-instead, since half a transaction must not commit.
+transaction are gone; a session evicted with a transaction open gets `401 session_ended`, reason
+`idle_in_transaction`, instead (v2.8.0+), which says the transaction was rolled back. The drivers
+open a new session, replay the options they set, and tell you (a warning, and a counter on the
+connection). Inside a transaction they refuse to continue instead, since half a transaction must
+not commit; so does the [`hardcharger` CLI](/clients/cli/) (v2.8.0+).
 
 An administrator's `KILL SESSION`, a password change or a dropped or disabled user ends a
 session. Its requests then get `401 session_ended` with a

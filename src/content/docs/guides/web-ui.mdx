@@ -27,8 +27,9 @@ talks [Chargewire](/concepts/chargewire/) back to the same origin. It is off by 
   definition, search every table and view by name.
 - **Other servers (v2.7.0+)**: add other Hardcharger servers to the schema browser, sign in to
   each, and query them from tabs bound to them; a lock beside each server says how the
-  connection is protected ([below](#other-servers)). The same UI runs on its own, without a
-  server behind it, as `hardcharger ui` ([below](#the-ui-on-its-own)).
+  connection is protected ([below](#other-servers)). A server that is starting again on demand
+  (auto-resume) is waited for, v2.8.0+ ([below](#a-server-that-is-resuming)). The same UI runs
+  on its own, without a server behind it, as `hardcharger ui` ([below](#the-ui-on-its-own)).
 - **Saved queries** in folders, kept in the browser (see [below](#what-stays-in-the-browser)).
 - **Run as**: under access control, a tab acts with one of the user's roles, or all of them.
 - **Downloads**: CSV, TSV, JSON and Excel (.xlsx) of the rows as shown, Parquet and Arrow IPC
@@ -422,7 +423,8 @@ that serves the UI. The servers you add can be older: the relay speaks plain Cha
 </Aside>
 
 The schema browser's root is a list of servers: **This server** first, then the ones you add.
-**Add a server** (the **+** in the Data panel's head) is one page, top to bottom:
+**Add a Hardcharger server** (the **+** in the Data panel's head; "Add a server" before v2.8.0)
+is one page, top to bottom:
 
 - **Saved connections**: the servers you saved, as rows that fill the form when clicked (the
   icon at the right of **Display name** opens the same list); the **×** on a row forgets it.
@@ -442,16 +444,19 @@ The schema browser's root is a list of servers: **This server** first, then the 
   certificate must verify against trusted roots, and a failure suggests the checkbox.
 - **Query timeout (seconds)**: the server cancels a statement of yours on that server after it
   (0 = unlimited).
+- **Resume timeout (seconds)** (v2.8.0+): how long to wait for a stopped server that starts
+  again on demand, 600 by default; 0 = don't wait ([below](#a-server-that-is-resuming)).
 - **Save connection for later** (on by default) and **Remember password**, which only the
   [desktop app](/guides/desktop-app/) offers: it keeps the password in your operating system's
   keychain. In a browser it stays off, since browser storage is readable by any script on the
   page and kept in clear text.
 
-Errors show under the field they concern: a server that can't be reached or isn't a
-Hardcharger server under Host, wrong credentials under Password, a certificate that didn't
-verify or changed under Use TLS.
+Errors show under the field they concern: a server that can't be reached under Host, wrong
+credentials under Password, a certificate that didn't verify or changed under Use TLS. Only
+Hardcharger servers can be added: an address that answers but isn't one (a GizmoSQL or other
+Flight SQL server, or a web server) is refused under Host, saying so.
 
-![The Add a server dialog, filled from a pasted hardcharger:// URI](../../../assets/web-ui/add-server-light.png)
+![The Add a Hardcharger server dialog: a display name, host and port, a user name and password, Use TLS, a query timeout of 300 seconds and the resume timeout's default of 600](../../../assets/web-ui/add-hardcharger-server-light.png)
 
 The lock beside a server's name says how the connection to it is protected:
 
@@ -487,20 +492,44 @@ web_ui_remote_servers: false
 ```
 
 The connections you save (display name, host, port, TLS, path prefix, accepted fingerprint,
-user name and query timeout; never a password or token) are kept in the browser, per user, and
-a connection not saved for later lasts for the tab. Your sign-ins to them last for the tab, like
-your sign-in to this server.
+user name, query timeout and resume timeout; never a password or token) are kept in the browser,
+per user, and a connection not saved for later lasts for the tab. Your sign-ins to them last for
+the tab, like your sign-in to this server.
+
+### A server that is resuming
+
+<Aside type="note" title="v2.8.0+">
+Needs Hardcharger 2.8.0 or later on the server that serves the UI (or the client running
+`hardcharger ui`).
+</Aside>
+
+A stopped server that starts again on demand, such as a GizmoData Cloud cluster with
+auto-resume, answers `server_resuming` (503 with `Retry-After`) while it starts. The page waits
+as the server asks and sends the request again, instead of failing:
+
+- **Signing in**: the dialog shows where the wait stands, redrawn each second, such as
+  `The server is resuming (the server is resuming; retry after 5 s): retrying in 3 s, 0:02 so
+  far.`, and the **Connect** button reads **Waiting for the server…**. **Stop waiting** (in
+  place of **Cancel**) ends the wait, and nothing is added.
+- **Opening a session** on a server you're signed in to (the first run in a new tab on it, for
+  one): while it waits, the server's row in the tree shows `resuming… 0:21`, the time spent so
+  far, with the full sentence as its tooltip.
+
+Each saved connection's **Resume timeout** says how long to wait: 600 seconds by default. Past
+it, or at once with 0, the server's answer shows as an error (under Resume timeout, while
+signing in), saying the server is still starting.
 
 ## The UI on its own
 
 `hardcharger ui` serves the same web UI from the command-line client, with no engine behind
-it, and opens it in your browser. The page then opens on **Add a server** instead of a sign-in,
-hides what needs a local server (Sessions, SQL Monitor, Server Configuration, the API page),
-and works with the servers you add, through the relay the command runs. It is the way to use
+it, and opens it in your browser. The page then opens without a sign-in, and the schema browser
+says **No servers yet** with an **Add a Hardcharger server** button. It hides what needs a local
+server (Sessions, SQL Monitor, Server Configuration, the API page), and works with the servers
+you add, through the relay the command runs. It is the way to use
 the web UI against servers that don't serve it themselves (`web_ui` off, or a server older than
 the UI you want).
 
-```bash test server=none background
+```bash test server=none background wait=http://127.0.0.1:8080/ui/v1/app
 hardcharger ui --no-open --listen 127.0.0.1:8080
 ```
 
@@ -536,7 +565,7 @@ server's address:
 |---|---|---|
 | The access token | the tab's session storage | that tab, until it closes or you sign out |
 | Your sign-ins to other servers (their tokens) | the tab's session storage | that tab |
-| Saved connections (name, host, port, TLS, prefix, accepted fingerprint, user name, query timeout) | local storage | each user of the server |
+| Saved connections (name, host, port, TLS, prefix, accepted fingerprint, user name, query timeout, resume timeout) | local storage | each user of the server |
 | Saved queries | IndexedDB | each user of the server |
 | Open tabs, their text, catalog, schema and row limit | local storage | each user of the server |
 | The theme, the sizes of the side panel and the editor, whether the panel is hidden and which of its tabs shows, the phone-screen note dismissed | local storage | everyone using that browser |

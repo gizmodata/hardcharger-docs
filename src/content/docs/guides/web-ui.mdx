@@ -510,9 +510,10 @@ auto-resume, answers `server_resuming` (503 with `Retry-After`) while it starts.
 as the server asks and sends the request again, instead of failing:
 
 - **Signing in**: the dialog shows where the wait stands, redrawn each second, such as
-  `The server is resuming (the server is resuming; retry after 5 s): retrying in 3 s, 0:02 so
-  far.`, and the **Connect** button reads **Waiting for the server…**. **Stop waiting** (in
-  place of **Cancel**) ends the wait, and nothing is added.
+  `The server is resuming: retrying in 3 s, 0:02 so far.` (with the words of what holds the
+  server's address in parentheses, when it says more than that), and the **Connect** button
+  reads **Waiting for the server…**. **Stop waiting** (in place of **Cancel**) ends the wait,
+  and nothing is added.
 - **Opening a session** on a server you're signed in to (the first run in a new tab on it, for
   one): while it waits, the server's row in the tree shows `resuming… 0:21`, the time spent so
   far, with the full sentence as its tooltip.

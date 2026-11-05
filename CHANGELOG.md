@@ -9,9 +9,11 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ### Changed
 
-- The JavaScript examples run on `@gizmodata/hardcharger` 2.2.0 (`@gizmodata/chargewire` 2.2.0), which
-  waits for a resuming server (`resumeTimeout`, `onResuming`), types `idle_in_transaction`, and
-  never runs a request again on a replacement session when a transaction may have been open.
+- The JavaScript examples run on `@gizmodata/hardcharger` 2.3.0 (`@gizmodata/chargewire` 2.2.1), which
+  waits for a resuming server (`resumeTimeout`, `onResuming`), types `idle_in_transaction`, never
+  runs a request again on a replacement session when a transaction may have been open or SQL
+  changed the session's settings (`USE`, `SET`, `RESET`, `PRAGMA`), and connects a `hardcharger://`
+  URL with no port and a GizmoData Cloud host to port 443.
 - JDBC: **A stopped cluster that resumes**: `hardcharger-jdbc` 2.3.0 (`chargewire-jdbc` 2.2.0) waits
   for a GizmoData Cloud cluster with auto-resume while it starts (`server_resuming`), with
   `resumeTimeout` in the properties table and the 30 s minimum wait on `networkTimeout`'s row.

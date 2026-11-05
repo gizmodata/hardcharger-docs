@@ -517,7 +517,8 @@ as the server asks and sends the request again, instead of failing:
 
 Each saved connection's **Resume timeout** says how long to wait: 600 seconds by default. Past
 it, or at once with 0, the server's answer shows as an error (under Resume timeout, while
-signing in), saying the server is still starting.
+signing in), saying the server is still starting. The [CLI](/clients/cli/#a-server-that-is-resuming)
+and the [JDBC driver](/clients/jdbc/#a-stopped-cluster-that-resumes) wait the same way.
 
 ## The UI on its own
 

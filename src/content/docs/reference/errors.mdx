@@ -68,7 +68,7 @@ can't serve now. A statement's own failure is never `5xx`.
 | `internal_error` | 500 | The server failed in a way that isn't the request's doing (a bug) | Report it with the `request_id` |
 | `not_implemented` | 501 | The server doesn't implement this operation, such as browser sign-in without `oauth_client_id` | |
 | `server_draining` | 503 | The server is shutting down | Retry after `Retry-After`, elsewhere |
-| `server_resuming` | 503 | The server was stopped and is starting again on demand (a GizmoData Cloud cluster with auto-resume). Hardcharger never sends it: what holds the server's address while it starts does | Send the same request again after `Retry-After`. The [CLI](/clients/cli/#a-server-that-is-resuming), the [web UI](/guides/web-ui/#a-server-that-is-resuming) (v2.8.0+) and the Chargewire 2.2.0 drivers do, for up to a resume timeout (600 s by default) |
+| `server_resuming` | 503 | The server was stopped and is starting again on demand (a GizmoData Cloud cluster with auto-resume). Hardcharger never sends it: what holds the server's address while it starts does | Send the same request again after `Retry-After`. The [CLI](/clients/cli/#a-server-that-is-resuming) and [web UI](/guides/web-ui/#a-server-that-is-resuming) (v2.8.0+) and the drivers ([JDBC](/clients/jdbc/#a-stopped-cluster-that-resumes), JavaScript) do, for up to a resume timeout (600 s by default) |
 
 A statement that has failed, or was cancelled, by the time the server answers its submission
 gets one of these as an error response, with the statement's id in the `Chargewire-Statement-Id` header

@@ -306,8 +306,9 @@ answer
 42
 ```
 
-The Chargewire 2.2.0 drivers wait for a resuming server too, each with a resume timeout option of
-its own.
+The drivers wait for a resuming server too, each with a resume timeout of its own: JDBC's
+`resumeTimeout` ([A stopped cluster that resumes](/clients/jdbc/#a-stopped-cluster-that-resumes)),
+and the JavaScript driver's `resumeTimeout` and `onResuming`.
 
 ## Tags
 

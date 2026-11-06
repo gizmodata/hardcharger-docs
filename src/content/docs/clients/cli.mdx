@@ -377,3 +377,10 @@ Error: refusing to serve the UI in plain HTTP on 0.0.0.0, which other computers 
 `hardcharger` is GizmoSQL 1.x's `gizmosql_client`, on Chargewire, with the same options under
 Hardcharger's names. [Coming from GizmoSQL](/get-started/coming-from-gizmosql/#the-command-line-client)
 maps them and lists what behaves differently.
+
+## Query progress in 2.9.0
+
+An interactive terminal shows estimated query progress when DuckDB supplies it, followed by
+result-receiving status. Without an estimate it shows a running status. The transient display
+is cleared when the query ends. Quiet mode and redirected output contain no progress bars or
+terminal escape sequences, so scripts keep receiving clean results.

@@ -627,3 +627,29 @@ from the server, as that user. With [access control](/guides/access-control/) on
 
 The page has no permissions of its own to configure: grant and revoke as usual, and the next
 refresh of the schema browser shows the change.
+
+## Query workflow improvements in 2.9.0
+
+Use **Alt+Shift+F** or the editor's **Format SQL** context-menu action to format the selected
+SQL or the whole document. Undo restores the original. Formatting preserves literals and quoted
+names; unsupported SQL stays unchanged. Query details have **Formatted / Original** controls,
+and Copy follows the selected view. The context menu stays readable over the editor and results
+in both themes.
+
+The editor shows estimated DuckDB progress where available, then indicates when it is receiving
+results. An unknown estimate produces an indeterminate bar. Cancelling clears the progress view.
+Each result and script message links to that execution's **SQL details**, including a remote
+server's recorded profile. Opening details never reruns the query and still requires an
+unrestricted administrator and instrumentation on the target server.
+
+When the selected catalog and schema contain TPC-H or TPC-DS tables, the benchmark picker offers
+all 22 or 99 example queries. A selection opens a new tab with the same server, role, catalog,
+schema and row limit. It does not execute SQL or replace the current tab.
+
+### Change a tab's connection (2.9.0+)
+
+Use **Connection** in the editor toolbar to move the tab to another connected server. Its SQL,
+name, saved-query association and row limit stay with it. The connection badge and the catalog
+and schema selectors update immediately to the new connection's defaults. The old session ends,
+its results clear, and the next run starts a fresh session with that connection's roles. Finish or cancel a running query, and commit or roll back an open transaction,
+before switching. This also works in the standalone `hardcharger ui` client.

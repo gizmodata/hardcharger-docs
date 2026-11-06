@@ -120,3 +120,18 @@ transaction is rolled back). Both actions ask for confirmation identifying the u
 session. The monitor cannot cancel or end its own observer session, and ended sessions have
 disabled controls. A statement that finishes before cancellation produces a clear "no active
 work remained" response. The server enforces its existing session-control permissions.
+
+## Tags and visibility in 2.9.0
+
+SQL Monitor hides generated internal queries and monitoring queries by default. Explicit
+producer tags determine the categories; SQL text is not used to guess whether a query is
+internal. Rows show **Internal** and **Monitoring** badges and expandable query tags. Search
+matches tag names and values as well as SQL, users and execution IDs.
+
+**Include internal queries** and **Include monitor queries** work independently. Either toggle
+reveals a query tagged as both; clearing both hides both categories. User-authored SQL and its
+session tags remain visible by default.
+
+Query results and script messages open the exact recorded execution directly. In a detail view,
+choose **Formatted / Original** before copying SQL. Profiles and details follow the originating
+server, including remote editor tabs, without rerunning SQL.

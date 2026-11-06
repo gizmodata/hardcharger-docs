@@ -276,10 +276,13 @@ Paths are compared as DuckDB opens them, not as they are spelled:
   (on the web, escaped `.`, `/` and `\`), and `?` or `#` in object storage, where DuckDB reads
   query parameters as S3 settings (the endpoint and credentials among them). A query string on an
   `https://` URL is fine. A scheme Hardcharger doesn't know is refused.
-- A path computed by an expression or a parameter (`read_csv('s3://bucket/' || name)`,
-  `read_csv($1)`) is refused unless the user holds the privilege for every kind of storage
-  everywhere: DuckDB reads a file while it binds the statement, before the path could be checked.
-  Write the path as a literal (or a list of literals).
+- In 2.9.0+, a direct string bind parameter such as `read_csv($1)` is checked against the
+  user's storage grants before DuckDB binds the statement. Positional and named JSON string
+  parameters are supported. Prepared statements recheck the supplied path and current grants
+  on every execution, including after a grant is revoked.
+- A path computed by an expression (`read_csv('s3://bucket/' || name)`) or a parameter whose
+  path cannot be resolved before binding is refused unless the user holds the privilege for
+  every kind of storage everywhere. Use a literal path or a direct string bind parameter.
 
 #### DuckLake storage is DuckLake's
 

@@ -7,6 +7,17 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.9.0] - 2026-11-06
+
+### Added
+
+- SQL formatting, query-details links, progress, tags, monitor filters and benchmark-query picker documentation.
+- Per-tab connection selection in the standalone and embedded web clients.
+- Operational startup settings in the server configuration reference.
+- Direct bound file paths under scoped storage grants, with prepared-execution rechecks.
+- TLS certificate, key and client CA renewal without restarting the server.
+- JavaScript progress and execution snapshot example, and updated driver versions.
+
 ## [2.8.0] - 2026-11-05
 
 ### Added

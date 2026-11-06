@@ -87,6 +87,35 @@ Statement options (per call, or as defaults in `connect`): `signal`, `async`, `r
 `status`, `sqlstate` and `requestId`. A result stream that ends without Arrow's end-of-stream
 marker throws: a short table is never taken for a complete one.
 
+## Progress and execution snapshots (2.4.0+)
+
+Pass `onProgress` to observe the statement while a query runs. `await stream.statement()` exposes the
+latest execution document, including its statement ID, status and available progress fields.
+Progress is optional: older servers may provide no percentage, and queries still work.
+The 2.4.0 client is tested against released Hardcharger 2.8.0.
+
+```js test
+import { connect } from '@gizmodata/hardcharger';
+
+const conn = await connect({ url: 'hardcharger://localhost?tls=false', username: 'hardcharger', password: 'change-me' });
+const statuses = new Set();
+const stream = conn.stream('SELECT * FROM range(100000)', undefined, {
+  onProgress: (statement) => statuses.add(statement.state),
+});
+let rows = 0;
+for await (const batch of stream) rows += batch.numRows;
+console.log(rows, Boolean((await stream.statement())?.statement_id), statuses.size > 0);
+await stream.close();
+await conn.close();
+```
+
+```text output
+100000 true true
+```
+
+An observer's exception cannot fail the query. For updates and DDL, use `conn.query` with the
+same options; result-retention behavior is preserved.
+
 ## URLs
 
 | URL | Meaning |

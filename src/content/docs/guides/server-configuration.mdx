@@ -38,3 +38,24 @@ For persistent startup changes, edit your [YAML, environment or flags](/guides/c
 or save options in the desktop app’s Settings screen, then restart. The web tab does not
 export or import a complete YAML configuration. Monitor active work and cancel or end
 sessions with [SQL Monitor](/guides/sql-monitor/).
+
+## Additional startup settings in 2.9.0
+
+The configuration table and `hardcharger_settings()` expose these startup-only settings:
+
+- Result controls: `max_result_partitions`, `result_batch_rows`, `result_retention_seconds`.
+- Starting context: `default_catalog`, `default_schema`.
+- Listeners: `host`, `port`, `health_port`, `metrics_port`, `metrics_bind_address`.
+- Features and guards: `web_ui`, `web_ui_remote_servers`, `block_sensitive_paths`,
+  `block_unredacted_secrets`.
+
+Values describe the loaded configuration; changing them requires a server restart. Starting
+context, listener and guard settings are administrator-only. Result controls and Web UI flags
+are also visible to ordinary SQL users. Secret values are not added to the settings inventory.
+
+```sql test
+SELECT name, scope, settable
+FROM hardcharger_settings()
+WHERE name IN ('hardcharger.result_batch_rows', 'hardcharger.result_retention_seconds')
+ORDER BY name;
+```

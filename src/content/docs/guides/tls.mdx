@@ -436,6 +436,14 @@ the proxy, since Hardcharger never sees them. See [Behind a load balancer](/guid
 
 ## Rotating a certificate
 
-The server reads its certificate and key at startup. To rotate, replace the files and restart
-(with several replicas behind a load balancer, one at a time; [graceful shutdown](/guides/statement-control/#graceful-shutdown)
-lets running statements finish).
+In 2.9.0+, replace the configured certificate and key files to renew them without restarting
+Hardcharger. The TLS context checks for changed files at most once every five seconds as
+connections arrive. New connections use the replacement certificate after a successful reload;
+existing connections continue without interruption. The configured client CA file is watched too.
+
+Replace each file atomically. If the files are unreadable, invalid or temporarily mismatched,
+the last valid TLS context remains active, the failure is logged, and the reload is retried.
+Certificate and client-identity verification remain enabled according to the server's settings.
+
+Older server versions require a restart after replacing the files;
+[graceful shutdown](/guides/statement-control/#graceful-shutdown) lets running statements finish.

@@ -135,6 +135,24 @@
     "description": "Level of sign-in log lines."
   },
   {
+    "name": "hardcharger.block_sensitive_paths",
+    "scope": "STARTUP",
+    "input_type": "BOOLEAN",
+    "default_value": "true",
+    "cli_flag": "--block-sensitive-paths",
+    "env_var": "HARDCHARGER_BLOCK_SENSITIVE_PATHS",
+    "description": "Protect credential and system files from SQL file access."
+  },
+  {
+    "name": "hardcharger.block_unredacted_secrets",
+    "scope": "STARTUP",
+    "input_type": "BOOLEAN",
+    "default_value": "true",
+    "cli_flag": "--block-unredacted-secrets",
+    "env_var": "HARDCHARGER_BLOCK_UNREDACTED_SECRETS",
+    "description": "Refuse attempts to enable unredacted secret output."
+  },
+  {
     "name": "hardcharger.cluster_id",
     "scope": "STARTUP",
     "input_type": "VARCHAR",
@@ -142,6 +160,24 @@
     "cli_flag": "--cluster-id",
     "env_var": "HARDCHARGER_CLUSTER_ID",
     "description": "UUID shared by the replicas of one cluster (empty when unset)."
+  },
+  {
+    "name": "hardcharger.default_catalog",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "",
+    "cli_flag": "--default-catalog",
+    "env_var": "HARDCHARGER_DEFAULT_CATALOG",
+    "description": "Configured starting catalog for new sessions (empty: inherit the startup SQL/database context)."
+  },
+  {
+    "name": "hardcharger.default_schema",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "",
+    "cli_flag": "--default-schema",
+    "env_var": "HARDCHARGER_DEFAULT_SCHEMA",
+    "description": "Configured starting schema for new sessions (empty: use the selected catalog's default schema)."
   },
   {
     "name": "hardcharger.enable_catalog_logging",
@@ -187,6 +223,24 @@
     "cli_flag": "--health-check-staleness-seconds",
     "env_var": "HARDCHARGER_HEALTH_CHECK_STALENESS_SECONDS",
     "description": "Age at which the last health check no longer counts."
+  },
+  {
+    "name": "hardcharger.health_port",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "0",
+    "cli_flag": "--health-port",
+    "env_var": "HARDCHARGER_HEALTH_PORT",
+    "description": "Configured plaintext health listener port (0: none)."
+  },
+  {
+    "name": "hardcharger.host",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "0.0.0.0",
+    "cli_flag": "--host",
+    "env_var": "HARDCHARGER_HOST",
+    "description": "Configured client listener address."
   },
   {
     "name": "hardcharger.instance_id",
@@ -261,6 +315,15 @@
     "description": "Maximum wire bytes per Arrow ingest message and total expanded buffer bytes per batch."
   },
   {
+    "name": "hardcharger.max_result_partitions",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "32",
+    "cli_flag": "--max-result-partitions",
+    "env_var": "HARDCHARGER_MAX_RESULT_PARTITIONS",
+    "description": "Maximum result partitions offered to a client (1: never split)."
+  },
+  {
     "name": "hardcharger.max_sessions",
     "scope": "STARTUP",
     "input_type": "INTEGER",
@@ -279,6 +342,33 @@
     "description": "DuckDB memory_limit (empty: DuckDB's default)."
   },
   {
+    "name": "hardcharger.metrics_bind_address",
+    "scope": "STARTUP",
+    "input_type": "VARCHAR",
+    "default_value": "0.0.0.0",
+    "cli_flag": "--metrics-bind-address",
+    "env_var": "HARDCHARGER_METRICS_BIND_ADDRESS",
+    "description": "Configured metrics listener address; requires enable_metrics."
+  },
+  {
+    "name": "hardcharger.metrics_port",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "9091",
+    "cli_flag": "--metrics-port",
+    "env_var": "HARDCHARGER_METRICS_PORT",
+    "description": "Configured metrics HTTP port (0: no endpoint; requires enable_metrics)."
+  },
+  {
+    "name": "hardcharger.port",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "31337",
+    "cli_flag": "--port",
+    "env_var": "HARDCHARGER_PORT",
+    "description": "Configured client listener port."
+  },
+  {
     "name": "hardcharger.read_only",
     "scope": "STARTUP",
     "input_type": "BOOLEAN",
@@ -286,6 +376,24 @@
     "cli_flag": "--read-only",
     "env_var": "HARDCHARGER_READ_ONLY",
     "description": "Database opened read-only: every write is refused."
+  },
+  {
+    "name": "hardcharger.result_batch_rows",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "122880",
+    "cli_flag": "--result-batch-rows",
+    "env_var": "HARDCHARGER_RESULT_BATCH_ROWS",
+    "description": "Rows per Arrow result batch."
+  },
+  {
+    "name": "hardcharger.result_retention_seconds",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "3600",
+    "cli_flag": "--result-retention-seconds",
+    "env_var": "HARDCHARGER_RESULT_RETENTION_SECONDS",
+    "description": "Seconds a retained result remains readable after statement completion."
   },
   {
     "name": "hardcharger.session_idle_timeout",
@@ -322,5 +430,23 @@
     "cli_flag": null,
     "env_var": null,
     "description": "Server version (as HARDCHARGER_VERSION())."
+  },
+  {
+    "name": "hardcharger.web_ui",
+    "scope": "STARTUP",
+    "input_type": "BOOLEAN",
+    "default_value": "false",
+    "cli_flag": "--web-ui",
+    "env_var": "HARDCHARGER_WEB_UI",
+    "description": "Serve the embedded Web UI on the client listener."
+  },
+  {
+    "name": "hardcharger.web_ui_remote_servers",
+    "scope": "STARTUP",
+    "input_type": "BOOLEAN",
+    "default_value": "true",
+    "cli_flag": "--web-ui-remote-servers",
+    "env_var": "HARDCHARGER_WEB_UI_REMOTE_SERVERS",
+    "description": "Allow Web UI connections to other servers through this server's relay."
   }
 ]

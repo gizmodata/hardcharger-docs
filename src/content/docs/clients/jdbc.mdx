@@ -130,6 +130,23 @@ the driver (2.3.0 and later) waits and sends the same request again, the sign-in
 
 A server with nothing in front of it never answers `server_resuming`, so nothing changes for one.
 
+While the cluster is stopped, its discovery document says `"state": "stopped"`, and
+`getConnection` (2.4.4+) connects without signing in or opening a session
+([lazy connect](/concepts/chargewire/#a-stopped-server-lazy-connect)). The first call that does
+work (a statement, a prepare, a `DatabaseMetaData` call that asks the server) signs in, which
+starts the cluster, and waits while it resumes. A wrong password fails at that call. Until then:
+
+- `isValid()` returns `true` and `close()` sends nothing.
+- `setAutoCommit`, `setCatalog` and `setSchema` are kept and sent with the session.
+- `commit()` and `rollback()` have nothing to end.
+
+Closes and cancels never sign in (2.4.2+), and neither does `isValid()` (2.4.3+), which HikariCP's
+`keepaliveTime` and DBeaver's keep-alive call. So a pool's connections, its refills (HikariCP
+replaces each connection at `maxLifetime`) and its checks don't start a stopped cluster. A test
+query does: leave HikariCP's `connectionTestQuery` unset (it then uses `isValid()`), and turn off
+keep-alive queries for an auto-resume cluster. After someone stops the cluster, `isValid()` returns
+`false` for a connection opened before the Stop (its token was revoked), and the pool replaces it.
+
 ## How statements run
 
 - Results stream batch by batch; nothing loads a whole result into memory.

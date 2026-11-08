@@ -340,6 +340,44 @@ the ADBC driver's `adbc.hardcharger.resume_timeout` (Python `connect(resume_time
 `hardcharger-adbc` 2.3.0+), the JavaScript driver's `resumeTimeout` and `onResuming`, and the
 ODBC driver's `ResumeTimeout` (1.3.0+).
 
+## A stopped server
+
+When the server's discovery document says `"state": "stopped"` (GizmoData Cloud's stand-in for a
+cluster stopped with auto-resume), the client (v2.10.0+) connects without signing in or opening a
+session, so starting the shell doesn't start the cluster. The banner says so:
+
+```text
+Hardcharger Client 2.10.0
+Connected to mycluster.us-east-1.aws.gizmodata.com:443
+The server is stopped; it starts when you run the first statement.
+Type '.help' for help, '.quit' to exit.
+```
+
+The prompt, tab completion and `.show` send nothing more; `.show` reports what discovery said
+(with the server's version, when discovery gives one):
+
+```text
+--- Server ---
+       state: stopped (it starts when you run the first statement)
+```
+
+The first statement, or a dot command that reads the server such as `.tables`, signs in (which
+starts the cluster), opens the session, runs the `--session-tag` and `--query-tag` SETs, waits
+while the server [resumes](#a-server-that-is-resuming), and runs. A wrong password is that
+statement's error. `--command` works the same way. Exiting the shell, or pressing Ctrl-C, never
+signs in, whatever the token's age. A server that is serving is signed in to at connect, as
+before. The [drivers](/concepts/chargewire/#a-stopped-server-lazy-connect) connect the same way.
+
+The client's User-Agent names its version (v2.10.0+), so session lists can tell which client
+a session came from:
+
+```console test
+$ export HARDCHARGER_PASSWORD='change-me'
+$ hardcharger --host localhost --tls=false --username hardcharger --csv --command "SELECT client_info FROM hardcharger_active_connections() WHERE session_id = HARDCHARGER_CURRENT_SESSION()"
+client_info
+hardcharger-client/…
+```
+
 ## Tags
 
 `--session-tag JSON` and `--query-tag JSON` (or `HARDCHARGER_SESSION_TAG`,

@@ -551,6 +551,12 @@ it, or at once with 0, the server's answer shows as an error (under Resume timeo
 signing in), saying the server is still starting. The [CLI](/clients/cli/#a-server-that-is-resuming)
 and the [JDBC driver](/clients/jdbc/#a-stopped-cluster-that-resumes) wait the same way.
 
+From 2.10.0 the page's JavaScript client (chargewire-js 2.3.4) connects
+[lazily](/concepts/chargewire/#a-stopped-server-lazy-connect) to a stopped server: the session
+opens at the first request that does work. Closing, cancelling and a transaction's clean-up never
+sign in, and leaving the page sends nothing for a connection that never opened a session, so
+none of them starts a stopped cluster or undoes someone's Stop.
+
 ## The UI on its own
 
 `hardcharger ui` serves the same web UI from the command-line client, with no engine behind

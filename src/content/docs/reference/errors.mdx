@@ -119,7 +119,7 @@ document's `reason` says why it stopped working:
 | `reason` | When |
 |---|---|
 | `token_expired` | The token's lifetime ended |
-| `token_revoked` | The token was revoked: a [scoped token](/guides/row-policies-and-masking/#scoped-tokens) dropped with `DROP SCOPED TOKEN` |
+| `token_revoked` | The token was revoked: a [scoped token](/guides/row-policies-and-masking/#scoped-tokens) dropped with `DROP SCOPED TOKEN`. GizmoData Cloud's stand-in for a stopped cluster also answers it for tokens issued before someone stopped the cluster ([after a Stop](/concepts/chargewire/#after-someone-stops-the-cluster)) |
 | `credentials_changed` | The user's password changed (`ALTER USER … WITH PASSWORD`) after the token was issued |
 | `principal_dropped` | The user was dropped or disabled |
 

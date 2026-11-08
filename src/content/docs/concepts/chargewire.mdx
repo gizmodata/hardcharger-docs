@@ -203,6 +203,75 @@ expired; after `credentials_changed`, `principal_dropped` or `token_revoked` the
 reason, since signing in with the old credentials would fail or undo a revocation. A
 `GET` of the ended session answers the same way, so a liveness probe sees it as gone.
 
+## A stopped server: lazy connect
+
+A GizmoData Cloud cluster with auto-resume stops while nobody uses it, and a stand-in answers at
+its address until the next sign-in starts it again. Since a sign-in starts it, a client that only
+connects (a pool filling or replacing its idle connections, an app that connects at startup)
+would start it for nobody. So the stand-in adds `"state": "stopped"` to the discovery document,
+and a client that sees it connects lazily
+([§11.2](/reference/chargewire-protocol/#112-resuming), Chargewire 2.4):
+
+- Connecting reads discovery and nothing else: no sign-in, no session.
+- The first request that does work (a statement, a prepare, metadata, an ingest) signs in, opens
+  the session and then [waits while the server starts](/clients/cli/#a-server-that-is-resuming).
+  A wrong password or an unreachable server is that request's error.
+- Session options set before it (catalog, schema, autocommit, tags) are kept and go with the new
+  session. A commit or a rollback before it has nothing to end and sends nothing.
+- Checking the connection (a pool's validation, JDBC's `isValid()`, ODBC's
+  `SQL_ATTR_CONNECTION_DEAD`), closing it and reading its client-side properties send nothing.
+- Each connection decides for itself, from the discovery document it reads as it connects.
+
+A server that serves sends no `state` (Hardcharger never sends it about itself), so the clients
+sign in at connect as before:
+
+```console test
+$ curl -s localhost:31337/chargewire | jq 'has("state")'
+false
+```
+
+Closes and cancels never sign in either. A client renews its token shortly before it expires,
+and a renewal is a sign-in, so closing a connection late in its token's life used to start a
+stopped cluster for nobody, or undo a person's Stop.
+
+### Keep-alive queries start the server
+
+A test query is work. `SELECT 1` on a timer, a pool's test query (HikariCP's
+`connectionTestQuery`) and SQLAlchemy's `pool_pre_ping` (a statement at every checkout) each sign
+in, and so start a stopped auto-resume cluster. Turn them off for such a cluster. A JDBC pool
+without a test query checks connections with `isValid()`, which sends nothing to a stopped
+cluster.
+
+### After someone stops the cluster
+
+GizmoData Cloud revokes the tokens issued before a person's Stop: they get `401 invalid_token`,
+reason [`token_revoked`](/reference/errors/#invalid_token-reasons).
+
+- A connection opened before the Stop doesn't sign in again on its own: its next request fails
+  with `token_revoked`. Open a new connection. ODBC reports such a connection dead and JDBC's
+  `isValid()` returns `false`, so a pool replaces it. The MCP server drops it at the next tool call
+  and opens a new one, once (not when a transaction may have been open, or settings set by SQL
+  would be lost).
+- A connection opened after the Stop signs in afresh at its first request, which starts the
+  cluster, even when its database or a cache holds a token from before the Stop: a password, a
+  browser sign-in (Python and Go), a JavaScript `tokenProvider` or single sign-on.
+- A token you pass in yourself (ADBC's `adbc.chargewire.auth.access_token`, JavaScript's `token`,
+  JDBC's `token`) is sent as it is, and fails with `token_revoked`: get a new one.
+
+### Which clients do this
+
+| Client | Connects lazily | Also |
+|---|---|---|
+| [`hardcharger` CLI](/clients/cli/#a-stopped-server) | 2.10.0 | Exit and Ctrl-C never sign in (2.10.0) |
+| [Python](/clients/python/#a-stopped-cluster), [Go](/clients/go/#a-stopped-cluster) (`adbc-driver-hardcharger`, hardcharger-adbc) | 2.4.2 | Closes never sign in (2.4.1); a Go pool on one database reads discovery at every open (2.4.3); fresh sign-in after a Stop (2.4.4, browser sign-in 2.4.5) |
+| [JDBC](/clients/jdbc/#a-stopped-cluster-that-resumes) (hardcharger-jdbc) | 2.4.4 | Closes never sign in (2.4.2); `isValid()` never signs in (2.4.3) |
+| [JavaScript](/clients/javascript/#a-stopped-cluster) (`@gizmodata/hardcharger`) | 2.4.2 | Closes never sign in (2.4.1); options and transaction calls wait for the first call (2.4.3); fresh sign-in after a Stop (2.4.4) |
+| ODBC (Hardcharger ODBC Driver) | 1.5.0 | Disconnects never sign in (1.4.3); cancels and `SQL_ATTR_CONNECTION_DEAD` never sign in, and a revoked connection is dead (1.5.0) |
+| MCP server (`hardcharger-mcp`) | 2.4.1 | Listing and `server_info` never connect (2.4.1); a call after a Stop reconnects once (2.4.2) |
+| [Web UI](/guides/web-ui/#a-server-that-is-resuming) | 2.10.0 | Closes, cancels and a transaction's clean-up never sign in; leaving the page sends nothing for a connection that never opened a session |
+
+`pip install "hardcharger[adbc]"` (2.10.0+) installs `adbc-driver-hardcharger` 2.4.2 or later.
+
 ## The API description
 
 The server describes its endpoints in [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.1.html)

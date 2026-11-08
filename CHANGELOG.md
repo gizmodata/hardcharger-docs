@@ -7,6 +7,31 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-11-08
+
+### Added
+
+- Chargewire in one page: **A stopped server: lazy connect**: what a client does when discovery
+  says `"state": "stopped"` (Chargewire 2.4, §11.2), why keep-alive test queries (`SELECT 1`,
+  HikariCP's `connectionTestQuery`, SQLAlchemy's `pool_pre_ping`) start a stopped auto-resume
+  cluster, what happens to connections opened before and after someone's Stop (`token_revoked`),
+  and which client version does what (CLI, Python, Go, JDBC, JavaScript, ODBC, MCP, web UI), with
+  a tested check that a serving server sends no `state`.
+- CLI: **A stopped server** (v2.10.0): the banner and `.show` for a stopped server, the sign-in at
+  the first statement, exit and Ctrl-C that never sign in, and the `hardcharger-client/<version>`
+  User-Agent, with a tested example.
+- Python, Go and JavaScript: **A stopped cluster**; JDBC: lazy connect, `isValid()` and pool
+  settings in **A stopped cluster that resumes**; web UI: what its 2.10.0 client sends to a
+  stopped server.
+
+### Changed
+
+- Reference regenerated from the Hardcharger 2.10.0 release (macOS arm64 tarball), its CHANGELOG
+  at `v2.10.0` and the Chargewire specification 2.4.1 (the discovery `state` and lazy connect).
+- Versions: the client releases that go with 2.10.0; the JavaScript examples run on
+  `@gizmodata/hardcharger` 2.4.4 (`@gizmodata/chargewire` 2.3.5).
+- Errors: `token_revoked` also comes from GizmoData Cloud for tokens issued before a Stop.
+
 ## [2.9.0] - 2026-11-06
 
 ### Added

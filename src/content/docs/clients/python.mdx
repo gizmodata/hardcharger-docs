@@ -216,6 +216,24 @@ the same.
 `connect(username="token", password=<ID token>)` signs in with an identity provider's token, and
 `connect(auth_type="external")` runs the browser sign-in. See [SSO](/guides/sso/).
 
+## A stopped cluster
+
+While a GizmoData Cloud cluster with auto-resume is stopped, its discovery document says
+`"state": "stopped"`, and `connect()` (2.4.2+) signs in and opens nothing
+([lazy connect](/concepts/chargewire/#a-stopped-server-lazy-connect)). The first request that does
+work (a statement, a prepare, metadata, an ingest) signs in, which starts the cluster, opens the
+session with its tags, settings, catalog and schema, and waits while it resumes (up to
+`resume_timeout`, 600 s by default). A wrong password fails that request instead of `connect()`.
+Closing a connection never signs in (2.4.1+), so a connection opened and closed for nothing
+doesn't start the cluster.
+
+A connection opened after someone stopped the cluster signs in afresh at its first request
+(2.4.4+; with `auth_type="external"`, 2.4.5+), so connecting again starts it. A connection opened
+before the Stop gets `token_revoked` and doesn't sign in again: open a new one.
+
+A pool's test query starts the cluster: leave SQLAlchemy's `pool_pre_ping` off, and send no
+`SELECT 1` on a timer, for an auto-resume cluster.
+
 ## A server from Python
 
 `pip install hardcharger` is the **server** for Python: it downloads `hardcharger-server` for your
@@ -236,7 +254,7 @@ with hardcharger.Server() as server, server.connect() as conn, conn.cursor() as 
 
 `Server()` uses an in-memory database and a generated password (`server.password`); pass
 `database=`, `password=`, `tls_cert=`/`tls_key=`, `extra_args=[...]` or `env={...}` for more.
-`pip install "hardcharger[adbc]"` installs it with this driver.
+`pip install "hardcharger[adbc]"` installs it with this driver (2.4.2 or later, from 2.10.0).
 
 ## Other ADBC languages
 

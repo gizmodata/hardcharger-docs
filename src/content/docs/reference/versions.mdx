@@ -39,18 +39,22 @@ runs against a server of that version in CI.
 
 ## Drivers
 
-The client releases that go with Hardcharger 2.9.0 (each one's GitHub release has its notes).
+The client releases that go with Hardcharger 2.10.0 (each one's GitHub release has its notes).
 The Hardcharger drivers are the Chargewire ones under Hardcharger's names, with `hardcharger://`
 URIs (port 31337; 443 for a GizmoData Cloud host).
 
 | Client | Chargewire | Hardcharger |
 |---|---|---|
-| [JavaScript](/clients/javascript/) | `@gizmodata/chargewire` 2.3.0 | `@gizmodata/hardcharger` 2.4.0 |
-| ADBC: [Python](/clients/python/), [Go](/clients/go/), [the driver manager](/clients/adbc-driver-manager/) | `chargewire-adbc` 2.2.2 | `hardcharger-adbc` 2.4.0 |
-| [JDBC](/clients/jdbc/) | `chargewire-jdbc` 2.2.3 | `hardcharger-jdbc` 2.4.1 |
-| ODBC | `chargewire-odbc` 2.3.2 | Hardcharger ODBC Driver 1.4.2 |
-| MCP server | | `hardcharger-mcp` 2.4.0 |
+| [JavaScript](/clients/javascript/) | `@gizmodata/chargewire` 2.3.5 | `@gizmodata/hardcharger` 2.4.4 |
+| ADBC: [Python](/clients/python/), [Go](/clients/go/), [the driver manager](/clients/adbc-driver-manager/) | `chargewire-adbc` 2.2.8 | `hardcharger-adbc` 2.4.5 |
+| [JDBC](/clients/jdbc/) | `chargewire-jdbc` 2.2.6 | `hardcharger-jdbc` 2.4.4 |
+| ODBC | `chargewire-odbc` 2.4.0 | Hardcharger ODBC Driver 1.5.0 |
+| MCP server | | `hardcharger-mcp` 2.4.3 |
 | Replication into Hardcharger | | `adbc-replicate-hardcharger` 2.3.1 |
+
+The drivers and the MCP server above connect [lazily](/concepts/chargewire/#a-stopped-server-lazy-connect) to a stopped
+GizmoData Cloud cluster (Chargewire 2.4), and their closes, cancels and connection checks never
+sign in.
 
 ## What changed in each release
 

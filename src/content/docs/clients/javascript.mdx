@@ -116,6 +116,24 @@ await conn.close();
 An observer's exception cannot fail the query. For updates and DDL, use `conn.query` with the
 same options; result-retention behavior is preserved.
 
+## A stopped cluster
+
+While a GizmoData Cloud cluster with auto-resume is stopped, its discovery document says
+`"state": "stopped"`, and `connect` (2.4.2+) returns without signing in or opening a session
+([lazy connect](/concepts/chargewire/#a-stopped-server-lazy-connect)). The first call that does
+work (a statement, `prepare`, metadata, an ingest, `getSession`) signs in, which starts the
+cluster, and waits while it resumes. Until then:
+
+- Reading the connection's properties and `close()` send nothing; `sessionId` is `""`.
+- `setOptions` and `setAutocommit` are kept and sent right after the session opens (2.4.3+); an
+  option the server refuses is the first call's error. `commit()` and `rollback()` send nothing.
+- A wrong password or an unreachable server is the first call's error.
+
+Closes and cancels never sign in (2.4.1+), nor do `transaction()`'s clean-up and `onProgress`
+polls (2.4.2+). A new connection handed a token from before someone stopped the cluster (by a
+`tokenProvider`'s or a single sign-on's cache) signs in again once with its own method (2.4.4+); a
+`token` given to `connect` fails with `token_revoked` instead, saying to sign in again.
+
 ## URLs
 
 | URL | Meaning |

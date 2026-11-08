@@ -118,6 +118,19 @@ and `hardcharger.ToChargewireURI` shows the address a URI stands for.
 Bind parameters with `stmt.Bind` or `stmt.BindStream`; bulk-load with the standard
 `adbc.ingest.target_table` and `adbc.ingest.mode` options and `BindStream`.
 
+## A stopped cluster
+
+While a GizmoData Cloud cluster with auto-resume is stopped (its discovery document says
+`"state": "stopped"`), opening a connection (2.4.2+) signs in and opens nothing
+([lazy connect](/concepts/chargewire/#a-stopped-server-lazy-connect)); its first request that does
+work signs in, which starts the cluster. A program that keeps one database and pools its
+connections reads discovery again at every open (2.4.3+, one small `GET` that never starts a
+cluster), so the pool's refills don't start it either. Closes and cancels never sign in (2.4.1+).
+A connection opened after someone stopped the cluster signs in afresh with the database's
+credentials (2.4.4+), or runs the browser sign-in again (`adbc.hardcharger.auth_type` `external`,
+2.4.5+). A token you pass in (`adbc.chargewire.auth.access_token`) is sent as it is, and fails
+with `token_revoked` after a Stop: supply a new one.
+
 ## Errors
 
 Errors are `adbc.Error` values with the SQLSTATE and the server's message.

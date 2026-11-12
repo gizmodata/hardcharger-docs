@@ -26,6 +26,10 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
   deferred options and transaction behavior, and the Python extra's ADBC 2.4.9 minimum.
 - Update the driver compatibility table to Chargewire ADBC 2.2.10 and Hardcharger ADBC 2.4.9.
 
+### Fixed
+
+- Update the CSS selector parser to 6.1.6, resolving its parsing-complexity advisory.
+
 ## [2.10.0] - 2026-11-08
 
 ### Added

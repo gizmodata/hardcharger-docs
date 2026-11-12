@@ -262,15 +262,16 @@ reason [`token_revoked`](/reference/errors/#invalid_token-reasons).
 
 | Client | Connects lazily | Also |
 |---|---|---|
-| [`hardcharger` CLI](/clients/cli/#a-stopped-server) | 2.10.0 | Exit and Ctrl-C never sign in (2.10.0) |
+| [`hardcharger` CLI](/clients/cli/#a-stopped-server) | 2.10.0 | Exit and Ctrl-C never sign in (2.10.0); deferred connection options and empty transaction calls do not wake the cluster (2.11.0, Chargewire C++ 2.4.1) |
 | [Python](/clients/python/#a-stopped-cluster), [Go](/clients/go/#a-stopped-cluster) (`adbc-driver-hardcharger`, hardcharger-adbc) | 2.4.2 | Closes never sign in (2.4.1); a Go pool on one database reads discovery at every open (2.4.3); fresh sign-in after a Stop (2.4.4, browser sign-in 2.4.5) |
 | [JDBC](/clients/jdbc/#a-stopped-cluster-that-resumes) (hardcharger-jdbc) | 2.4.4 | Closes never sign in (2.4.2); `isValid()` never signs in (2.4.3) |
 | [JavaScript](/clients/javascript/#a-stopped-cluster) (`@gizmodata/hardcharger`) | 2.4.2 | Closes never sign in (2.4.1); options and transaction calls wait for the first call (2.4.3); fresh sign-in after a Stop (2.4.4) |
 | ODBC (Hardcharger ODBC Driver) | 1.5.0 | Disconnects never sign in (1.4.3); cancels and `SQL_ATTR_CONNECTION_DEAD` never sign in, and a revoked connection is dead (1.5.0) |
 | MCP server (`hardcharger-mcp`) | 2.4.1 | Listing and `server_info` never connect (2.4.1); a call after a Stop reconnects once (2.4.2) |
-| [Web UI](/guides/web-ui/#a-server-that-is-resuming) | 2.10.0 | Closes, cancels and a transaction's clean-up never sign in; leaving the page sends nothing for a connection that never opened a session |
+| [Web UI](/guides/web-ui/#a-server-that-is-resuming) | 2.10.0 | Closes, cancels and a transaction's clean-up never sign in; leaving the page sends nothing for a connection that never opened a session; a new connection can replace a cached token revoked by Stop (2.11.0) |
 
-`pip install "hardcharger[adbc]"` (2.10.0+) installs `adbc-driver-hardcharger` 2.4.2 or later.
+`pip install "hardcharger[adbc]"` in 2.11.0 installs `adbc-driver-hardcharger` 2.4.9 or later
+(2.10.0 required 2.4.2 or later).
 
 ## The API description
 

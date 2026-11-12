@@ -20,7 +20,7 @@ editor's transaction. That session closes when the page is left.
 
 ## Reading SQL Monitor
 
-![SQL Monitor with recent outcomes, queue status, available slots, and filters](../../../assets/web-ui/monitor-light.png)
+![SQL Monitor sorted by longest elapsed time, with Reset sorting, queue status and filters](../../../assets/web-ui/monitor-light.png)
 
 - **Queued**: waiting for a concurrency slot. **Executing**: admitted, before its first
   result batch. **Fetching**: the server has fetched a batch and still holds the result.
@@ -58,6 +58,20 @@ result's release. Streaming network delivery may continue after the server has f
 the rows. The monitor cannot measure how long a client spends using downloaded data.
 SQL text uses the same redaction and abbreviation rules as the query log.
 
+### Sorting the report (v2.11.0+)
+
+Click a column header to sort by status, user, SQL, start time, queue wait, elapsed time or
+rows fetched. Click it again to reverse the direction. **Elapsed** starts with the longest
+queries first; **Queue wait** and **Rows fetched** also start with the largest values.
+The arrow in the header shows the current direction.
+
+The default is **Started / Queued**, newest first: execution start time when available,
+or queue time while the statement is waiting. **Reset sorting** restores that order without
+changing the filters. Your chosen order stays in effect across the two-second refreshes.
+Active statements participate in that order rather than staying above completed statements.
+Sorting covers the rows already loaded; use **Load 1,000 more completions** to include more
+history. Missing values sort last.
+
 ### Captured query profiles
 
 Click SQL to open a separate **Query details** window by default. Each window follows
@@ -83,6 +97,9 @@ at the latest refresh; completed steps stay fixed. A statement stopped in the qu
 shows execution as **Not started**. Missing timestamps stay unknown rather than becoming
 zero durations. Timestamps use your local time; an end date is repeated only when it
 differs from the start's calendar date. Hover the end time to see its full date.
+From v2.11.0, elapsed values use milliseconds with two decimal places and aligned decimal
+points. Positive durations below 0.01 ms keep the **&lt;0.01 ms** indicator; **so far** appears
+on its own line for a step still in progress.
 
 Each inspector opens its own observer sessions and enforces the same unrestricted
 administrator permission. It uses the existing short-lived sign-in in session storage;
@@ -105,6 +122,32 @@ profiles retroactively. The current global capture setting is shown as context, 
 execution's session may have overridden it. Operator times can overlap with parallel work
 and are not percentages of total elapsed time. All raw JSON can be inspected or downloaded
 verbatim. Observer sessions disable their own profile capture to avoid profiling the monitor.
+
+#### Finding expensive operators (v2.11.0+)
+
+![A captured execution plan with duration bars, a highlighted hash aggregate, aligned times and formatted row estimates](../../../assets/web-ui/profile-bars-light.png)
+
+The **Time** column draws a gradient bar behind each duration, scaled to the slowest
+operator in that profile. A half-width bar means half that operator's time; it does not
+mean half the query's elapsed time. Parallel operators can overlap.
+
+| Color | Time relative to the slowest operator |
+| --- | --- |
+| Red — Long | 50% or more |
+| Amber — Medium | At least 10%, below 50% |
+| Blue — Short | Below 10% |
+
+Up to three expensive operators receive a **Slow operator** label. Choose
+**Operator order → Slowest first** to bring them to the top, or **Plan order** to see the
+tree. In plan order, the arrow beside an operator collapses or expands its children.
+**Collapse small subtrees** hides children of subtrees whose combined operator time is at
+most 1% of the profile's summed operator time; **Expand all** restores them. Automatic
+collapsing is unavailable when the captured operator list is truncated.
+
+Actual and estimated row counts use thousands separators. Estimates that differ from
+actual rows by 10× or more are highlighted to help locate planning errors. Operator
+times use milliseconds with three decimal places and aligned decimal points, making
+short and long steps easier to compare.
 
 **Status display** chooses **Icons** (the default) or **Descriptions**, remembered in this
 browser. Every icon has a tooltip and accessible name. Executing statements have a spinning

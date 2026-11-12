@@ -354,6 +354,77 @@ Error: Permission Error: Hardcharger blocked this statement: user vic may create
 Once created, a view still reads with its owner's rights, so one granted to others keeps working,
 and revoking the owner's access closes it.
 
+### Renaming, dropping and recreating objects (v2.11.0+)
+
+A table or view rename carries its object grants, ownership and policy bindings to the new
+name. Dropping an object removes its access-control records. `DROP SCHEMA ... CASCADE`
+also removes the records for nested schemas and their objects. These rules apply to
+administrator and prepared statements too.
+In an explicit transaction, drop cleanup waits for commit; rollback preserves the existing
+records. Cleanup deletes the rows from the configured PostgreSQL or DuckDB store.
+
+Here, `vic` keeps access after the rename through the `viewer` role created above:
+
+```sql test profile=rbac
+CREATE SCHEMA lifecycle;
+CREATE ROLE lifecycle_owner;
+CREATE TABLE lifecycle.report AS SELECT 42 AS answer;
+ALTER TABLE lifecycle.report OWNER TO ROLE lifecycle_owner;
+GRANT SELECT ON lifecycle.report TO viewer;
+ALTER TABLE lifecycle.report RENAME TO renamed_report;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT * FROM lifecycle.renamed_report"
+answer
+42
+```
+
+A new object at an old name does not inherit the old object's grants. Broader grants on its
+schema or catalog still apply. Creating a genuinely new object first clears stale records
+for its name; if the access-control store cannot be reached for that cleanup, creation
+fails. `CREATE ... IF NOT EXISTS` against an existing object retains its owner and grants.
+If a cleanup write fails after a drop, the server logs the failure; reusing that name still
+requires successful cleanup first.
+
+```sql test profile=rbac
+DROP TABLE lifecycle.renamed_report;
+CREATE TABLE lifecycle.renamed_report AS SELECT 99 AS answer;
+ALTER TABLE lifecycle.renamed_report OWNER TO ROLE lifecycle_owner;
+```
+
+```python test profile=rbac
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="vic", password="vic-secret") as conn:
+    with conn.cursor() as cur:
+        try:
+            cur.execute(operation="SELECT * FROM lifecycle.renamed_report")
+        except hardcharger.ProgrammingError as error:
+            assert "permission_denied" in str(error)
+            print("The recreated table needs a new grant.")
+        else:
+            raise AssertionError("An old grant survived the drop.")
+```
+
+```text output
+The recreated table needs a new grant.
+```
+
+Dropping the schema also removes the table's ownership, so the role can be dropped:
+
+```sql test profile=rbac
+DROP SCHEMA lifecycle CASCADE;
+DROP ROLE lifecycle_owner;
+```
+
+For ownership records left by older versions, `DROP USER` and `DROP ROLE` check whether each
+owned object still exists. A confirmed missing object in an attached catalog no longer
+blocks the operation. A detached catalog or a failed lookup is treated as unknown: attach
+the catalog and retry, or transfer ownership of existing objects before dropping the
+principal. You do not need to create a replacement table to remove a stale ownership record.
+
 ### Macros
 
 `CREATE MACRO` on a schema (or its catalog, or owning the schema) lets a role create scalar and
@@ -636,6 +707,32 @@ profiling functions, `duckdb_logs()`, `pragma_storage_info()`, ...). `hardcharge
 with the declared path arguments where `SELECT` lists columns.
 
 ## What users can see
+
+From v2.11.0, ordinary RBAC users and catalog-restricted sessions do not receive DuckDB's
+catalog spelling suggestions or candidate-name lists in errors. A misspelled name cannot
+use those hints to reveal hidden table, schema or column names. Unrestricted administrators
+still receive the engine's diagnostic suggestions.
+
+```python test profile=rbac
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="vic", password="vic-secret") as conn:
+    with conn.cursor() as cur:
+        try:
+            cur.execute(operation="SELECT * FROM analytics.ordres")
+        except hardcharger.ProgrammingError as error:
+            message = str(error)
+            assert "does not exist" in message
+            assert "Did you mean" not in message
+            assert "Candidate tables:" not in message
+            print("Missing-object error without catalog suggestions.")
+        else:
+            raise AssertionError("The misspelled table unexpectedly exists.")
+```
+
+```text output
+Missing-object error without catalog suggestions.
+```
 
 Metadata follows privileges, table by table. A user sees a table or view only when they hold a
 privilege on it (`SELECT` on it or on any of its columns, `INSERT`, `UPDATE` or `DELETE`; owning it

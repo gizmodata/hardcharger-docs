@@ -7,6 +7,25 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.11.0] - 2026-11-12
+
+### Added
+
+- SQL Monitor sorting, start-time default and Reset sorting; query-profile duration bars,
+  timing colors, slowest-first order, subtree controls, estimate-error highlights and aligned
+  decimal points, with new screenshots from v2.11.0 using synthetic data.
+- Access-control object lifetimes: grants and ownership follow renames, schema cascade drops
+  remove descendant records, and recreated objects do not inherit old grants. Runnable
+  examples cover renames, name reuse, role cleanup and catalog errors without spelling hints.
+- Homebrew installation and upgrades for the server, CLI and macOS desktop app.
+
+### Changed
+
+- Regenerate the reference and release notes for Hardcharger 2.11.0.
+- Document the web UI's recovery from a cached token revoked by Stop, Chargewire C++ 2.4.1's
+  deferred options and transaction behavior, and the Python extra's ADBC 2.4.9 minimum.
+- Update the driver compatibility table to Chargewire ADBC 2.2.10 and Hardcharger ADBC 2.4.9.
+
 ## [2.10.0] - 2026-11-08
 
 ### Added

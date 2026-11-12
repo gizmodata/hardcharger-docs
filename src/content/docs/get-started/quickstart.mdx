@@ -1,6 +1,6 @@
 ---
 title: "Quickstart"
-description: "Install Hardcharger with the one-line installer, Docker, a release tarball or pip, start the server, and run a first query."
+description: "Install Hardcharger with the one-line installer, Homebrew, Docker, a release tarball or pip, start the server, and run a first query."
 ---
 
 import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
@@ -69,6 +69,28 @@ Start the server:
 ```bash
 HARDCHARGER_ADMIN_PASSWORD='change-me' ~/.hardcharger/bin/hardcharger-server --database my.duckdb
 ```
+
+</TabItem>
+<TabItem label="Homebrew">
+
+On macOS 15+ with Apple silicon, or Linux on x86-64 or arm64, install the server and CLI
+from GizmoData's [Homebrew tap](https://github.com/gizmodata/homebrew-tap):
+
+```bash
+brew install gizmodata/tap/hardcharger
+hardcharger-server --version
+```
+
+Start the server with your database and administrator password:
+
+```bash
+HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --database my.duckdb
+```
+
+To update an existing installation, run `brew update` followed by `brew upgrade hardcharger`.
+The release workflow checks installation and a query through the CLI on all three platforms
+before publishing the formula update. For the macOS app, see
+[desktop installation](/guides/desktop-app/#install-with-homebrew-on-macos).
 
 </TabItem>
 <TabItem label="Docker">

@@ -35,6 +35,19 @@ Feature-branch preview packages can be unsigned or ad hoc signed. They are revie
 release signing and notarization are checked by the release workflow. App stores are
 follow-up work.
 
+### Install with Homebrew on macOS
+
+On macOS 15+ with Apple silicon:
+
+```bash
+brew install --cask gizmodata/tap/hardcharger-desktop
+```
+
+Open **Hardcharger** from Applications. The cask installs the signed, notarized desktop
+release. Update it with `brew update` and `brew upgrade --cask hardcharger-desktop`.
+To install only the command-line server and CLI, use
+[`brew install gizmodata/tap/hardcharger`](/get-started/quickstart/).
+
 ## Start and open the workspace
 
 1. Open **Hardcharger**. By default it starts its own server on `127.0.0.1:31337`.

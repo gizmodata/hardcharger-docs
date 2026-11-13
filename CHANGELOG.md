@@ -7,6 +7,15 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.12.0.post1] - 2026-11-13
+
+### Changed
+
+- The Python client needs Python 3.10 or newer (was 3.11), from `adbc-driver-hardcharger` 2.5.0.
+- The ADBC drivers in the versions table are `chargewire-adbc` 2.3.0 and `hardcharger-adbc` 2.5.0:
+  a catalog and a schema given together when connecting name that catalog's schema, and the
+  Python package's floors are Python 3.10, pyarrow 16 and adbc-driver-manager 1.8.
+
 ## [2.12.0] - 2026-11-12
 
 ### Added

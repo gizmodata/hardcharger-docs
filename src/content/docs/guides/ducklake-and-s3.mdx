@@ -50,11 +50,12 @@ see the credentials.
    Save it as `compose.yaml` and start it with `docker compose up -d --wait`.
 
 2. Write the init SQL: a secret for each service, and the lake. DuckLake, PostgreSQL and S3
-   (`ducklake`, `postgres`, `httpfs`) are runtime modules on non-iOS platforms in **v2.1.0+**.
+   (`ducklake`, `postgres`, `httpfs`) are runtime modules on desktop/server platforms in **v2.1.0+**.
+   iOS and the Android Play distribution bundle them instead.
    Known extensions can install/load automatically, matching GizmoSQL. Explicit setup below
    makes the required modules clear; it also works on earlier versions that built them in.
    First installation needs repository access; preinstall/cache modules for offline use.
-   See [DuckDB extensions](/guides/extensions/) for custom modules and iOS behavior.
+   See [DuckDB extensions](/guides/extensions/) for custom modules and mobile-platform behavior.
 
    ```sql test file=lake.sql server=none
    INSTALL ducklake; INSTALL postgres; INSTALL httpfs;

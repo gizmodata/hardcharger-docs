@@ -11,6 +11,7 @@ const shots = [
 	{ name: 'landing', path: '/' },
 	{ name: 'guide-tls', path: '/guides/tls/' },
 	{ name: 'desktop-app', path: '/guides/desktop-app/' },
+	{ name: 'android-app', path: '/guides/android-app/' },
 	{ name: 'sql-monitor', path: '/guides/sql-monitor/' },
 	{ name: 'server-configuration', path: '/guides/server-configuration/' },
 	{ name: 'web-ui', path: '/guides/web-ui/' },

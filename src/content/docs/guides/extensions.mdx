@@ -1,6 +1,6 @@
 ---
 title: "DuckDB extensions"
-description: "v2.1.0+ runtime extensions: automatic installation and loading, custom repositories, signed modules, offline caches, iOS built-ins and DuckLake metadata compatibility."
+description: "v2.1.0+ runtime extensions: automatic installation and loading, custom repositories, signed modules, offline caches, iOS/Android Play built-ins and DuckLake metadata compatibility."
 ---
 
 **Available in v2.1.0+.** Linux, macOS and Windows builds include DuckDB's standard
@@ -9,12 +9,15 @@ description: "v2.1.0+ runtime extensions: automatic installation and loading, cu
 modules. Customers can select compatible modules without rebuilding Hardcharger.
 
 iOS retains its built-in optional extensions and disables downloading/loading executable
-extensions. The CLI and web SQL editor use their own SQL completion; they do not require
+extensions. The Android Play distribution (v2.12.0+) also bundles these extensions
+and omits external native-extension downloading/loading. Its PostgreSQL extension
+connects to a PostgreSQL server; it does not embed that server.
+The CLI and web SQL editor use their own SQL completion; they do not require
 DuckDB's `autocomplete` extension. Install it only when using its SQL functions directly.
 
 ## Automatic installation and loading
 
-Non-iOS servers enable DuckDB's `autoinstall_known_extensions` and
+Desktop/server builds and regular local Android builds enable DuckDB's `autoinstall_known_extensions` and
 `autoload_known_extensions` by default, matching GizmoSQL. Using a feature of a known
 extension can install and load it on demand. For example, `CALL dbgen(sf = 0.01)` uses
 `tpch` without a preceding `INSTALL` or `LOAD`.
@@ -78,7 +81,7 @@ installs its required scanner if missing.
 ## DuckLake metadata compatibility
 
 Hardcharger no longer carries its DuckLake metadata storage-version patch. Native modules
-and iOS's built-in DuckLake use upstream behavior. When DuckLake attaches a DuckDB
+and the built-in DuckLake on iOS and Android Play use upstream behavior. When DuckLake attaches a DuckDB
 metadata file with the latest storage version, writes/checkpoints can upgrade the file;
 an older DuckDB may then refuse to open it. Back up metadata before changing versions.
 

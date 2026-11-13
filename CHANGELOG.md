@@ -7,6 +7,21 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.12.0] - 2026-11-12
+
+### Added
+
+- Android app guide for phones and tablets: local SQL, files, resource limits, saved
+  connections, TLS sharing and foreground lifecycle behavior.
+
+### Changed
+
+- Document the Android Play distribution's bundled extensions alongside iOS and the
+  runtime-extension behavior of ordinary local Android builds.
+- Regenerate the reference and release notes for Hardcharger 2.12.0.
+- Verify examples and generated reference against the published 2.12.0 server image
+  and matching source tag.
+
 ## [2.11.0] - 2026-11-12
 
 ### Added

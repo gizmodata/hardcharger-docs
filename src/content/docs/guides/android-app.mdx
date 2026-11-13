@@ -1,0 +1,95 @@
+---
+title: "Android app"
+description: "Hardcharger on Android phones and tablets: local DuckDB, the web workspace, native SQL console, files, saved servers and TLS sharing."
+---
+
+**New in v2.12.0. Google Play: coming soon.** Hardcharger runs the server directly on an Android phone or
+tablet. The app includes DuckDB, the web SQL workspace and a native SQL console. Local
+queries do not require an account or a separate server.
+
+## Install and open
+
+The app supports Android 9 (API 28) and later, with ARM64 and x86_64 native libraries.
+Google Play availability will be announced on the
+[Android installation page](https://gizmodata.com/hardcharger/install#android).
+Invited internal testers can use the opt-in link supplied by the test organizer.
+
+The [GitHub release](https://github.com/gizmodata/hardcharger/releases/tag/v2.12.0)
+includes `Hardcharger-android.aab` and its SHA-256. An AAB is a store bundle, not an APK
+that Android installs directly. Developers can build and launch an emulator using the
+[Android source instructions](https://github.com/gizmodata/hardcharger/blob/v2.12.0/android/README.md).
+The emulator launcher enables typing with the host computer's keyboard.
+
+Open **Server** to check the local server's status. Use **Web UI** for the SQL editor,
+schema browser and results grid, or **Console** for SQL and console commands. On phones,
+the main navigation has four tabs; Logs is available from Server and saved servers
+from Settings. Tablets show all six destinations in the side navigation. In short
+windows or with large text, scroll the navigation to reach every destination.
+
+## Run queries and work with files
+
+In either SQL interface, try:
+
+```sql
+SELECT 'Hello from Android' AS message, 42 AS answer;
+```
+
+The [web UI guide](/guides/web-ui/) describes the shared editor and result controls.
+Use the native document picker or Android's share action to import files. Import creates
+a new table and reports an error if the name already exists. It does not replace an
+existing table silently.
+
+Exports appear in the app's **Exports** directory. Save them to a chosen location through
+the document picker. Web workspace Blob downloads are limited to 50 MB; for larger
+exports, write to Exports from the native console, then save with the picker.
+
+## Resource limits and appearance
+
+Settings defaults to **Automatic** memory and **One per core** threads. Automatic memory
+uses 30% of device RAM, bounded to 256–4096 MB; one thread per core uses the processor
+count reported by Android. Choose a preset or custom value when needed, then select
+**Save settings**. Upgrades preserve previously saved explicit limits.
+
+The app supports light and dark appearance. Settings and Logs share an **Emoji / Plain**
+log preference that applies immediately. **Settings → About** shows the app and runtime
+component versions, privacy policy and third-party notices.
+
+## Connect to another server
+
+Add a saved connection from Settings or the tablet's saved-server destination. Password
+sign-in and browser sign-in are supported. Administrator credentials and saved
+connections are encrypted using Android Keystore; session tokens stay in memory.
+
+A self-signed server certificate requires explicit approval. Approval pins the exact
+certificate while retaining hostname and validity checks. Changing the endpoint clears
+its saved certificate trust. See [TLS](/guides/tls/) and [browser sign-in](/guides/sso/)
+for server configuration.
+
+From the Android emulator, a server running on the host computer is normally reached
+at `10.0.2.2`; its TLS certificate must cover the address or hostname used. The emulator's
+private network address is not a phone's Wi-Fi address.
+
+## Share the local server
+
+Open **Share on Local Network** to configure TLS sharing, the administrator password
+and connection links. QR links do not include the password. Share credentials separately.
+Keep the app visible while another device uses its server; **Keep screen on while
+sharing** is optional.
+
+The server runs in the foreground. After about 30 seconds away from the app, it stops
+gracefully and resumes when you return. A document picker receives a five-minute grace
+period. Android may terminate the process independently; this app is not an always-on
+background server. Wi-Fi discovery and device battery management can differ from an
+emulator.
+
+## Included extensions
+
+The Play distribution bundles `autocomplete`, `tpch`, `httpfs`, `ducklake`,
+`postgres_scanner`, `core_functions`, `parquet`, `json` and `icu`. PostgreSQL support is
+the scanner/client extension used to connect to a PostgreSQL server; the app does not
+run a PostgreSQL server process.
+
+This distribution omits external native-extension downloading and loading from its
+binary. Changing SQL extension settings cannot restore that capability. Regular local
+Android builds retain automatic installation/loading of compatible signed extensions.
+See [DuckDB extensions](/guides/extensions/) for the platform differences.

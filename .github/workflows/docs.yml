@@ -8,14 +8,14 @@ name: docs
 #   - browsers: Chromium and WebKit, light and dark, desktop and phone: no console errors and
 #     no page that scrolls sideways on a phone.
 #   - examples: every code block marked `test` runs against a real hardcharger-server from
-#     Hardcharger's main branch, with the real clients (Python, Go, Java, Node, the CLI, curl),
+#     the documented Hardcharger release, with the real clients (Python, Go, Java, Node, the CLI, curl),
 #     PostgreSQL, Docker and nginx. Missing prerequisites FAIL the job; nothing is skipped.
 #   - reference: the generated reference (configuration, SQL settings and functions, metrics,
 #     CLI help, release notes, the Chargewire spec) is regenerated from that server and those
 #     repositories and must match what is committed.
 #
 # Access, with no personal token and no deploy key:
-#   - ghcr.io/gizmodata/hardcharger (:main for the server and the CLI, :latest for the Docker
+#   - ghcr.io/gizmodata/hardcharger (the documented release for the server and CLI, :latest for Docker
 #     examples), pulled with this workflow's GITHUB_TOKEN: the package grants this repository
 #     read access (package settings, Manage Actions access).
 #   - the source repositories (hardcharger for the CHANGELOG and the Python server package,
@@ -24,7 +24,7 @@ name: docs
 #     Go fetches its modules the same way. The JavaScript driver is installed from npm at the
 #     version pinned in package-lock.json.
 #   - Release downloads (the installer, tarballs, the Python package's server) are exercised
-#     against a release mirror made from the :main image (verify_examples.py, `release`).
+#     against a release mirror made from the pinned image (verify_examples.py, `release`).
 
 on:
   push:
@@ -49,9 +49,9 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 env:
-  # The server the examples and the reference run against: Hardcharger's main branch, which
-  # CI there publishes on every green push. Pin a :sha-<short> tag to reproduce an old run.
-  HARDCHARGER_IMAGE: ghcr.io/gizmodata/hardcharger:main
+  # Match the published server and source used to generate this version's reference.
+  HARDCHARGER_IMAGE: ghcr.io/gizmodata/hardcharger:2.12.0
+  HARDCHARGER_REF: v2.12.0
   # The one switch between the private preview and the public site (README, "Private preview
   # and GA"): the repository variable DOCS_GA, or the `ga` input of a run started by hand.
   # With it the build has no preview banner, asides or noindex, sits at the custom domain, and
@@ -154,12 +154,13 @@ jobs:
       - name: Source repositories
         env:
           # Main now contains the 2.0 driver, including Chargewire 1.0 partitioned ingest,
-          # connection profiles and session handoff, tested against the server's main image.
+          # connection profiles and session handoff, tested against the pinned server image.
           # Switch to the published wheel at the public release.
           HARDCHARGER_ADBC_REF: main
         run: |
           for repo in hardcharger chargewire hardcharger-adbc hardcharger-jdbc; do
             ref=()
+            if [ "$repo" = hardcharger ]; then ref=(--branch "$HARDCHARGER_REF"); fi
             if [ "$repo" = hardcharger-adbc ]; then ref=(--branch "$HARDCHARGER_ADBC_REF"); fi
             git clone --quiet --depth 1 "${ref[@]}" --recurse-submodules --shallow-submodules \
               "https://github.com/gizmodata/$repo.git" "$RUNNER_TEMP/src/$repo"

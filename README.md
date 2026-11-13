@@ -52,7 +52,7 @@ npm run dev                          # live reload while writing
 
 | Section | Pages |
 |---|---|
-| Get started | quickstart, desktop app (v2.1.0+), web UI, your first query (Python, Go, Java, JavaScript, CLI, curl), coming from GizmoSQL |
+| Get started | quickstart, desktop app (v2.1.0+), Android app (v2.12.0+), web UI, your first query (Python, Go, Java, JavaScript, CLI, curl), coming from GizmoSQL |
 | Concepts | Chargewire in one page, security model, performance model |
 | Guides | TLS and mTLS; users, roles and grants; row policies, masking, tenants, scoped tokens; catalog access rules; SSO; DuckLake and S3; bulk ingest; configuration; SQL Monitor and Server Configuration (v2.1.0+); statement control; instrumentation and the audit log; Prometheus metrics; Docker and Kubernetes; load balancers; Raspberry Pi; upgrading |
 | Clients | Python, Go, C/C++/R/Rust, JDBC and DBeaver, JavaScript (`@gizmodata/hardcharger` on npm), the `hardcharger` CLI, plain HTTP |
@@ -66,7 +66,7 @@ tabs per language, copy buttons, dark and light themes, an edit link on every pa
 ## ✅ Every example runs
 
 A fenced code block whose info string contains `test` is an example CI runs against a real
-`hardcharger-server` built from Hardcharger's `main` branch:
+`hardcharger-server` from the release pinned in `.github/workflows/docs.yml`:
 
 ````markdown
 ```python test
@@ -127,14 +127,14 @@ and fails when anything committed differs from what the server says.
 
 CI uses no personal token and no deploy key:
 
-1. **The image**, `ghcr.io/gizmodata/hardcharger:main` (the server and the CLI) and `:latest`
+1. **The image**, `ghcr.io/gizmodata/hardcharger:2.12.0` (the server and the CLI) and `:latest`
    (the Docker examples), pulled with the workflow's `GITHUB_TOKEN`. The package must grant this
    repository read access (package settings, **Manage Actions access**).
-2. **Public source repositories**, cloned anonymously: `hardcharger`, `chargewire` (the spec),
+2. **Public source repositories**, cloned anonymously: `hardcharger` at `v2.12.0`, `chargewire` (the spec),
    `hardcharger-adbc` and `hardcharger-jdbc` (with its `chargewire-jdbc` submodule). Go fetches
    its modules the same way. The JavaScript driver is installed from npm.
 3. **No release downloads.** Examples that download a release (the installer, tarballs, the
-   Python package's server) run against a release mirror made from the `:main` image, with the
+   Python package's server) run against a release mirror made from the pinned image, with the
    real installer script and the real package.
 
 Without the image or a repository, the examples job fails; it never skips.

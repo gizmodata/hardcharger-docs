@@ -1,0 +1,95 @@
+---
+title: "Read-only connections"
+description: "Request a server-enforced read-only connection while retaining separate connections for permitted writes."
+---
+
+Hardcharger 2.13.0 adds the Chargewire `read_only` connection option. A client can
+request a reader connection using its usual credentials, while a separate connection
+can still write wherever the user's permissions allow it. The restriction adds no
+permissions and is independent of the sign-in token's `readonly` role.
+
+## Choose the connection mode
+
+| Client | Request a read-only connection |
+|---|---|
+| [CLI](/clients/cli/) | `--read-only` or `HARDCHARGER_CLIENT_READ_ONLY=true` |
+| [Python / ADBC](/clients/python/) | `conn_kwargs={"adbc.connection.readonly": "true"}` |
+| [Go / ADBC](/clients/go/) | `db.Open(hardcharger.WithReadOnly(ctx))` |
+| [JDBC](/clients/jdbc/) | `readOnly=true` property; `connection.setReadOnly(true)` on an existing connection |
+| [JavaScript](/clients/javascript/) | `sessionOptions: { read_only: true }`; `conn.setOptions({ read_only: true })` on an existing connection |
+| [ODBC](https://github.com/gizmodata/hardcharger-odbc-driver#read-only-connections) | `ReadOnly=true` or `SQL_ATTR_ACCESS_MODE=SQL_MODE_READ_ONLY` |
+| [HTTP](/clients/http/) | `{"options":{"read_only":true}}` in the session-creation request |
+| [MCP](https://github.com/gizmodata/hardcharger-mcp) | `HARDCHARGER_READ_ONLY=true`, with per-connection overrides |
+
+Use a driver release that implements this option. The client must receive
+`options.read_only: true` from the server before it uses the session. An older server
+that rejects or ignores the option causes an error; clients never silently fall back
+to writable mode. A new driver without the option continues to work with older servers.
+
+```console test
+$ export HARDCHARGER_PASSWORD='change-me'
+$ hardcharger --host localhost --tls=false --username hardcharger --read-only --csv --no-header --command "SELECT 42 AS answer"
+42
+```
+
+The restriction is one-way for a connection. Open a separate connection to write again.
+The server may refuse a transition while a transaction is active; finish the transaction
+before retrying. Clients that automatically replace lost sessions request and confirm
+read-only mode again. ODBC retains its existing behavior of reporting a lost session
+without replacing it. A lazy connection to a stopped cluster confirms the restriction
+when it first performs work.
+
+## What remains available
+
+Queries, permitted metadata and Hardcharger's monitoring tables remain available,
+subject to the same access-control checks as other connections. The server refuses
+changes to data, temporary objects, grants and other sessions. Prepared statements
+are checked when executed, including statements prepared before the transition.
+Refused writes return Chargewire `read_only` and SQLSTATE `25006`.
+
+A reader may change its own `hardcharger.query_timeout`,
+`hardcharger.idle_in_transaction_session_timeout`, `hardcharger.session_tag` and
+`hardcharger.query_tag`. Global settings, client-selected profiling changes,
+`KILL SESSION`, `hardcharger_cancel()`, and the session-setting mutation functions are
+refused. Server-configured instrumentation continues to record queries.
+
+The server uses an explicit list of permitted operations and table functions. An
+unsupported operation is refused even if a particular use would only read. Read-only
+is not a sandbox for administrator-installed extensions or scalar functions with
+external side effects; grant access and install extensions accordingly.
+
+## MCP readers and permitted writers
+
+MCP has two separate controls. `HARDCHARGER_READ_ONLY` requires server-enforced
+read-only mode; it defaults to `false`. `HARDCHARGER_ALLOW_WRITES` exposes write tools;
+it also defaults to `false`. A read-only connection never exposes permitted writes,
+even when the write-tool option is enabled.
+
+For a reader and a writer in the same MCP server, configure the primary connection as
+read-only and override the writer's connection mode:
+
+```json
+{
+  "HARDCHARGER_NAME": "reader",
+  "HARDCHARGER_READ_ONLY": "true",
+  "HARDCHARGER_ALLOW_WRITES": "true",
+  "HARDCHARGER_2_NAME": "writer",
+  "HARDCHARGER_2_READ_ONLY": "false"
+}
+```
+
+Supply each connection's URI and credentials as described in the
+[MCP configuration](https://github.com/gizmodata/hardcharger-mcp). The writer can use
+write tools within its database permissions; the reader remains restricted. Enable
+write tools only for connections where you intend to authorize database changes.
+
+## Connection mode versus server configuration
+
+The CLI variable is `HARDCHARGER_CLIENT_READ_ONLY`. The server's
+[`HARDCHARGER_READ_ONLY`](/reference/configuration/#read_only) opens the database file
+read-only at startup. MCP uses that same variable name for its own connection
+configuration. Set each variable in the environment of the intended program.
+
+Existing `readonly` token roles keep their existing behavior. The new connection
+option adds a restriction to the session, including for administrator credentials;
+it does not replace [users, roles and grants](/guides/access-control/).

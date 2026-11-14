@@ -7,6 +7,11 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+### Added
+
+- Read-only connection guide covering CLI, drivers, HTTP and MCP, including separate
+  permitted writer connections and older-server compatibility.
+
 ## [2.12.1] - 2026-11-14
 
 ### Changed

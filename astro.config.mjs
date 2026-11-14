@@ -104,6 +104,7 @@ export default defineConfig({
 							items: [
 								{ label: 'TLS and mTLS', slug: 'guides/tls' },
 								{ label: 'Users, roles and grants', slug: 'guides/access-control' },
+								{ label: 'Read-only connections', slug: 'guides/read-only-connections' },
 								{ label: 'Row policies and masking', slug: 'guides/row-policies-and-masking' },
 								{ label: 'Catalog access rules', slug: 'guides/catalog-access-rules' },
 								{ label: 'SSO, OIDC and browser sign-in', slug: 'guides/sso' },

@@ -20,6 +20,7 @@ permissions and is independent of the sign-in token's `readonly` role.
 | [ODBC](https://github.com/gizmodata/hardcharger-odbc-driver#read-only-connections) | `ReadOnly=true` or `SQL_ATTR_ACCESS_MODE=SQL_MODE_READ_ONLY` |
 | [HTTP](/clients/http/) | `{"options":{"read_only":true}}` in the session-creation request |
 | [MCP](https://github.com/gizmodata/hardcharger-mcp) | `HARDCHARGER_READ_ONLY=true`, with per-connection overrides |
+| [Web UI](/guides/web-ui/) | **Read-only sessions** when connecting; **Read-only** in an editor tab |
 
 Use a driver release that implements this option. The client must receive
 `options.read_only: true` from the server before it uses the session. An older server
@@ -38,6 +39,18 @@ before retrying. Clients that automatically replace lost sessions request and co
 read-only mode again. ODBC retains its existing behavior of reporting a lost session
 without replacing it. A lazy connection to a stopped cluster confirms the restriction
 when it first performs work.
+
+## Web UI
+
+Select **Read-only sessions** when adding a server to make new sessions on that
+connection read-only by default. In an editor tab, select **Read-only** before its
+first query or enable it on an existing session after finishing any transaction.
+
+The checkbox locks after the server confirms the restriction. Choose **New session**
+to end that session; you can then uncheck **Read-only** before the next query to
+request a writable session, subject to your account's permissions. Automatic session
+replacement preserves read-only mode. The tab's **Upload data** button is disabled
+while read-only is selected.
 
 ## What remains available
 

@@ -395,6 +395,13 @@ Each editor tab has its own Chargewire session, kept from one run to the next: t
 the tab. The tab's session chip shows the session's id, the one the server's log lines and
 `KILL SESSION` use.
 
+**Read-only** in the session bar requests a server-enforced read-only session. You can
+select it before the first query or enable it after connecting, once any transaction
+has finished. It locks after server confirmation and stays on if the UI automatically
+replaces a lost session. To change modes, choose **New session**, then uncheck
+**Read-only** before running. **Read-only sessions** in the connection form saves the
+default for new sessions on that server. See [Read-only connections](/guides/read-only-connections/).
+
 The server ends a session that has been idle for `session_idle_timeout` seconds (15 minutes by
 default; `--session-idle-timeout`, `HARDCHARGER_SESSION_IDLE_TIMEOUT`, or the YAML key). The page
 reads it from the session document (`idle_timeout_s`) and **How the editor works** names it. When

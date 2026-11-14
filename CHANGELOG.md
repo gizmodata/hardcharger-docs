@@ -7,10 +7,17 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.13.0] - 2026-11-14
+
 ### Added
 
 - Read-only connection guide covering CLI, drivers, HTTP and MCP, including separate
   permitted writer connections and older-server compatibility.
+
+### Changed
+
+- Refresh the server and CLI reference for Hardcharger 2.13.0 and the protocol
+  reference for Chargewire 2.5.0.
 
 ## [2.12.1] - 2026-11-14
 

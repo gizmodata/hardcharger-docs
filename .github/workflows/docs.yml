@@ -50,8 +50,8 @@ concurrency:
 
 env:
   # Match the published server and source used to generate this version's reference.
-  HARDCHARGER_IMAGE: ghcr.io/gizmodata/hardcharger:2.12.0
-  HARDCHARGER_REF: v2.12.0
+  HARDCHARGER_IMAGE: ghcr.io/gizmodata/hardcharger:2.12.1
+  HARDCHARGER_REF: v2.12.1
   # The one switch between the private preview and the public site (README, "Private preview
   # and GA"): the repository variable DOCS_GA, or the `ga` input of a run started by hand.
   # With it the build has no preview banner, asides or noindex, sits at the custom domain, and

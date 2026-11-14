@@ -13,10 +13,49 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+## [2.12.1] - 2026-11-14
+
+### Changed
+
+- The web UI's JavaScript client moves from chargewire-js 2.3.5 to 2.3.6 (`ui/vendor`; the same
+  files as npm's `@gizmodata/chargewire@2.3.6`). 2.3.6 fixes a session that replaces a lost one,
+  or the first session on a server that was stopped, opening in the new catalog with the old
+  schema after the schema and then the catalog were set. The UI's tabs were not affected (a tab
+  sets catalog and schema in one step, or reads the session right after, and replaces a lost
+  session itself); a test now holds that in place with the real client.
+- The Python package's `[adbc]` extra requires `adbc-driver-hardcharger` 2.5.0 or newer (was
+  2.4.9): `Server.connect()` then gets the driver that opens a connection in the catalog and
+  schema it is given.
+- The `-adbc` images bundle GizmoSQL's ADBC driver 2.0.18 (was 2.0.15): its library exports
+  only the ADBC API, as the ADBC shared-library requirements ask. Nothing changes in how the
+  image loads it.
+
 ### Fixed
 
+- **A finished statement no longer answers `"state": "running"` with its result attached**
+  ([#42](https://github.com/gizmodata/hardcharger/issues/42)). A statement without rows (INSERT,
+  UPDATE, DELETE, `CREATE TABLE ... AS`, SET, BEGIN, COMMIT, any DDL) sent with
+  `Accept: application/vnd.apache.arrow.stream`, as the drivers and the documented `curl`
+  example send it, could answer `{"state":"running","result":{"kind":"update","rows_affected":1}}`:
+  the server set the statement's result a moment before its state, and answered in between. It
+  has been so since the first release. It showed when the machine was busy or small: about 1
+  answer in 700 on four CPUs, nearly every answer on one (a one-CPU container). A client that
+  reads `state` then asked once more for a statement that was over: the ADBC driver sent three
+  requests for an INSERT instead of two. The result and the state are now set in one step
+  (Chargewire 2.4.2), and the answer comes no later than before.
+- A cancel or a statement timeout that arrived in that same moment, after the statement's
+  change had been made, ended the statement as `cancelled` (with a `statement_cancelled` or
+  `statement_timeout` error) although its rows were written and its answer had reported
+  `rows_affected`. Such a statement is now `succeeded`: a cancellation that comes too late to
+  stop the work changes nothing. A cancellation that reaches a statement while it runs stops
+  it as before.
+- Enable Android release code and resource optimization, preserve JNI entry points,
+  and verify the optimized app and its bundled crash mappings before upload.
 - Remove test-order and startup-log timing dependencies from the metrics and health
   logging integration tests.
+- Tests: two test servers no longer install the spatial extension into the shared extension
+  cache at the same moment, which failed on Windows when both started together on a cold cache
+  ("Could not move file ... Access is denied").
 
 ## [2.12.0] - 2026-11-12
 

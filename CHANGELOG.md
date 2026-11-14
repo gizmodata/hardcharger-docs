@@ -7,6 +7,18 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.12.1] - 2026-11-14
+
+### Changed
+
+- Regenerate the reference and release notes for Hardcharger 2.12.1, and the Chargewire protocol
+  page for specification 2.4.2: a statement without rows answers with the finished statement's
+  document, and a cancellation that comes after its work is done changes nothing.
+- The client versions that go with 2.12.1: `@gizmodata/chargewire` 2.3.6 and
+  `@gizmodata/hardcharger` 2.4.5, `chargewire-adbc` 2.3.1 and `hardcharger-adbc` 2.5.1,
+  `chargewire-jdbc` 2.3.0 and `hardcharger-jdbc` 2.5.0; the web UI bundles chargewire-js 2.3.6.
+- Examples run against the published 2.12.1 server image.
+
 ## [2.12.0.post1] - 2026-11-13
 
 ### Changed

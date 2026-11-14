@@ -24,8 +24,19 @@ own changelog in `python/CHANGELOG.md`.
 - The CLI accepts `--read-only` and `HARDCHARGER_CLIENT_READ_ONLY=true` to require a
   server-confirmed read-only session, including after reconnecting. Servers without
   support refuse the connection; ordinary connections keep their existing behavior.
+- The web UI can start connections read-only or enable read-only on an existing editor
+  session. The checkbox locks after server confirmation; **New session** permits a fresh
+  choice. Automatic session replacement retains the restriction.
 
 ### Fixed
+
+- A failed internal transaction during statement binding rolls back and cleans up
+  without invalidating the shared database. Ordinary writable connections and
+  read-only-session enforcement retain their existing behavior.
+
+- Keep parenthesized query terms intact in `EXPLAIN ANALYZE`, including unions. Built-in
+  index metadata remains available in read-only sessions, including computed table names;
+  attempts to move the secrets directory report `read_only` for a read-only administrator.
 
 - Android publishes loaded notices and privacy text on the UI thread, keeping the
   document screen's lazy-list initialization on a thread with an Android looper.

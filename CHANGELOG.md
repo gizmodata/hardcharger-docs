@@ -13,11 +13,13 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 - Read-only connection guide covering CLI, drivers, HTTP and MCP, including separate
   permitted writer connections and older-server compatibility.
+- Web UI read-only connection defaults and one-way editor session controls.
 
 ### Changed
 
 - Refresh the server and CLI reference for Hardcharger 2.13.0 and the protocol
-  reference for Chargewire 2.5.0.
+  reference for Chargewire 2.5.2.
+- List the corresponding read-only-capable driver and MCP releases.
 
 ## [2.12.1] - 2026-11-14
 

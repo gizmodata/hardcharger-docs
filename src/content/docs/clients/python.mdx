@@ -262,6 +262,41 @@ with hardcharger.Server() as server, server.connect() as conn, conn.cursor() as 
 `database=`, `password=`, `tls_cert=`/`tls_key=`, `extra_args=[...]` or `env={...}` for more.
 `pip install "hardcharger[adbc]"` installs it with this driver (2.4.2 or later, from 2.10.0).
 
+### Where the server comes from
+
+The package downloads the server on first use into `~/.cache/hardcharger` and needs no GitHub
+account or token (2.13.1+). The release tarball comes from its direct download URL
+(`https://github.com/gizmodata/hardcharger/releases/download/v<version>/hardcharger-<platform>.tar.gz`)
+and must match its SHA-256 in the release's `SHA256SUMS`, so GitHub's limit on anonymous API
+requests doesn't apply.
+
+On Linux, when GitHub can't be reached or refuses (a sandbox that allows PyPI and ghcr.io but not
+github.com, say), the server comes from the public image `ghcr.io/gizmodata/hardcharger:<version>`
+instead. The package reads it through the registry's HTTP API, without Docker, and checks every
+layer against its digest. Whatever the source, the unpacked server must report the expected
+version. When every source fails, the error names each one and why. To take the server from the
+image only:
+
+```bash
+HARDCHARGER_INSTALL_SOURCE=ghcr python -m hardcharger download
+```
+
+| Variable | Meaning |
+|---|---|
+| `HARDCHARGER_INSTALL_SOURCE` | `auto` (the default: GitHub, then on Linux the container image), `github` or `ghcr` (Linux only) |
+| `HARDCHARGER_INSTALL_REGISTRY_IMAGE` | another copy of the image, without a tag (the version is the tag): `docker.io/gizmodata/hardcharger`, or a mirror such as `registry.example.com/mirror/hardcharger` (`http://` in front for a registry without TLS). It must allow pulls without signing in |
+| `HARDCHARGER_RELEASE_DOWNLOAD_URL` | the base of the direct download URLs (default `https://github.com`): a mirror that serves `<base>/gizmodata/hardcharger/releases/download/v<version>/` with the tarball and `SHA256SUMS` |
+| `HARDCHARGER_SERVER_BINARY` | run this `hardcharger-server` instead of downloading one |
+| `HARDCHARGER_VERSION` | the server version to download (default: the one the package pins) |
+| `HARDCHARGER_CACHE_DIR` | where downloads are kept (default `~/.cache/hardcharger`) |
+
+Any other source is an error that names the three:
+
+```console test server=none exit=1
+$ HARDCHARGER_INSTALL_SOURCE=docker python -m hardcharger download
+hardcharger: HARDCHARGER_INSTALL_SOURCE='docker' is not a source: use one of auto, github, ghcr
+```
+
 ## Other ADBC languages
 
 The same driver loads into any ADBC driver manager: see [C, C++, R, Rust](/clients/adbc-driver-manager/)

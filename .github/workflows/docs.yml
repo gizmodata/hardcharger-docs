@@ -50,9 +50,9 @@ concurrency:
 
 env:
   # Match the published server and source used to generate this version's reference.
-  HARDCHARGER_IMAGE: ghcr.io/gizmodata/hardcharger:2.13.0
-  HARDCHARGER_REF: v2.13.0
-  CHARGEWIRE_REF: v2.5.3
+  HARDCHARGER_IMAGE: ghcr.io/gizmodata/hardcharger:2.13.1
+  HARDCHARGER_REF: v2.13.1
+  CHARGEWIRE_REF: v2.5.4
   HARDCHARGER_ADBC_REF: v2.6.0
   HARDCHARGER_JDBC_REF: v2.6.0
   # The one switch between the private preview and the public site (README, "Private preview

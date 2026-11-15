@@ -34,23 +34,76 @@ $ hardcharger --host localhost --tls=false --username hardcharger --read-only --
 ```
 
 The restriction is one-way for a connection. Open a separate connection to write again.
-The server may refuse a transition while a transaction is active; finish the transaction
-before retrying. Clients that automatically replace lost sessions request and confirm
-read-only mode again. ODBC retains its existing behavior of reporting a lost session
-without replacing it. A lazy connection to a stopped cluster confirms the restriction
-when it first performs work.
+Clients that automatically replace lost sessions request and confirm read-only mode
+again. ODBC retains its existing behavior of reporting a lost session without replacing
+it. A lazy connection to a stopped cluster confirms the restriction when it first
+performs work.
+
+## Switching with work in a transaction
+
+A read-write connection can be switched to read-only when no transaction with work in it
+is open. While its open transaction holds work, the server refuses the switch with
+`invalid_option_value`, and the work stays in the transaction for the client to commit or
+roll back. The server never discards it. From 2.13.1 this holds whatever was sent in
+between, such as an option set again to the value it had (as connection pools do); before,
+such an option let the switch through and the work was rolled back. Here a session with
+`autocommit` off creates a table, and the switch is refused until it commits:
+
+```console test
+$ H='Content-Type: application/json'
+$ TOKEN=$(curl -s localhost:31337/chargewire/v1/auth/token -H "$H" \
+    -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
+$ AUTH="Authorization: Bearer $TOKEN"
+$ URL=localhost:31337/chargewire/v1/sessions/$(curl -s localhost:31337/chargewire/v1/sessions -H "$AUTH" -H "$H" \
+    -d '{"options": {"autocommit": false}}' | jq -r .session_id)
+$ curl -s $URL/statements -H "$AUTH" -H "$H" -d '{"sql": "CREATE TABLE drafts AS SELECT 1 AS id"}' | jq -r .state
+succeeded
+$ curl -s -X PATCH $URL -H "$AUTH" -H "$H" -d '{"options": {"autocommit": false}}' | jq -c .errors
+{}
+$ curl -s -X PATCH $URL -H "$AUTH" -H "$H" -d '{"options": {"read_only": true}}' | jq -c '.options.read_only, .errors'
+false
+{"read_only":{"code":"invalid_option_value","detail":"read_only cannot be set while a transaction with work in it is open: commit or roll back first"}}
+$ curl -s $URL/statements -H "$AUTH" -H "$H" -d '{"sql": "COMMIT"}' | jq -r .state
+succeeded
+$ curl -s -X PATCH $URL -H "$AUTH" -H "$H" -d '{"options": {"read_only": true}}' | jq -c '.options.read_only, .errors'
+true
+{}
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv --no-header \
+    --command "SELECT count(*) FROM drafts"
+1
+```
 
 ## Web UI
 
-Select **Read-only sessions** when adding a server to make new sessions on that
-connection read-only by default. In an editor tab, select **Read-only** before its
-first query or enable it on an existing session after finishing any transaction.
+Select **Read-only sessions** when adding a server to make the sessions opened on that
+connection read-only: a new tab, **New session**, a reload, and the replacement for a
+lost session. A session that is already open keeps the mode the server gave it. To change
+the setting of a connected server, add it again with the new setting.
 
-The checkbox locks after the server confirms the restriction. Choose **New session**
-to end that session; you can then uncheck **Read-only** before the next query to
-request a writable session, subject to your account's permissions. Automatic session
-replacement preserves read-only mode. The tab's **Upload data** button is disabled
-while read-only is selected.
+An editor tab's **Read-only** box shows the session the tab has (2.13.1+). It is checked
+and locked only once the server has said that this session is read-only; while the UI is
+asking, it shows **Confirming with the server…** instead of a check. An open read-write
+session stays read-write, and the box unchecked, until you tick it, even on a connection
+saved with **Read-only sessions**. Ticking it switches the open session after any
+transaction has finished; a run asked to be read-only switches the session first and
+runs nothing if the server refuses. With no session open, the box shows the tab's choice
+for the next session, which the server confirms before anything runs in it.
+
+When the server refuses the switch and keeps the session (a transaction with work in it:
+"commit or roll back first"; temporary sequences: "drop them first"; a server without
+read-only sessions), the session stays open and read-write with its temporary tables,
+settings and open transaction, the box stays unchecked and usable, and the server's message
+is shown. Only an outcome the UI can't know (no answer, or the session gone) ends the
+session, with a message that says which. Choose **New session** to end a read-only
+session; you can then uncheck **Read-only** before the next query to request a writable
+session, subject to your account's permissions.
+
+Upload is not offered where its session would be read-only: the tab's **Upload data**,
+the schema browser's Upload button and its **Upload data…** items, and a dropped file.
+Each says why in its tooltip: "Upload is off: this connection opens read-only sessions",
+or "Upload is off in a read-only tab". A file dragged over such a tab shows the reason,
+and dropping it opens nothing. The server still refuses an upload into a read-only
+session.
 
 ## What remains available
 
@@ -70,6 +123,62 @@ The server uses an explicit list of permitted operations and table functions. An
 unsupported operation is refused even if a particular use would only read. Read-only
 is not a sandbox for administrator-installed extensions or scalar functions with
 external side effects; grant access and install extensions accordingly.
+
+DuckDB evaluates some parts of a statement while it binds it, before there is a plan to
+check: a table function's arguments, a `COPY`'s file name and options, what a `PIVOT` is
+pivoted on. From 2.13.1 the server screens every statement before DuckDB binds it, so a
+`nextval()` or `setval()` in one of those places is refused before the sequence moves,
+also when the statement is only prepared. The screen refuses what it has no rule for, so
+in a read-only connection:
+
+- a table function or pragma that isn't on the server's list is answered `read_only`, also
+  when it doesn't exist (rather than a catalog error);
+- `EXPLAIN` of a statement that writes or changes a catalog is refused
+  (`EXPLAIN of INSERT is not allowed in a read-only session`), and so is `EXPLAIN` of `LOAD`,
+  `VACUUM`, `BEGIN`, `COMMIT`, `DEALLOCATE` and `PREPARE`.
+
+```console test
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger \
+    --command "CREATE SEQUENCE ids"
+OK
+```
+
+```console test exit=1
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --read-only \
+    --command "SELECT * FROM range(nextval('ids'))"
+Error: an argument of a table function that calls NEXTVAL (it would run before the statement can be checked) is not allowed in a read-only session
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --read-only \
+    --command "EXPLAIN INSERT INTO drafts VALUES (2)"
+Error: EXPLAIN of INSERT is not allowed in a read-only session
+```
+
+The sequence didn't move:
+
+```console test
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv --no-header \
+    --command "SELECT nextval('ids')"
+1
+```
+
+## Known, not fixed in 2.13.1
+
+A read-only connection can still advance or set a sequence through a view or macro that
+someone allowed to create one has made, where the statement does not lead the server to its
+definition:
+
+- a view the reader holds no privilege on (the answer is `permission_denied`, after the
+  sequence has moved), or was granted a moment ago;
+- a view or macro created in a DuckLake after the connection's first statement;
+- a view created `WITH (DEFER_BINDING)`, read through `information_schema.columns`,
+  `SHOW ALL TABLES`, `DESCRIBE` or the table listing;
+- a view with a dot in its name, quoted inside a string argument;
+- a macro that passes its argument to a table function;
+- a macro named like one of DuckDB's functions.
+
+With two attached databases, a statement that is only prepared and moves a sequence in one of
+them can still leave a `COMMIT` that answers `422` after part of the transaction was stored.
+Both are as in 2.13.0.
+
 
 ## MCP readers and permitted writers
 

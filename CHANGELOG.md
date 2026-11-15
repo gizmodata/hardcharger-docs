@@ -18,8 +18,9 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 ### Changed
 
 - Refresh the server and CLI reference for Hardcharger 2.13.0 and the protocol
-  reference for Chargewire 2.5.2.
+  reference for Chargewire 2.5.3.
 - List the corresponding read-only-capable driver and MCP releases.
+- Pin the example runners to the released Chargewire, ADBC, JDBC and JavaScript clients.
 
 ## [2.12.1] - 2026-11-14
 

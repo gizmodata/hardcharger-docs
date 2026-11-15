@@ -127,12 +127,14 @@ and fails when anything committed differs from what the server says.
 
 CI uses no personal token and no deploy key:
 
-1. **The image**, `ghcr.io/gizmodata/hardcharger:2.12.0` (the server and the CLI) and `:latest`
-   (the Docker examples), pulled with the workflow's `GITHUB_TOKEN`. The package must grant this
+1. **The image** pinned by `HARDCHARGER_IMAGE` in `.github/workflows/docs.yml` (the server and
+   the CLI), plus `:latest` for the Docker examples, pulled with the workflow's `GITHUB_TOKEN`. The package must grant this
    repository read access (package settings, **Manage Actions access**).
-2. **Public source repositories**, cloned anonymously: `hardcharger` at `v2.12.0`, `chargewire` (the spec),
-   `hardcharger-adbc` and `hardcharger-jdbc` (with its `chargewire-jdbc` submodule). Go fetches
-   its modules the same way. The JavaScript driver is installed from npm.
+2. **Public source repositories**, cloned anonymously at the released tags pinned by
+   `HARDCHARGER_REF`, `CHARGEWIRE_REF`, `HARDCHARGER_ADBC_REF` and `HARDCHARGER_JDBC_REF` in
+   that workflow. The JDBC checkout includes its `chargewire-jdbc` submodule. Go fetches
+   its modules the same way. The JavaScript driver is installed from npm at the version in
+   `package-lock.json`.
 3. **No release downloads.** Examples that download a release (the installer, tarballs, the
    Python package's server) run against a release mirror made from the pinned image, with the
    real installer script and the real package.

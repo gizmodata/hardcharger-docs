@@ -50,8 +50,11 @@ concurrency:
 
 env:
   # Match the published server and source used to generate this version's reference.
-  HARDCHARGER_IMAGE: ghcr.io/gizmodata/hardcharger:2.12.1
-  HARDCHARGER_REF: v2.12.1
+  HARDCHARGER_IMAGE: ghcr.io/gizmodata/hardcharger:2.13.0
+  HARDCHARGER_REF: v2.13.0
+  CHARGEWIRE_REF: v2.5.3
+  HARDCHARGER_ADBC_REF: v2.6.0
+  HARDCHARGER_JDBC_REF: v2.6.0
   # The one switch between the private preview and the public site (README, "Private preview
   # and GA"): the repository variable DOCS_GA, or the `ga` input of a run started by hand.
   # With it the build has no preview banner, asides or noindex, sits at the custom domain, and
@@ -152,17 +155,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Source repositories
-        env:
-          # Main now contains the 2.0 driver, including Chargewire 1.0 partitioned ingest,
-          # connection profiles and session handoff, tested against the pinned server image.
-          # Switch to the published wheel at the public release.
-          HARDCHARGER_ADBC_REF: main
         run: |
           for repo in hardcharger chargewire hardcharger-adbc hardcharger-jdbc; do
-            ref=()
-            if [ "$repo" = hardcharger ]; then ref=(--branch "$HARDCHARGER_REF"); fi
-            if [ "$repo" = hardcharger-adbc ]; then ref=(--branch "$HARDCHARGER_ADBC_REF"); fi
-            git clone --quiet --depth 1 "${ref[@]}" --recurse-submodules --shallow-submodules \
+            case "$repo" in
+              hardcharger) ref="$HARDCHARGER_REF" ;;
+              chargewire) ref="$CHARGEWIRE_REF" ;;
+              hardcharger-adbc) ref="$HARDCHARGER_ADBC_REF" ;;
+              hardcharger-jdbc) ref="$HARDCHARGER_JDBC_REF" ;;
+            esac
+            git clone --quiet --depth 1 --branch "$ref" --recurse-submodules --shallow-submodules \
               "https://github.com/gizmodata/$repo.git" "$RUNNER_TEMP/src/$repo"
             echo "$repo at $(git -C "$RUNNER_TEMP/src/$repo" rev-parse --short HEAD)"
           done

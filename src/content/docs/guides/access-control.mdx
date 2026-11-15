@@ -576,6 +576,108 @@ what
 note added
 ```
 
+A body may write a table with triggers of its own, so triggers can form a chain; a body may read
+the rows its write added (`REFERENCING NEW TABLE AS ...`), and the writer's statement may have a
+`WITH` clause. Each body in the chain runs with its owner's rights, as above. An administrator's
+trigger that fires from another trigger's body runs with the rights of that body's owner, not the
+writer's. (Before 2.13.1, chains like these were refused under access control.) vic archives
+each insert into `ticket_notes`, and the archive's own trigger logs it:
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TABLE published.note_archive (ticket_id BIGINT, note VARCHAR)"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TRIGGER archive_notes AFTER INSERT ON published.ticket_notes REFERENCING NEW TABLE AS added FOR EACH STATEMENT INSERT INTO published.note_archive SELECT ticket_id, note FROM added"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TRIGGER log_archive AFTER INSERT ON published.note_archive FOR EACH STATEMENT INSERT INTO published.note_log VALUES ('notes archived')"
+OK
+```
+
+wes still holds only `INSERT` on `ticket_notes`:
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+    --command "WITH new_notes (ticket_id, note) AS (VALUES (2, 'closed'), (3, 'reopened')) INSERT INTO published.ticket_notes SELECT ticket_id, note FROM new_notes"
+OK, 2 rows affected
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT ticket_id, note FROM published.note_archive ORDER BY ticket_id"
+ticket_id,note
+2,closed
+3,reopened
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT what, count(*) AS n FROM published.note_log GROUP BY what ORDER BY what"
+what,n
+note added,2
+notes archived,1
+```
+
+### `INSERT ... ON CONFLICT` and `MERGE`
+
+DuckDB runs `INSERT ... ON CONFLICT`, `INSERT OR IGNORE` and `INSERT OR REPLACE` as a merge. Each
+needs only the privileges of what it can do (2.13.1+; before, every one of them needed `INSERT`,
+`UPDATE` and `DELETE`):
+
+| Statement | Needs on the table |
+|---|---|
+| `INSERT ... ON CONFLICT DO NOTHING`, `INSERT OR IGNORE` | `INSERT` |
+| `INSERT ... ON CONFLICT DO UPDATE`, `INSERT OR REPLACE` | `INSERT` and `UPDATE` |
+| `MERGE INTO` | the privilege of each `WHEN ... THEN` action it has: `INSERT`, `UPDATE`, `DELETE` |
+
+Each also needs `SELECT` on the table's columns it reads: for the conflict forms, the key
+columns, and any column a `DO UPDATE SET` reads. The conflict forms fire the table's `INSERT`
+triggers, each body checked with its owner's rights as for a plain insert (DuckDB itself doesn't
+run `MERGE INTO` on a table with triggers). On a table with
+[row or masking policies](/guides/row-policies-and-masking/), all of them are refused for the users
+the policies apply to, with `MERGE (or INSERT ... ON CONFLICT)` in the message.
+
+vic keeps one status per ticket, logged by a trigger, and lets `viewer` insert:
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TABLE published.ticket_status (ticket_id BIGINT PRIMARY KEY, status VARCHAR)"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "CREATE TRIGGER log_status AFTER INSERT ON published.ticket_status FOR EACH STATEMENT INSERT INTO published.note_log VALUES ('status set')"
+OK
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "GRANT INSERT ON published.ticket_status TO viewer"
+result
+Granted INSERT on my.published.ticket_status to viewer
+```
+
+To skip a ticket that has a status already, wes needs to read the key column too:
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+    --command "INSERT INTO published.ticket_status VALUES (1, 'open') ON CONFLICT DO NOTHING" 2>&1 | grep -o "has no SELECT privilege on table [a-z_.]*ticket_status"
+has no SELECT privilege on table my.published.ticket_status
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "GRANT SELECT (ticket_id) ON published.ticket_status TO viewer"
+result
+Granted SELECT (ticket_id) on my.published.ticket_status to viewer
+$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+    --command "INSERT INTO published.ticket_status VALUES (1, 'open') ON CONFLICT DO NOTHING"
+OK, 1 row affected
+$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+    --command "INSERT OR IGNORE INTO published.ticket_status VALUES (1, 'closed')"
+OK
+$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+    --command "INSERT INTO published.ticket_status VALUES (1, 'closed') ON CONFLICT (ticket_id) DO UPDATE SET status = excluded.status" 2>&1 | grep -o "has no UPDATE privilege on table [a-z_.]*ticket_status"
+has no UPDATE privilege on table my.published.ticket_status
+```
+
+The trigger ran for both statements that were allowed (a statement trigger fires once per
+statement, whether or not it added a row):
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT count(*) AS n FROM published.note_log WHERE what = 'status set'"
+n
+2
+```
+
 ### Sequences
 
 `nextval()` and `currval()` need `USAGE` on the sequence, granted `ON SEQUENCE`, `ON SCHEMA` or `ON
@@ -747,9 +849,11 @@ stay listed. `vic` sees the view he may read and the table his role may write:
 $ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT table_schema, table_name FROM information_schema.tables WHERE table_catalog = 'my' ORDER BY table_name"
 table_schema,table_name
+published,note_archive
 published,note_log
 published,revenue_by_region
 published,ticket_notes
+published,ticket_status
 published,tickets
 ```
 

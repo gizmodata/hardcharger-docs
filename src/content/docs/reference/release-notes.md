@@ -13,6 +13,130 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+## [2.13.1] - 2026-11-15
+
+### Fixed
+
+- **Access control: chains of triggers run**
+  ([#52](https://github.com/gizmodata/hardcharger/issues/52)). A write was refused with "the
+  statement a trigger fires on could not be found in the plan" when a trigger's body read a
+  transition table (`REFERENCING NEW TABLE AS ...`) and wrote a table with a trigger of its own,
+  and when the writer's own statement had a `WITH` clause (an ordinary user got "no SELECT
+  privilege" there instead). A `FOR EACH ROW` trigger whose body wrote a table with a statement
+  trigger was refused with "a row trigger ... could not be matched to its body". All of these run
+  now, as they do without access control: each body is still checked with its owner's rights, and
+  an administrator's trigger fired from another trigger's body runs with the rights of that
+  body's owner. Thanks to Jfoxyyc for the report.
+- **Access control: `INSERT ... ON CONFLICT` on a table with a trigger runs**
+  ([#53](https://github.com/gizmodata/hardcharger/issues/53)). It was refused with "a trigger
+  fired by MERGE INTO is not available under access control", for the administrator too, because
+  DuckDB runs `ON CONFLICT`, `INSERT OR IGNORE` and `INSERT OR REPLACE` as a merge. They fire the
+  table's `INSERT` triggers now, the body checked with its owner's rights as for a plain insert.
+- **Access control: a merge needs only the privileges of its actions**
+  ([#53](https://github.com/gizmodata/hardcharger/issues/53)). `INSERT ... ON CONFLICT DO NOTHING`
+  and `INSERT OR IGNORE` needed `INSERT`, `UPDATE` and `DELETE` on the table, as every statement
+  DuckDB plans as a merge did. They need `INSERT`; `DO UPDATE` and `INSERT OR REPLACE` need
+  `INSERT` and `UPDATE`; `MERGE INTO` needs the privilege of each `WHEN ... THEN` action it has.
+  All of them still need `SELECT` on the target's columns they read (for the conflict forms, the
+  key columns). The refusal of such a write into a table with row or masking policies now says
+  "MERGE (or INSERT ... ON CONFLICT)".
+- The server builds against OpenSSL 4 (a certificate name is taken as `const`).
+- **Web UI: the Read-only box shows the session the tab has, never only what was asked for.**
+  With a session open, the box was checked whenever read-only had been asked for (the
+  connection's "Read-only sessions" turned on while the tab was connected, say), even over a
+  session the server had opened read-write and that still wrote. It is now checked and locked only
+  once the server has said that this session is read-only; while it is being asked, it shows a
+  pending state ("Confirming with the server…"), not checked. The connection's setting applies to
+  sessions opened after it (a new tab, New session, a reload, a replacement for a lost session);
+  an open read-write session stays read-write, and the box says so, until it is ticked. A run
+  asked to be read-only on an open read-write session switches it first and runs nothing if the
+  server refuses. With no session open, the box shows the tab's choice for the next one, which the
+  server confirms before anything runs in it.
+- **Web UI: a refused Read-only leaves the session as it was.** When the server refused to make a
+  session read-only and kept it (temporary sequences: "drop them first"; a transaction with work
+  in it: "commit or roll back first"; a server without read-only sessions), the UI closed the
+  session: its temporary tables and settings went with it, the server's advice could not be
+  followed, the tab was blocked until New session, and an open transaction was rolled back. Such a
+  refusal, told apart by the server's error code and status, now leaves the session open and
+  read-write, the box unchecked and usable, and shows the server's message. Only an outcome that
+  is not known (no answer, the session gone, an answer that doesn't confirm it) ends the session,
+  with a message that says which.
+- **Web UI: signing in again to a connected server works.** Adding a server that was already
+  connected (to change its settings, such as Read-only sessions) failed with "no such remote
+  server" and disconnected it: the check used the connection opened through the registration the
+  new one had replaced. A tab whose session was opened through the old registration now finds it
+  gone and opens a new one, as the connection now asks, with a note (or, with a transaction open,
+  runs nothing and says so).
+- **Web UI: Upload is offered only where its session can write.** The schema browser's Upload
+  button and its "Upload data…" items (on a server, a catalog, a schema) opened the upload dialog
+  for a connection saved with "Read-only sessions", and the server refused the upload only after
+  the form was filled in; a file dropped on a read-only tab opened a session of its own that
+  could write. Each of these, and the tab's own Upload, is now unavailable when the session it
+  would use is or will be opened read-only, with the reason as its tooltip ("Upload is off: this
+  connection opens read-only sessions", "Upload is off in a read-only tab"); a file dragged over
+  such a tab shows the reason and dropping it opens nothing. The server's refusal of an upload in
+  a read-only session stays as the backstop.
+- **A read-only connection could advance or set a sequence through a statement that held
+  the call itself.** DuckDB evaluates the arguments of table functions while it binds a
+  statement, before the read-only guard sees a plan, and the guard's screen missed what
+  DuckDB binds under another statement: `EXPLAIN CALL range(nextval('s'))` and `EXPLAIN` of
+  `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `COPY`, `PREPARE` and `EXECUTE`; a `COPY`'s file name
+  and options; what a `PIVOT` is pivoted on; `json_execute_serialized_sql()` (as a function
+  and as a pragma) and `json_serialize_plan()`. Each answered `403 read_only` after the
+  sequence had moved (`setval`: to a value of the reader's choice), also when the statement
+  was only prepared, for the administrator and for ordinary users. All of them are now
+  refused before DuckDB binds anything: the screen walks every kind of statement and refuses
+  what it has no rule for, and a table function or pragma is bound only when it is on the
+  server's list. In a read-only connection this also changes: a table function or pragma that
+  does not exist is answered `read_only` rather than a catalog error; `EXPLAIN` of `LOAD`,
+  `VACUUM`, `BEGIN`, `COMMIT`, `DEALLOCATE` and `PREPARE`, which answered a plan, is refused;
+  and `EXPLAIN` of a statement that changes a catalog is refused with other words
+  (`EXPLAIN of INSERT is not allowed in a read-only session`).
+- **Switching a connection to read-only could silently discard uncommitted work.** Sending an
+  option that changed nothing between the work and the switch (`autocommit` again with the
+  value it had, as connection pools do) made the server accept the switch and roll the work
+  back; the commit that followed answered success. The switch is now refused with
+  `invalid_option_value` whenever the open transaction holds work, by DuckDB's own account of
+  the transaction as well as the server's, and the work stays the client's to commit.
+- A statement that is cancelled while a read-only connection reads the views' and macros'
+  definitions is logged and recorded as cancelled, not as a read-only refusal.
+
+### Known, not fixed in this release
+
+A read-only connection can still advance or set a sequence through a view or macro that
+someone allowed to create one has made, where the statement does not lead the server to its
+definition: a view the reader holds no privilege on (the answer is `permission_denied`, after
+the sequence has moved) or was granted a moment ago; a view or macro created in a DuckLake
+after the connection's first statement; a view created `WITH (DEFER_BINDING)`, read through
+`information_schema.columns`, `SHOW ALL TABLES`, `DESCRIBE` or the table listing; a view with a
+dot in its name, quoted inside a string argument; a macro that passes its argument to a table
+function; and a macro named like one of DuckDB's functions. With two attached databases, a
+statement that is only prepared and moves a sequence in one of them can still leave a `COMMIT`
+that answers `422` after part of the transaction was stored. Both are as in 2.13.0.
+
+### Changed
+
+- **The Python package downloads the server without a GitHub token**
+  ([#54](https://github.com/gizmodata/hardcharger/issues/54)). `pip install hardcharger` fetches
+  the release tarball from its direct download URL and checks it against the release's
+  `SHA256SUMS`, so neither a token nor GitHub's API (and its limit on anonymous requests) is
+  needed. A token that is refused is followed by an anonymous retry. On Linux, when GitHub
+  can't be reached or refuses, the launcher takes the server from the public image
+  `ghcr.io/gizmodata/hardcharger:<version>` through the registry's HTTP API, with every layer
+  checked against its digest. `HARDCHARGER_INSTALL_SOURCE` (`auto`, `github`, `ghcr`) chooses;
+  see the package's README and CHANGELOG. Thanks to Jfoxyyc for the report.
+- CI runs the Chargewire conformance suite with `CHARGEWIRE_TEST_REQUIRE_READ_ONLY=1` (Linux,
+  macOS, sanitizers, Windows): a build without read-only sessions fails its read-only
+  conformance tests, which would otherwise skip.
+
+### Added
+
+- Tests: read-only connections as an ordinary user under access control and as the
+  administrator (bind-time evaluation in every statement form that holds it, executed and
+  prepared; temporary sequences; an option sent between pending work and the switch); a
+  cancel that lands in the read-only screen; the CLI's `HARDCHARGER_CLIENT_READ_ONLY`
+  spellings and the flag's precedence over it.
+
 ## [2.13.0] - 2026-11-14
 
 ### Added

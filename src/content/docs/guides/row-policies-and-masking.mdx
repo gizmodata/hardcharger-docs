@@ -58,7 +58,10 @@ SHOW ROW POLICIES [ON table]
   `hardcharger_user()`, `is_role_active('role')` and `session_attribute('key')`. Subqueries,
   window functions, parameters, `getvariable`, `current_setting`, `query`, `current_role` and
   sequence functions are refused, so a policy can't be steered by what a session sets.
-- A table with row or masking policies is read-only for users the policies apply to.
+- A table with row or masking policies is read-only for users the policies apply to. That
+  includes `MERGE` and the statements DuckDB runs as one (`INSERT ... ON CONFLICT`,
+  `INSERT OR IGNORE`, `INSERT OR REPLACE`), which are refused as
+  `MERGE (or INSERT ... ON CONFLICT)`.
 
 ```sql test profile=rbac
 CREATE ROW POLICY not_apac ON emp AS RESTRICTIVE USING (region <> 'APAC');

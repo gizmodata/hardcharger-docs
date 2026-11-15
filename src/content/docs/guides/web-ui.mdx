@@ -302,6 +302,13 @@ needs the same privileges as SQL: `CREATE` on the schema for a new table, `INSER
 to append, and [row policies](/guides/row-policies-and-masking/) apply. A refusal is shown as
 the server words it.
 
+Upload is offered only where its session can write (2.13.1+). On a connection saved with
+**Read-only sessions**, and in a tab whose **Read-only** box is checked or being confirmed,
+the Upload buttons and **Upload data…** items are unavailable, with the reason as their
+tooltip ("Upload is off: this connection opens read-only sessions", "Upload is off in a
+read-only tab"), and a file dropped on such a tab opens nothing. The server's refusal of an
+upload into a read-only session stays as the backstop.
+
 When it's done, the dialog says how many rows went in, the mode, the format and how long it
 took, and lists the table's columns; **Query this table** opens a tab with
 `SELECT * FROM … LIMIT 100`, and the schema browser shows the table.
@@ -397,10 +404,15 @@ the tab. The tab's session chip shows the session's id, the one the server's log
 
 **Read-only** in the session bar requests a server-enforced read-only session. You can
 select it before the first query or enable it after connecting, once any transaction
-has finished. It locks after server confirmation and stays on if the UI automatically
-replaces a lost session. To change modes, choose **New session**, then uncheck
+has finished. It shows the session the tab has (2.13.1+): checked and locked only once the
+server has confirmed that this session is read-only, **Confirming with the server…** while
+it asks, and unchecked on a session that is still read-write. If the server refuses the
+switch (a transaction with work in it, temporary sequences), the session stays open and
+read-write and the server's message is shown. A read-only session stays read-only when the
+UI replaces it after it was lost. To change modes, choose **New session**, then uncheck
 **Read-only** before running. **Read-only sessions** in the connection form saves the
-default for new sessions on that server. See [Read-only connections](/guides/read-only-connections/).
+default for sessions opened later on that server; an open read-write session keeps its mode.
+See [Read-only connections](/guides/read-only-connections/#web-ui).
 
 The server ends a session that has been idle for `session_idle_timeout` seconds (15 minutes by
 default; `--session-idle-timeout`, `HARDCHARGER_SESSION_IDLE_TIMEOUT`, or the YAML key). The page
@@ -487,6 +499,11 @@ is one page, top to bottom:
   [desktop app](/guides/desktop-app/) offers: it keeps the password in your operating system's
   keychain. In a browser it stays off, since browser storage is readable by any script on the
   page and kept in clear text.
+
+Adding a server that is already connected, to change its settings (such as **Read-only
+sessions**), replaces its connection (2.13.1+). A tab whose session was opened through the old
+one opens a new session at its next run, with a note; with a transaction open, that run
+executes nothing and says so.
 
 Errors show under the field they concern: a server that can't be reached under Host, wrong
 credentials under Password, a certificate that didn't verify or changed under Use TLS. Only

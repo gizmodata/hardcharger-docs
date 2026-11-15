@@ -7,6 +7,34 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.13.1] - 2026-11-15
+
+### Added
+
+- Users, roles and grants: trigger chains under access control (a body that reads
+  `REFERENCING NEW TABLE` and writes a table with its own trigger, a writer's `WITH` clause, an
+  administrator's trigger fired from a user's trigger), and a section on `INSERT ... ON CONFLICT`,
+  `INSERT OR IGNORE`, `INSERT OR REPLACE` and `MERGE`: the privileges each needs, including
+  `SELECT` on the key columns, and their triggers. Tested examples for both.
+- Read-only connections: switching with work in an open transaction is refused with
+  `invalid_option_value` (a tested HTTP example); the screen that refuses a sequence moved while
+  a statement is bound, and what it changes for `EXPLAIN` and unknown table functions (tested);
+  and the cases known, not fixed in 2.13.1.
+- Python: where the server package downloads the server from, without a token, the ghcr.io
+  fallback on Linux, and `HARDCHARGER_INSTALL_SOURCE`, `HARDCHARGER_INSTALL_REGISTRY_IMAGE` and
+  `HARDCHARGER_RELEASE_DOWNLOAD_URL`.
+
+### Changed
+
+- Web UI: the Read-only box shows the session the tab has, a refused switch leaves the session
+  as it was, Upload is offered only where its session can write, and adding a connected server
+  again replaces its connection.
+- Row policies and masking: `MERGE` and `INSERT ... ON CONFLICT` are refused on such tables, and
+  how the refusal reads.
+- Regenerate the reference and release notes for Hardcharger 2.13.1 and the protocol reference
+  for Chargewire 2.5.4. The client versions are unchanged from 2.13.0.
+- Examples run against the published 2.13.1 server image.
+
 ## [2.13.0] - 2026-11-14
 
 ### Added

@@ -13,11 +13,16 @@ Chargewire is plain HTTP with JSON control messages and Arrow IPC data, so any H
 use Hardcharger. This page walks through the protocol with `curl`, `jq` and a line of Python to
 read Arrow; the [specification](/reference/chargewire-protocol/) has every detail.
 
+## Read-only connections
+
+See [read-only connections](/guides/read-only-connections/) for the connection option,
+server confirmation, one-way transitions, and compatibility with older servers.
+
 ## Discover
 
 ```console test
 $ curl -s localhost:31337/chargewire | jq -c '{server: .server.name, protocol_versions, capabilities}'
-{"server":"Hardcharger","protocol_versions":["1"],"capabilities":["prepared_statements","transactions","ingest","partitioned_ingest","long_poll","ipc_compression_zstd","ipc_compression_lz4_frame","result_partitions","openapi"]}
+{"server":"Hardcharger","protocol_versions":["1"],"capabilities":["prepared_statements","transactions","ingest","partitioned_ingest","read_only_sessions","long_poll","ipc_compression_zstd","ipc_compression_lz4_frame","result_partitions","openapi"]}
 ```
 
 A client uses only the optional features listed in `capabilities`, and ignores names it doesn't
@@ -31,7 +36,7 @@ $ TOKEN=$(curl -s localhost:31337/chargewire/v1/auth/token -H "$H" \
     -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
 $ AUTH="Authorization: Bearer $TOKEN"
 $ curl -s localhost:31337/chargewire/v1/sessions -H "$AUTH" -H "$H" -d '{"options": {"schema": "main"}}' | tee session.json | jq -c '{options, transaction, idle_timeout_s}'
-{"options":{"catalog":"my","schema":"main","autocommit":true,"duckdb_arrow_lossless_conversion":false},"transaction":"none","idle_timeout_s":900}
+{"options":{"catalog":"my","schema":"main","autocommit":true,"duckdb_arrow_lossless_conversion":false,"read_only":false},"transaction":"none","idle_timeout_s":900}
 $ URL=localhost:31337/chargewire/v1/sessions/$(jq -r .session_id session.json)
 $ echo "export H='$H' AUTH='$AUTH' URL='$URL'" > env.sh
 ```
@@ -39,7 +44,8 @@ $ echo "export H='$H' AUTH='$AUTH' URL='$URL'" > env.sh
 The token goes in `Authorization: Bearer` on every other request. Tokens last a day by default;
 sign in again (or let a driver renew) when one expires.
 
-The session document lists every option the session has, with its current value. A bad option
+The session document lists every option the session has, with its current value. Here,
+`read_only` is `false` because the client did not request a read-only session. A bad option
 in `POST /sessions` fails the whole request (`400 unknown_option` or `invalid_option_value`), and
 no session is created. `duckdb_arrow_lossless_conversion` is an option of Hardcharger's own (DuckDB's
 `arrow_lossless_conversion` setting for this session; see
@@ -56,7 +62,7 @@ than tracking `BEGIN` and `COMMIT` yourself.
 ```console test
 $ . ./env.sh
 $ curl -s -X PATCH $URL -H "$AUTH" -H "$H" -d '{"options": {"duckdb_arrow_lossless_conversion": true, "bogus": 1}}'
-{"options":{"catalog":"my","schema":"main","autocommit":true,"duckdb_arrow_lossless_conversion":true},"errors":{"bogus":{"code":"unknown_option","detail":"unknown session option"}}}
+{"options":{"catalog":"my","schema":"main","autocommit":true,"duckdb_arrow_lossless_conversion":true,"read_only":false},"errors":{"bogus":{"code":"unknown_option","detail":"unknown session option"}}}
 $ curl -s -X PATCH $URL -H "$AUTH" -H "$H" -d '{"options": {"duckdb_arrow_lossless_conversion": false}}' | jq -c .errors
 {}
 ```

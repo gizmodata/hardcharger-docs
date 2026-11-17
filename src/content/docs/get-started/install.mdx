@@ -1,22 +1,27 @@
 ---
 title: "Install"
-description: "Every way to install Hardcharger: the install page, the desktop app, the one-line installer, Homebrew, Docker, Python, release downloads, and the iPhone, iPad and Android apps."
+description: "Every way to run Hardcharger: GizmoData Cloud, the install page, the desktop app, the one-line installer, Homebrew, Docker, Python, release downloads, and the iPhone, iPad and Android apps."
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+## GizmoData Cloud (recommended)
 
-The quickest way in is the **[install page](https://gizmodata.com/hardcharger/install)**. It
-detects your computer and offers the matching download, with its checksum. This page lists
-every option, so you can pick the one that fits.
+The quickest start, with nothing to install: [GizmoData Cloud](https://gizmodata.com/cloud) runs
+Hardcharger for you, fully managed on AWS, Google Cloud or Azure. Start free and launch a
+cluster in minutes, then connect with any of the [clients](/get-started/first-query/).
 
-<Aside type="tip" title="Rather not run it yourself?">
-[GizmoData Cloud](https://gizmodata.com/cloud) runs Hardcharger for you.
-</Aside>
+<p class="cloud-badge" style={{textAlign: "center"}}>
+  <a href="https://gizmodata.com/cloud"><img src="/badges/gizmodata-cloud-badge.png" alt="Run it on GizmoData Cloud" height="48" style={{display: "inline", height: "48px", width: "auto"}} /></a>
+</p>
 
-## Choose a way
+## Or install it yourself
+
+The **[install page](https://gizmodata.com/hardcharger/install)** detects your computer and
+offers the matching download, with its checksum. The table lists every way to run Hardcharger,
+so you can pick the one that fits.
 
 | You want | Use | Platforms |
 | --- | --- | --- |
+| Nothing to install or operate | [GizmoData Cloud](#gizmodata-cloud-recommended) | AWS, Google Cloud, Azure |
 | A graphical dashboard with a background server | [Desktop app](#desktop-app) | macOS (Apple silicon), Windows (x64, Arm64) |
 | The server and CLI, with any version a command away | [One-line installer](#one-line-installer) | macOS (Apple silicon), Linux (x86-64, arm64), Windows (x64, Arm64) |
 | The server and CLI, upgraded with your other tools | [Homebrew](#homebrew) | macOS 15+ (Apple silicon), Linux (x86-64, arm64) |

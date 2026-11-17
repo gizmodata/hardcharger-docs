@@ -7,6 +7,25 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.13.1.post5] - 2026-11-17
+
+### Changed
+
+- GizmoData Cloud is the recommended way to start: the Install page opens with it (and its
+  button) and lists it first, the home page shows the button above the cards, and the
+  Quickstart points to the Install page for every way to run Hardcharger instead of repeating
+  them (Cloud, the install page, the desktop and phone apps), so they live in one place.
+
+### Added
+
+- A **Home** entry at the top of the sidebar, linking to the home page.
+
+### Removed
+
+- Everything left from the private preview: the "during the preview" notes and token steps in
+  the Quickstart, the client guides, Raspberry Pi and Versions. Every build is now the public
+  site unless `DOCS_GA=false` is set explicitly.
+
 ## [2.13.1.post4] - 2026-11-17
 
 ### Fixed

@@ -4,50 +4,14 @@ description: "Install Hardcharger with the one-line installer, Homebrew, Docker,
 ---
 
 import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
-import Preview from '../../../components/Preview.astro';
-import Ga from '../../../components/Ga.astro';
 
-The quickest way in is the **[install page](https://gizmodata.com/hardcharger/install)**. It
-detects your computer and offers the matching download: the desktop app, the server and CLI,
-Docker, Python, and the phone and tablet apps. [Install](/get-started/install/) compares every
-option; this page takes the command-line ones step by step, through a first query.
-
-Choose how you want to run the server. The **[desktop app](/guides/desktop-app/)** in
-**v2.1.0+** provides a macOS or Windows dashboard, background server, settings and SQL
-workspace. Choose a `Hardcharger-desktop-…` release artifact for that experience.
-
-For a terminal, automation, a container or an operating-system service, use one of the
-command-line packages below. These remain independent tools. The existing Windows
-`Hardcharger-windows-…msi` installs the server and CLI; it is separate from the
-`Hardcharger-desktop-windows-…msi` desktop installer.
-
-From **2.1.0**, the `hardcharger` PyPI package version matches its server version. Python-only
-fixes use `.postN` (for example `2.1.0.post1` still downloads server `2.1.0`).
-
-Pick one way to get the command-line server, start it with an administrator password,
-then run a query.
-
-<Preview>
-
-<Aside type="caution" title="Private preview">
-Hardcharger's releases, images and packages are internal to GizmoData until launch. The
-commands below that download them pass a GitHub token that can read
-`gizmodata/hardcharger`. If you are signed in with [`gh`](https://cli.github.com), `gh auth token`
-prints one. After launch, no token is needed.
-</Aside>
-
-</Preview>
+This page takes the command-line server from install to a first query, in three steps. For
+every other way to run Hardcharger, starting with **GizmoData Cloud** (nothing to install),
+and including the desktop app and the phone apps, see **[Install](/get-started/install/)**.
 
 ## 1. Get the server
 
-For a phone or tablet, get the app from the [App Store](https://apps.apple.com/us/app/hardcharger/id6824900180) (iPhone and iPad, iOS 18 or
-later) or [Google Play](https://play.google.com/store/apps/details?id=com.gizmodata.hardcharger) (Android 9 or later); see the
-[iOS app](/guides/ios-app/) and [Android app](/guides/android-app/) guides.
-
-<p class="store-badges">
-  <a href="https://apps.apple.com/us/app/hardcharger/id6824900180"><img src="/badges/app-store-badge.svg" alt="Download on the App Store" height="40" style={{display: "inline", height: "40px", width: "auto"}} /></a>
-  <a href="https://play.google.com/store/apps/details?id=com.gizmodata.hardcharger"><img src="/badges/google-play-badge.png" alt="Get it on Google Play" height="40" style={{display: "inline", height: "40px", width: "auto", marginLeft: "0.5rem"}} /></a>
-</p>
+Pick one way to get the command-line server, then start it with an administrator password:
 
 <Tabs syncKey="install">
 <TabItem label="Installer">
@@ -55,23 +19,12 @@ later) or [Google Play](https://play.google.com/store/apps/details?id=com.gizmod
 macOS on Apple silicon and Linux (x86-64 or arm64, glibc 2.28 or newer: RHEL, Rocky and Alma Linux 8,
 Debian 10, Ubuntu 20.04, Amazon Linux 2023):
 
-{/* The page's first code block stays outside <Preview>/<Ga>: Expressive Code puts its
-    stylesheet and script in the first block of a page, and a wrapper that drops it would
-    leave every block unstyled (scripts/check_ga_build.py checks for that). */}
-
 ```console test server=none release
 $ curl https://install.hardcharger.gizmodata.com | sh
 …
 $ ~/.hardcharger/bin/hardcharger-server --version
 Hardcharger …
 ```
-
-<Preview>
-
-During the preview, the download needs the token: `curl https://install.hardcharger.gizmodata.com |
-HARDCHARGER_INSTALL_TOKEN="$(gh auth token)" sh`.
-
-</Preview>
 
 The installer puts every version under `~/.hardcharger/versions/` and links the current one
 into `~/.hardcharger/bin`; add that directory to your `PATH`. It checks each download against
@@ -121,26 +74,12 @@ docker run --rm --name hardcharger -p 31337:31337 -p 31338:31338 \
 
 Port 31337 speaks Chargewire; 31338 answers `/health`.
 
-<Preview>
-
-To pull the image during the preview, sign in first:
-`gh auth token | docker login ghcr.io -u <your GitHub user> --password-stdin`.
-
-</Preview>
-
 </TabItem>
 <TabItem label="Binaries">
 
 Linux (x86-64, arm64) and macOS (Apple silicon) tarballs, and Windows zips and MSIs, are attached to every
 [release](https://github.com/gizmodata/hardcharger/releases/latest). Download the one for your
 platform, then unpack it:
-
-<Preview>
-
-During the preview, `gh release download --repo gizmodata/hardcharger --pattern
-'hardcharger-<platform>.tar.gz'` downloads it with your GitHub sign-in.
-
-</Preview>
 
 ```bash test server=self release stop
 case "$(uname -sm)" in
@@ -185,23 +124,9 @@ with hardcharger.Server(password="change-me") as server:
 hardcharger://127.0.0.1:…?tls=false
 ```
 
-<Preview>
-
-During the preview, install it from GitHub (PyPI has only a placeholder until launch):
-
-```bash
-pip install "hardcharger @ git+https://github.com/gizmodata/hardcharger.git#subdirectory=python"
-```
-
-</Preview>
-
-<Ga>
-
 ```bash
 pip install hardcharger
 ```
-
-</Ga>
 
 See [Python (ADBC)](/clients/python/) for `server.connect()`.
 

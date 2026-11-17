@@ -1,4 +1,5 @@
-// The one switch between the private preview and the public site: DOCS_GA=true at build time
-// (README, "Private preview and GA"). It drops the preview banner and the noindex tag, hides
-// <Preview> content and shows <Ga> content.
-export const ga = import.meta.env.DOCS_GA === 'true' || process.env.DOCS_GA === 'true';
+// The switch between the public site and the old private preview. Hardcharger has shipped
+// (2026-11-17), so every build is the public site unless DOCS_GA=false is set explicitly: no
+// preview banner, no noindex tag. The pages no longer carry preview-only text.
+const setting = import.meta.env.DOCS_GA ?? process.env.DOCS_GA;
+export const ga = setting !== 'false';

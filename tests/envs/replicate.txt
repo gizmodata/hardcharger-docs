@@ -1,0 +1,3 @@
+# adbc-replicate-hardcharger, for the replication example on clients/integrations (DuckDB
+# is the example's source, so the duckdb extra is enough)
+adbc-replicate-hardcharger[duckdb]==2.3.1

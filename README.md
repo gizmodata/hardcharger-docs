@@ -90,6 +90,11 @@ expected output; `…` matches any text. Options in the info string pick the ser
 (`profile=rbac`, `server=self`, `fresh`), the expected exit status, background processes and
 their cleanup; the docstring lists them. [`tests/profiles.yaml`](tests/profiles.yaml) defines the
 servers (PostgreSQL for access control, TLS, metrics, a stand-in identity provider, ...).
+An integration's examples (`clients/integrations`) run with `env=NAME`: their own Python
+virtualenv, built from the pinned requirements in [`tests/envs/NAME.txt`](tests/envs/), because
+integration packages pin conflicting dependencies (sqlmesh and ibis need different sqlglot). Each
+is built once per content of its file under `.envs/` (CI caches it); bump the pin to test a new
+release of the integration.
 
 Missing prerequisites (the server, PostgreSQL, the drivers, the read token) **fail** the run;
 nothing is skipped, and a run in which no example ran fails too. Each gate was proven by breaking

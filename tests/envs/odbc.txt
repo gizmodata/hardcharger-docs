@@ -1,0 +1,2 @@
+# pyodbc, for the ODBC driver example on clients/integrations (the driver itself is a native library)
+pyodbc==5.5.0

@@ -7,6 +7,26 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.13.1.post6] - 2026-11-17
+
+### Added
+
+- **All integrations** (Clients → All integrations): every Hardcharger integration on one page,
+  by category, with its example, what it needs and links to its guide, repository and package:
+  the drivers (Python/Go/ADBC, ODBC, JDBC, JavaScript), the CLI, web UI and QGIS plugin, the MCP
+  server and PDF Loader, dbt and SQLMesh, SQLAlchemy, SQLFrame and Ibis, adbc-replicate and dlt,
+  Power BI, Grafana and Metabase, DBeaver and DuckDB's two ADBC extensions. Every code example on
+  it runs in CI against a real server (37 of them); the GUI tools (Power BI, Grafana, Metabase,
+  DBeaver, QGIS) get setup steps with the exact field values. The home page has a card for it
+  at the top and under "Pick your client".
+- Examples can run in their own Python environment (`env=NAME`, from `tests/envs/NAME.txt`), for
+  integrations whose packages can't share one; CI caches the environments.
+
+### Changed
+
+- `scripts/verify-in-docker.sh` fetches the public Go modules over HTTPS, and over SSH only when
+  the forwarded SSH agent holds a key.
+
 ## [2.13.1.post5] - 2026-11-17
 
 ### Changed

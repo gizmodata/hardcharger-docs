@@ -147,6 +147,7 @@ export default defineConfig({
 						{ label: 'JavaScript', slug: 'clients/javascript' },
 						{ label: 'The hardcharger CLI', slug: 'clients/cli' },
 						{ label: 'Plain HTTP', slug: 'clients/http' },
+						{ label: 'All integrations', slug: 'clients/integrations' },
 					],
 				},
 				{

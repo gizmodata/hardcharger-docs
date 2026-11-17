@@ -7,6 +7,7 @@ ARG GH_VERSION=2.83.0
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       ca-certificates curl jq openssl git openssh-client build-essential python3 python3-venv \
       openjdk-17-jdk-headless postgresql-client xz-utils libssl3t64 \
+      unixodbc \
     && rm -rf /var/lib/apt/lists/*
 RUN arch=$(dpkg --print-architecture) \
     && curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${arch}.tar.gz" | tar -C /usr/local -xz \

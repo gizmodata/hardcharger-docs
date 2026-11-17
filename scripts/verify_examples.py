@@ -27,6 +27,11 @@ Options in the info string:
                    script and the real package, with this build instead of a download
     stop           stop the page's background processes (and run their cleanup) first
     cleanup=CMD    run CMD when the page ends or its background stops (`docker rm -f NAME`)
+    env=NAME       run with the Python environment tests/envs/NAME.txt describes (its own
+                   virtualenv, first on PATH, and `python` blocks use its interpreter): for an
+                   integration whose packages can't share the docs' environment (sqlmesh and
+                   ibis pin different sqlglot versions). Built once per content of the file
+                   under HARDCHARGER_DOCS_ENVS (default .envs/), with pip from PyPI.
 
 A block right after a tested block whose info string has the word `output` is that
 block's expected output. `console` blocks carry their own: lines starting with `$ ` are
@@ -69,6 +74,32 @@ PROFILES = ROOT / "tests" / "profiles.yaml"
 FIXTURES = ROOT / "tests" / "fixtures"
 MIRROR: pathlib.Path | None = None  # the release mirror, made on first use
 VENV = pathlib.Path(os.environ.get("HARDCHARGER_DOCS_VENV", ROOT / ".venv"))  # Python with the drivers
+ENVS = pathlib.Path(os.environ.get("HARDCHARGER_DOCS_ENVS", ROOT / ".envs"))  # env=NAME environments
+ENV_SPECS = ROOT / "tests" / "envs"
+
+
+def python_env(name: str, where: str) -> pathlib.Path:
+    """The virtualenv for env=NAME, built from tests/envs/NAME.txt when its content changes."""
+    spec = ENV_SPECS / f"{name}.txt"
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", name) or not spec.is_file():
+        raise Failure(f"{where}: env={name!r} needs tests/envs/{name}.txt")
+    digest = hashlib.sha256(spec.read_bytes()).hexdigest()[:16]
+    target = ENVS / f"{name}-{digest}"
+    if (target / ".complete").is_file():
+        return target
+    shutil.rmtree(target, ignore_errors=True)
+    ENVS.mkdir(parents=True, exist_ok=True)
+    print(f"  building env {name} ({digest})", flush=True)
+    base = getattr(sys, "_base_executable", None) or sys.executable
+    for args in ([base, "-m", "venv", str(target)],
+                 [str(target / "bin" / "python"), "-m", "pip", "install", "-q", "--disable-pip-version-check",
+                  "-r", str(spec)]):
+        done = subprocess.run(args=args, capture_output=True, text=True, timeout=1800)
+        if done.returncode != 0:
+            shutil.rmtree(target, ignore_errors=True)
+            raise Failure(f"{where}: building env={name} failed\n{done.stdout}{done.stderr}")
+    (target / ".complete").write_text(digest + "\n")
+    return target
 FENCE = re.compile(r"^(?P<indent>\s*)(?P<fence>`{3,}|~{3,})(?P<info>.*)$")
 ELLIPSIS = "…"
 PORT, HEALTH_PORT = 31337, 31338
@@ -228,6 +259,7 @@ class Page:
         self.background: list[subprocess.Popen] = []
         self.cleanups: list[str] = []
         self.profiles = yaml.safe_load(PROFILES.read_text())
+        self.python = VENV / "bin" / "python"  # env=NAME swaps it for the block
         self.env = {
             "PATH": os.pathsep.join([str(bin_dir), str(VENV / "bin"), str(ROOT / "tests" / "bin"),
                                      *os.environ.get("HARDCHARGER_DOCS_EXTRA_PATH", "").split(os.pathsep),
@@ -369,6 +401,19 @@ class Page:
 
     # -- blocks ------------------------------------------------------------------------
     def run(self, block: Block) -> None:
+        if "env" not in block.meta:
+            self._run(block)
+            return
+        target = python_env(block.meta["env"], block.where)
+        saved_path, saved_python = self.env["PATH"], self.python
+        self.env["PATH"] = os.pathsep.join([str(target / "bin"), saved_path])
+        self.python = target / "bin" / "python"
+        try:
+            self._run(block)
+        finally:
+            self.env["PATH"], self.python = saved_path, saved_python
+
+    def _run(self, block: Block) -> None:
         if "stop" in block.words:
             self.stop_background()
         server = block.meta.get("server", "profile")
@@ -403,7 +448,7 @@ class Page:
         elif lang == "python":
             script = self.dir / f"example_{block.line}.py"
             script.write_text(block.code)
-            self.execute(block, [str(VENV / "bin" / "python"), "-I", script.name])
+            self.execute(block, [str(self.python), "-I", script.name])
         elif lang == "sql":
             script = self.dir / f"example_{block.line}.sql"
             script.write_text(block.code)

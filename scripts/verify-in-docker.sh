@@ -12,8 +12,8 @@
 #   HARDCHARGER_DOCS_PY_SRC      gizmodata/hardcharger's python/ directory (the server package)
 #   HARDCHARGER_DOCS_JDBC_JAR    the standalone hardcharger-jdbc.jar
 # Optional: HARDCHARGER_DOCS_PG_URI (as seen from the container: host.docker.internal).
-# The gizmodata Go modules are fetched over SSH with this machine's SSH agent (Docker Desktop
-# forwards it), as a developer with access to the repositories does.
+# The gizmodata Go modules are public and fetched over HTTPS; when this machine's SSH agent
+# (Docker Desktop forwards it) holds a key, over SSH instead.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 for v in HARDCHARGER_DOCS_LINUX_DIR HARDCHARGER_DOCS_ADBC_SRC HARDCHARGER_DOCS_PY_SRC HARDCHARGER_DOCS_JDBC_JAR; do
@@ -31,9 +31,11 @@ docker run --rm -i \
   -v "$HARDCHARGER_DOCS_PY_SRC":/src/hardcharger-py:ro \
   -v "$HARDCHARGER_DOCS_JDBC_JAR":/src/hardcharger-jdbc.jar:ro \
   -v hardcharger-docs-venv:/opt/venv \
+  -v hardcharger-docs-envs:/opt/envs \
   -v hardcharger-docs-go:/root/go \
   -e HARDCHARGER_DOCS_BIN_DIR=/hc/bin \
   -e HARDCHARGER_DOCS_VENV=/opt/venv \
+  -e HARDCHARGER_DOCS_ENVS=/opt/envs \
   -e HARDCHARGER_DOCS_JDBC_JAR=/src/hardcharger-jdbc.jar \
   -e GOMODCACHE=/root/go/pkg/mod -e GOCACHE=/root/go/cache \
   -e HARDCHARGER_DOCS_PG_URI="${HARDCHARGER_DOCS_PG_URI:-}" \
@@ -43,8 +45,12 @@ docker run --rm -i \
 # this library only has to run in this container), into a Python environment with the
 # server package and the examples' other imports. Rebuilt when the checkout changes.
 REV=$(git -C /src/hardcharger-adbc rev-parse HEAD 2>/dev/null || echo unknown)
-mkdir -p ~/.ssh && ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
-git -C / config --global url."git@github.com:gizmodata/".insteadOf https://github.com/gizmodata/  # -C /: /docs may be a worktree whose .git points outside the container
+# The gizmodata modules are public: fetched over HTTPS, or over SSH when the forwarded agent
+# holds a key (a developer with access to unreleased branches).
+if ssh-add -l >/dev/null 2>&1; then
+  mkdir -p ~/.ssh && ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+  git -C / config --global url."git@github.com:gizmodata/".insteadOf https://github.com/gizmodata/  # -C /: /docs may be a worktree whose .git points outside the container
+fi
 export GOPRIVATE='github.com/gizmodata/*' GOFLAGS=-mod=mod
 if [ ! -f "/opt/venv/.built-$REV" ]; then
   rm -rf /tmp/hc-adbc /tmp/hc-py /opt/venv/* && cp -R /src/hardcharger-adbc /tmp/hc-adbc && cp -R /src/hardcharger-py /tmp/hc-py

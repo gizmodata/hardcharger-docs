@@ -12,6 +12,8 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 ### Fixed
 
 - The **GizmoData Cloud** links on the Install and home pages go to https://gizmodata.com/cloud.
+- The home page's support section presents GizmoData Cloud as self-serve (start free, launch a
+  cluster in minutes) instead of asking readers to write to sales.
 
 ## [2.13.1.post3] - 2026-11-17
 

@@ -7,6 +7,11 @@ import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
 import Preview from '../../../components/Preview.astro';
 import Ga from '../../../components/Ga.astro';
 
+The quickest way in is the **[install page](https://gizmodata.com/hardcharger/install)**. It
+detects your computer and offers the matching download: the desktop app, the server and CLI,
+Docker, Python, and the phone and tablet apps. [Install](/get-started/install/) compares every
+option; this page takes the command-line ones step by step, through a first query.
+
 Choose how you want to run the server. The **[desktop app](/guides/desktop-app/)** in
 **v2.1.0+** provides a macOS or Windows dashboard, background server, settings and SQL
 workspace. Choose a `Hardcharger-desktop-…` release artifact for that experience.
@@ -35,7 +40,14 @@ prints one. After launch, no token is needed.
 
 ## 1. Get the server
 
-For a phone or tablet, see the [Android app guide](/guides/android-app/) (v2.12.0+).
+For a phone or tablet, get the app from the [App Store](https://apps.apple.com/us/app/hardcharger/id6824900180) (iPhone and iPad, iOS 18 or
+later) or [Google Play](https://play.google.com/store/apps/details?id=com.gizmodata.hardcharger) (Android 9 or later); see the
+[iOS app](/guides/ios-app/) and [Android app](/guides/android-app/) guides.
+
+<p class="store-badges">
+  <a href="https://apps.apple.com/us/app/hardcharger/id6824900180"><img src="/badges/app-store-badge.svg" alt="Download on the App Store" height="40" style={{display: "inline", height: "40px", width: "auto"}} /></a>
+  <a href="https://play.google.com/store/apps/details?id=com.gizmodata.hardcharger"><img src="/badges/google-play-badge.png" alt="Get it on Google Play" height="40" style={{display: "inline", height: "40px", width: "auto", marginLeft: "0.5rem"}} /></a>
+</p>
 
 <Tabs syncKey="install">
 <TabItem label="Installer">
@@ -64,7 +76,9 @@ HARDCHARGER_INSTALL_TOKEN="$(gh auth token)" sh`.
 The installer puts every version under `~/.hardcharger/versions/` and links the current one
 into `~/.hardcharger/bin`; add that directory to your `PATH`. It checks each download against
 the release's SHA-256 before switching. `HARDCHARGER_VERSION=0.3.0` installs a given version,
-and `sh -s -- --list` lists what you have.
+and `sh -s -- --list` lists what you have. For every option (another install
+directory, `--modify-path` to update your `PATH`, uninstalling, the Windows PowerShell installer),
+see [hardcharger-install](https://github.com/gizmodata/hardcharger-install).
 
 Start the server:
 

@@ -7,6 +7,26 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.13.1.post1] - 2026-11-17
+
+### Added
+
+- An **Install** page (first under Get started): the install page, a table to choose
+  between the desktop app, the one-line installer, Homebrew, Docker, Python, release downloads
+  and the phone apps, the commands for each, and a link to hardcharger-install for every
+  installer option.
+- An **iOS app** guide (Get started): installing from the App Store, the six screens and iPad
+  shortcuts, queries and files, saved servers, Share on Local Network and built-in extensions.
+- App Store and Google Play buttons on the Quickstart and the app guides.
+
+### Changed
+
+- The Quickstart opens with the [install page](https://gizmodata.com/hardcharger/install), which
+  picks the right download for the reader's computer.
+- Quickstart's Installer tab links [hardcharger-install](https://github.com/gizmodata/hardcharger-install)
+  for every installer option.
+- Android app: it is on Google Play (was "coming soon").
+
 ## [2.13.1] - 2026-11-15
 
 ### Added

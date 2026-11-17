@@ -1,0 +1,132 @@
+---
+title: "Install"
+description: "Every way to install Hardcharger: the install page, the desktop app, the one-line installer, Homebrew, Docker, Python, release downloads, and the iPhone, iPad and Android apps."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The quickest way in is the **[install page](https://gizmodata.com/hardcharger/install)**. It
+detects your computer and offers the matching download, with its checksum. This page lists
+every option, so you can pick the one that fits.
+
+<Aside type="tip" title="Rather not run it yourself?">
+[GizmoData Cloud](https://gizmodata.com) runs Hardcharger for you.
+</Aside>
+
+## Choose a way
+
+| You want | Use | Platforms |
+| --- | --- | --- |
+| A graphical dashboard with a background server | [Desktop app](#desktop-app) | macOS (Apple silicon), Windows (x64, Arm64) |
+| The server and CLI, with any version a command away | [One-line installer](#one-line-installer) | macOS (Apple silicon), Linux (x86-64, arm64), Windows (x64, Arm64) |
+| The server and CLI, upgraded with your other tools | [Homebrew](#homebrew) | macOS 15+ (Apple silicon), Linux (x86-64, arm64) |
+| A container | [Docker](#docker) | `linux/amd64`, `linux/arm64` |
+| To start a server from Python code | [Python](#python) | Wherever the release binaries run |
+| To download and unpack it yourself | [Release downloads](#release-downloads) | All of the above |
+| Hardcharger on a phone or tablet | [iPhone, iPad and Android](#iphone-ipad-and-android) | iOS 18+, Android 9+ |
+
+## Desktop app
+
+The [desktop app](/guides/desktop-app/) runs the server from a graphical dashboard, opens the
+SQL workspace and manages settings and logs. Close the dashboard and the server keeps running
+in the menu bar or system tray.
+
+- **macOS** (Apple silicon, macOS 15 or later): download the `.dmg` from the
+  [install page](https://gizmodata.com/hardcharger/install) and drag Hardcharger to
+  Applications, or install it with Homebrew:
+
+  ```bash
+  brew install --cask gizmodata/tap/hardcharger-desktop
+  ```
+
+- **Windows** (x64 or Arm64): download the signed `.msi` for your computer from the
+  [install page](https://gizmodata.com/hardcharger/install). It installs the desktop app with
+  its own server and CLI.
+
+## One-line installer
+
+On macOS (Apple silicon) and Linux (x86-64 or arm64, glibc 2.28 or newer), the installer puts
+`hardcharger-server` and the `hardcharger` client in `~/.hardcharger`:
+
+```bash
+curl https://install.hardcharger.gizmodata.com | sh
+```
+
+On Windows, in PowerShell:
+
+```powershell
+irm https://install.hardcharger.gizmodata.com/install.ps1 | iex
+```
+
+The installer keeps every version you install side by side, checks each download against the
+release's SHA-256, and switches between versions in seconds. It prints the line that puts
+`~/.hardcharger/bin` on your `PATH`; add `--modify-path` to have it do that:
+
+```bash
+curl https://install.hardcharger.gizmodata.com | sh -s -- --modify-path
+```
+
+To install a given version, list what you have or uninstall, and for every other option, see
+**[hardcharger-install](https://github.com/gizmodata/hardcharger-install)**.
+
+## Homebrew
+
+GizmoData's [Homebrew tap](https://github.com/gizmodata/homebrew-tap) has the server and CLI
+for macOS 15+ on Apple silicon and Linux on x86-64 or arm64:
+
+```bash
+brew install gizmodata/tap/hardcharger
+```
+
+`brew upgrade hardcharger` follows each release. Homebrew keeps one version, the latest; the
+one-line installer keeps every version you install.
+
+## Docker
+
+Images are multi-architecture (`linux/amd64`, `linux/arm64`), on `ghcr.io/gizmodata/hardcharger`
+and `docker.io/gizmodata/hardcharger`:
+
+```bash
+docker run --rm -p 31337:31337 -p 31338:31338 \
+  -e HARDCHARGER_ADMIN_PASSWORD='change-me' \
+  ghcr.io/gizmodata/hardcharger:latest
+```
+
+Port 31337 speaks Chargewire; 31338 answers `/health`. See
+[Docker and Kubernetes](/guides/docker-and-kubernetes/) for running it in production.
+
+## Python
+
+The `hardcharger` Python package downloads the release for your platform on first use, checks
+its SHA-256, caches it and starts the server for you:
+
+```bash
+pip install hardcharger
+```
+
+See the [Quickstart](/get-started/quickstart/) for starting a server from Python and
+[Python (ADBC)](/clients/python/) for connecting to it.
+
+## Release downloads
+
+Every [release](https://github.com/gizmodata/hardcharger/releases/latest) has tarballs for
+Linux (x86-64, arm64) and macOS (Apple silicon), zips and MSIs for Windows (x64, Arm64), the
+desktop apps, and a `SHA256SUMS` file covering them all. The
+[Quickstart](/get-started/quickstart/) shows how to unpack and start each one.
+
+## iPhone, iPad and Android
+
+The whole server runs on the device itself, with the web UI and the `hardcharger` console.
+
+<p class="store-badges">
+  <a href="https://apps.apple.com/us/app/hardcharger/id6824900180"><img src="/badges/app-store-badge.svg" alt="Download on the App Store" height="40" style={{display: "inline", height: "40px", width: "auto"}} /></a>
+  <a href="https://play.google.com/store/apps/details?id=com.gizmodata.hardcharger"><img src="/badges/google-play-badge.png" alt="Get it on Google Play" height="40" style={{display: "inline", height: "40px", width: "auto", marginLeft: "0.5rem"}} /></a>
+</p>
+
+See the [iOS app](/guides/ios-app/) (iOS 18 or later) and [Android app](/guides/android-app/)
+(Android 9 or later) guides.
+
+## Next steps
+
+- [Quickstart](/get-started/quickstart/): start the server and run a first query.
+- [Upgrading](/guides/upgrading/): move to a new version and roll back.

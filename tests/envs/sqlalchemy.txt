@@ -1,0 +1,2 @@
+# sqlalchemy-hardcharger, for the SQLAlchemy example on clients/integrations
+sqlalchemy-hardcharger==1.1.0

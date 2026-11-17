@@ -190,6 +190,7 @@ jobs:
           cache: npm
       - run: npm ci
       - uses: actions/setup-python@v7
+        id: python
         with:
           python-version: "3.14"
       - uses: actions/setup-go@v7
@@ -215,7 +216,8 @@ jobs:
           key: maven-${{ runner.os }}-${{ steps.maven-key.outputs.key }}
           restore-keys: maven-${{ runner.os }}-
       - name: Tools
-        run: sudo apt-get update -q && sudo apt-get install -y -q jq postgresql-client
+        # unixodbc: the ODBC driver example (clients/integrations) loads the driver through it.
+        run: sudo apt-get update -q && sudo apt-get install -y -q jq postgresql-client unixodbc
 
       - name: The Python driver (adbc-driver-hardcharger) and the server package
         run: |
@@ -244,6 +246,13 @@ jobs:
           HARDCHARGER_DOCS_CHARGEWIRE_SRC: ${{ runner.temp }}/src/chargewire
         run: .venv/bin/python scripts/gen_reference.py --check
 
+      # The env=NAME examples' own virtualenvs (tests/envs/NAME.txt; verify_examples.py builds
+      # each one once per content of its file). Restored only on an exact key: a venv points at
+      # this runner's Python, so an older venv is never reused for a new interpreter.
+      - uses: actions/cache@v6
+        with:
+          path: .envs
+          key: envs-${{ runner.os }}-${{ runner.arch }}-${{ steps.python.outputs.python-version }}-${{ hashFiles('tests/envs/*.txt') }}
       - name: Every tested example
         run: |
           # The examples run with their own HOME; Docker and Go keep using the runner's. Their PATH

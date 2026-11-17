@@ -1,0 +1,2 @@
+# dbt-hardcharger, for the dbt example on clients/integrations
+dbt-hardcharger==2.2.0

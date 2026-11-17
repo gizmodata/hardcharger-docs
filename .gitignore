@@ -10,3 +10,4 @@ screenshots/
 .idea/
 dist-ga/
 dist-*/
+.envs/

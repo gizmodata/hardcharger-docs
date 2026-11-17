@@ -1,0 +1,1075 @@
+---
+title: "All integrations"
+description: "Every Hardcharger integration in one place: drivers for Python, Go, ODBC, Java and JavaScript, the CLI and web UI, the MCP server, QGIS, dbt, SQLMesh, SQLAlchemy, SQLFrame, Ibis, replication, dlt, Power BI, Grafana, Metabase, DBeaver and DuckDB's ADBC extensions."
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+Hardcharger works with 22 tools and libraries, all open source (see each project's license).
+Every one of them talks to the server over [Chargewire](/concepts/chargewire/), so results
+arrive as Apache Arrow. Each example below runs in this site's CI against a real Hardcharger
+server, on a local server without TLS (`hardcharger://localhost?tls=false`, user `hardcharger`,
+password `change-me`); in production, leave TLS on. The same list is on
+[gizmodata.com](https://gizmodata.com/hardcharger/integrations).
+
+| Category | Integrations |
+|---|---|
+| [Drivers](#drivers) | Python, Go and ADBC · ODBC · JDBC · JavaScript and TypeScript |
+| [Tools](#tools) | `hardcharger` CLI · Web UI · QGIS |
+| [AI and agents](#ai-and-agents) | MCP server · PDF Loader |
+| [Transformation](#transformation) | dbt · SQLMesh |
+| [Python and DataFrames](#python-and-dataframes) | SQLAlchemy · SQLFrame (PySpark API) · Ibis |
+| [Data loading](#data-loading) | adbc-replicate · dlt |
+| [BI and dashboards](#bi-and-dashboards) | Power BI · Grafana · Metabase |
+| [SQL clients](#sql-clients) | DBeaver · DuckDB `adbc_scanner` (Query.Farm) · DuckDB `adbc` (Columnar) |
+
+## Drivers
+
+### Python, Go and ADBC driver
+
+`adbc-driver-hardcharger`: query Hardcharger from Python, Go, C/C++, R, Rust or any ADBC
+language. Python gets DB-API 2.0 with Arrow results, Go programs import it directly, and C/C++, R
+and Rust load it through an ADBC driver manager.
+
+```bash title="Install"
+pip install adbc-driver-hardcharger
+# Go
+go get github.com/gizmodata/hardcharger-adbc/go/v2
+```
+
+```python test title="query.py"
+from adbc_driver_hardcharger import dbapi as hardcharger
+
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger", password="change-me") as conn:
+    with conn.cursor() as cur:
+        cur.execute(operation="SELECT 42 AS answer, ? AS greeting", parameters=["hello"])
+        print(cur.fetch_arrow_table())
+```
+
+```text output title="Output"
+pyarrow.Table
+answer: int32
+greeting: string
+----
+answer: [[42]]
+greeting: [["hello"]]
+```
+
+Python 3.11 or later. `?tls=false` is for a local server on plain HTTP; production servers use
+TLS, so leave it out there.
+
+[Python](/clients/python/) · [Go](/clients/go/) ·
+[ADBC driver manager](/clients/adbc-driver-manager/) ·
+[GitHub](https://github.com/gizmodata/hardcharger-adbc) ·
+[PyPI](https://pypi.org/project/adbc-driver-hardcharger/) ·
+[Native driver downloads](https://github.com/gizmodata/hardcharger-adbc/releases/latest)
+
+### ODBC driver
+
+The Hardcharger ODBC driver, for any ODBC application (and Python through `pyodbc`), with native
+Chargewire and Arrow streaming. A code-signed Windows x64 MSI, and native libraries for macOS 15
+or later on Apple Silicon and Linux x64/ARM64 with glibc 2.39 or later.
+
+On Windows, the MSI installs and registers the driver. On Linux, install unixODBC and `pyodbc`,
+then download the driver and register it in your `~/.odbcinst.ini`:
+
+```bash title="Install (Debian, Ubuntu)"
+sudo apt-get install unixodbc
+pip install pyodbc
+```
+
+```bash test server=none title="Download and register the driver (Linux)"
+arch=$(dpkg --print-architecture)   # amd64 or arm64
+mkdir -p "$HOME/.local/hardcharger-odbc"
+curl -fsSL "https://github.com/gizmodata/hardcharger-odbc-driver/releases/latest/download/hardcharger-odbc-linux-$arch.tar.gz" \
+  | tar -xz -C "$HOME/.local/hardcharger-odbc"
+cat >> "$HOME/.odbcinst.ini" <<EOF
+[Hardcharger ODBC Driver]
+Description = Hardcharger ODBC Driver (Chargewire)
+Driver = $HOME/.local/hardcharger-odbc/lib/libhardcharger-odbc.so
+EOF
+```
+
+```python test env=odbc title="query.py"
+import pyodbc
+
+with pyodbc.connect(
+    "Driver={Hardcharger ODBC Driver};"
+    "uri=hardcharger://localhost?tls=false;"
+    "uid=hardcharger;pwd=change-me;",
+    autocommit=True,
+) as connection:
+    row = connection.execute(
+        "SELECT CAST(? AS VARCHAR), 42", "hello"
+    ).fetchone()
+    print(row)
+```
+
+```text output title="Output"
+('hello', 42)
+```
+
+The example uses `tls=false` for a local development server. Leave it out to use verified TLS in
+production, and set `trustedCerts` for a private CA.
+
+[GitHub](https://github.com/gizmodata/hardcharger-odbc-driver) ·
+[Downloads](https://github.com/gizmodata/hardcharger-odbc-driver/releases/latest) ·
+[Windows MSI](https://github.com/gizmodata/hardcharger-odbc-driver/releases/latest/download/Hardcharger-ODBC-Driver-x64.msi)
+
+### JDBC driver
+
+`hardcharger-jdbc`: Hardcharger for Java applications, DBeaver and other JDBC tools, in one jar.
+
+```xml title="pom.xml: the Maven dependency"
+<dependency>
+  <groupId>com.gizmodata</groupId>
+  <artifactId>hardcharger-jdbc</artifactId>
+  <version><!-- the release version --></version>
+</dependency>
+```
+
+```java test title="Query.java"
+Properties properties = new Properties();
+properties.setProperty("user", "hardcharger");
+properties.setProperty("password", "change-me");
+properties.setProperty("useEncryption", "false"); // plain HTTP on localhost
+try (Connection connection = DriverManager.getConnection("jdbc:hardcharger://localhost", properties);
+     ResultSet rows = connection.createStatement().executeQuery("SELECT 42 AS answer")) {
+  rows.next();
+  System.out.println(rows.getInt("answer"));
+}
+```
+
+```text output title="Output"
+42
+```
+
+Java 17 or later. Leave out `useEncryption=false` for a production server, which uses TLS. Bulk
+ingest has no JDBC API; use the ADBC driver for loads.
+
+[JDBC guide](/clients/jdbc/) · [GitHub](https://github.com/gizmodata/hardcharger-jdbc) ·
+[Maven Central](https://central.sonatype.com/artifact/com.gizmodata/hardcharger-jdbc) ·
+[Download the jar](https://github.com/gizmodata/hardcharger-jdbc/releases/latest/download/hardcharger-jdbc.jar)
+
+### JavaScript and TypeScript client
+
+`@gizmodata/hardcharger`: `hardcharger://` URLs in, Arrow out, in Node, browsers, Deno, Bun and
+Cloudflare Workers.
+
+```bash title="Install"
+npm install @gizmodata/hardcharger apache-arrow
+```
+
+```js test title="query.mjs"
+import { connect } from "@gizmodata/hardcharger";
+
+const conn = await connect({ url: "hardcharger://localhost?tls=false", username: "hardcharger", password: "change-me" });
+const table = await conn.query("SELECT 42 AS answer, ? AS greeting", ["hello"]);
+console.log(table.toArray().map((row) => row.toJSON()));
+await conn.close();
+```
+
+```text output title="Output"
+[ { answer: 42, greeting: 'hello' } ]
+```
+
+Node 22.19 or later; `apache-arrow` is a peer dependency. Leave out `?tls=false` for a production
+server, which uses TLS.
+
+[JavaScript guide](/clients/javascript/) · [GitHub](https://github.com/gizmodata/hardcharger-js) ·
+[npm](https://www.npmjs.com/package/@gizmodata/hardcharger)
+
+## Tools
+
+### hardcharger command-line client
+
+An interactive SQL shell and a scripting tool, shipped with every server: tarballs, MSI,
+container images and the Python package.
+
+```bash title="Install"
+curl https://install.hardcharger.gizmodata.com | sh
+```
+
+```console test title="Run a query"
+$ export HARDCHARGER_PASSWORD='change-me'
+$ hardcharger --host localhost --tls=false --username hardcharger --csv \
+  --command "SELECT 42 AS answer"
+answer
+42
+```
+
+TLS is the CLI's default; `--tls=false` is for a local server on plain HTTP.
+
+[CLI guide](/clients/cli/) · [Downloads](https://github.com/gizmodata/hardcharger/releases/latest) ·
+[PyPI](https://pypi.org/project/hardcharger/)
+
+### Web UI
+
+A SQL editor, results grid, schema browser and file upload, built into the server. Start the
+server with `--web-ui`:
+
+```bash test server=self background wait=http://127.0.0.1:31337/ui/ title="Start a server with the web UI"
+HARDCHARGER_ADMIN_PASSWORD='change-me' hardcharger-server --web-ui --database demo.duckdb
+# open http://localhost:31337/ui
+```
+
+Open [http://localhost:31337/ui](http://localhost:31337/ui) and sign in as `hardcharger` /
+`change-me`. The page answers:
+
+```console test server=none title="Check that the web UI answers"
+$ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:31337/ui/
+200
+```
+
+On a server with TLS, the UI is at `https://<host>:31337/ui`, with the server's certificate.
+
+[Web UI guide](/guides/web-ui/) · [Install Hardcharger](/get-started/install/)
+
+### QGIS plugin
+
+`qhardcharger`: show Hardcharger spatial tables and custom SQL in QGIS 4 (4.2.3 or later). Install
+it from Plugins → Manage and Install Plugins.
+
+<Steps>
+
+1. In QGIS 4.2.3 or later, choose **Plugins → Manage and Install Plugins**, search for
+   `qhardcharger` and click **Install Plugin**. Accept the dependency download when the plugin is
+   first activated.
+2. Choose **Plugins → Hardcharger → Add Hardcharger layer**.
+3. **Host** `localhost`, **Port** `31337`. Clear **Use TLS (HTTPS)** only for a local server
+   without TLS; production servers use TLS.
+4. **Auth type** `Password`. Under **Credentials**, create a Basic authentication configuration
+   with user `hardcharger` and password `change-me`. QGIS Auth Manager stores it encrypted.
+5. Click **Connect & list tables** and pick a `catalog.schema.table`, or choose **Custom SQL** and
+   enter a `SELECT`. Set **Geometry CRS** to the actual CRS of your source coordinates.
+6. Click **Add Layer**.
+
+</Steps>
+
+Offline, download the ZIP and use **Install from ZIP** in the same dialog:
+
+```console test server=none title="Download the plugin"
+$ curl -L --fail -o qhardcharger.zip https://github.com/gizmodata/qhardcharger/releases/latest/download/qhardcharger.zip
+…
+```
+
+To add a layer from QGIS's Python console:
+
+```python title="QGIS Python console"
+from qgis.core import QgsProject, QgsProviderRegistry, QgsVectorLayer
+
+metadata = QgsProviderRegistry.instance().providerMetadata("hardcharger")
+uri = metadata.encodeUri({
+    "host": "db.example.com",
+    "port": "31337",
+    "authcfg": "abc1234",  # your QGIS Basic authentication config ID
+    "schema": "main",
+    "table": "cities",
+    "epsg": "4326",        # the actual CRS of your source coordinates
+})
+layer = QgsVectorLayer(uri, "Cities", "hardcharger")
+if not layer.isValid():
+    raise RuntimeError("Check the Hardcharger entry in QGIS Log Messages")
+QgsProject.instance().addMapLayer(layer)
+```
+
+For a local server without TLS, add `"use_tls": "0"`. Restart QGIS after upgrading the plugin.
+
+[QGIS plugin repository](https://plugins.qgis.org/plugins/qhardcharger/) ·
+[GitHub](https://github.com/gizmodata/qhardcharger)
+
+## AI and agents
+
+### Hardcharger MCP server
+
+Explore and query Hardcharger from Claude Desktop, Claude Code and any MCP client. Add it to
+Claude Code:
+
+```bash title="Add the server to Claude Code"
+claude mcp add hardcharger \
+  -e HARDCHARGER_URI='hardcharger://localhost?tls=false' \
+  -e HARDCHARGER_USERNAME=hardcharger \
+  -e HARDCHARGER_PASSWORD=change-me \
+  -- npx -y @gizmodata/hardcharger-mcp
+```
+
+To check the server without an MCP client, this script starts it as Claude Code does, with the
+same settings, and runs one query over stdio:
+
+```python test stop timeout=300 title="check_mcp.py: call the MCP server from a script"
+import json
+import os
+import subprocess
+
+env = dict(os.environ, HARDCHARGER_URI="hardcharger://localhost?tls=false",
+           HARDCHARGER_USERNAME="hardcharger", HARDCHARGER_PASSWORD="change-me")
+server = subprocess.Popen(args=["npx", "-y", "@gizmodata/hardcharger-mcp"], env=env, text=True,
+                          stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+def send(message):
+    server.stdin.write(json.dumps(obj={"jsonrpc": "2.0", **message}) + "\n")
+    server.stdin.flush()
+
+def call(number, method, params):
+    send(message={"id": number, "method": method, "params": params})
+    return json.loads(s=server.stdout.readline())["result"]
+
+info = call(number=1, method="initialize", params={"protocolVersion": "2025-06-18", "capabilities": {},
+                                                   "clientInfo": {"name": "check", "version": "1.0"}})
+print(info["serverInfo"]["name"])
+send(message={"method": "notifications/initialized"})
+result = call(number=2, method="tools/call", params={"name": "run_query", "arguments": {"sql": "SELECT 42 AS answer"}})
+print(result["content"][0]["text"])
+server.stdin.close()
+server.wait()
+```
+
+```text output title="Output"
+@gizmodata/hardcharger-mcp
+| answer |
+| --- |
+| 42 |
+
+1 row returned · … ms
+```
+
+Node 22.19 or later for `npx`; Claude Desktop can install the `.mcpb` extension instead, with no
+Node needed. For a production server, which uses TLS, set `HARDCHARGER_URI` to
+`hardcharger://<host>` without `?tls=false`.
+
+[GitHub](https://github.com/gizmodata/hardcharger-mcp) ·
+[npm](https://www.npmjs.com/package/@gizmodata/hardcharger-mcp) ·
+[Claude Desktop extension](https://github.com/gizmodata/hardcharger-mcp/releases/latest/download/hardcharger-mcp.mcpb)
+
+### PDF Loader
+
+Load PDF manuals into Hardcharger, so SQL clients and MCP agents can search the text and fetch the
+originals.
+
+```bash title="Install"
+pip install hardcharger-pdf-loader
+```
+
+The loader reads its connection from a `.env` file in the working directory (or the environment).
+`HARDCHARGER_CATALOG` is an attached, persistent catalog: here `my`, the server's `my.duckdb`. TLS
+is on by default; `HARDCHARGER_USE_TLS=false` is for a local server on plain HTTP.
+
+```dotenv test file=.env server=none title=".env"
+HARDCHARGER_HOSTNAME=localhost
+HARDCHARGER_PORT=31337
+HARDCHARGER_USERNAME=hardcharger
+HARDCHARGER_PASSWORD=change-me
+HARDCHARGER_CATALOG=my
+HARDCHARGER_USE_TLS=false
+```
+
+A one-page PDF to load (any PDFs in `source_pdf_files` will do):
+
+```python test env=pdf-loader server=none title="make_sample_pdf.py"
+import pathlib
+
+import pymupdf
+
+pathlib.Path("source_pdf_files").mkdir()
+doc = pymupdf.open()
+page = doc.new_page()
+page.insert_text(point=(72, 72), text="Check the hydraulic pump relief valves every 500 hours.")
+doc.save(filename="source_pdf_files/pump-manual.pdf")
+```
+
+Load it, list what is loaded, and search:
+
+```console test env=pdf-loader timeout=600 title="Load the PDFs"
+$ hardcharger-pdf-loader load --source-dir source_pdf_files
+…
+status            size chunks  pages w/text   ocr       chars    secs  file
+loaded … pump-manual.pdf
+$ hardcharger-pdf-loader list
+         size  pages w/text       chars chunks revealed  loaded_at (UTC)      file
+… pump-manual.pdf
+1 document(s)
+$ hardcharger-pdf-loader search "hydraulic pump relief valves" --ranked --limit 5
+== pump-manual.pdf — page 1 (score …)
+   Check the hydraulic pump relief valves every 500 hours.
+1 hit(s)
+```
+
+A DuckLake catalog can't hold the full-text index. For a DuckLake target, keep the index in an
+attached DuckDB catalog:
+
+```console test env=pdf-loader title="Build the full-text index"
+$ export HARDCHARGER_PASSWORD='change-me'
+$ hardcharger --host localhost --tls=false --username hardcharger --command "ATTACH 'search_index.duckdb' AS search_index"
+OK
+$ hardcharger-pdf-loader index --fts-catalog search_index
+…
+full-text index rebuilt over 1 page(s) in search_index.fts_pdf_fts_document_pages (index built over a copy of the page text in the 'duckdb' catalog 'search_index')
+```
+
+Python 3.11 to 3.15. Loading the `fts` extension needs an administrator; querying an existing
+index does not. Rebuild the index (`hardcharger-pdf-loader index`) after changing the documents.
+
+[GitHub](https://github.com/gizmodata/hardcharger-pdf-loader) ·
+[PyPI](https://pypi.org/project/hardcharger-pdf-loader/)
+
+## Transformation
+
+### dbt-hardcharger
+
+Build your dbt project on Hardcharger.
+
+```bash title="Install"
+pip install dbt-hardcharger
+```
+
+A dbt project in a directory `shop`. Its `profiles.yml` connects to a local server without TLS;
+leave `tls: false` out in production, where TLS is on by default:
+
+```yaml test file=shop/profiles.yml title="shop/profiles.yml"
+shop:
+  target: dev
+  outputs:
+    dev:
+      type: hardcharger
+      host: localhost
+      port: 31337
+      user: hardcharger
+      password: "{{ env_var('HARDCHARGER_PASSWORD') }}"
+      tls: false        # a local server without TLS
+      schema: main
+      threads: 4
+```
+
+`dbt_project.yml`:
+
+```yaml test file=shop/dbt_project.yml title="shop/dbt_project.yml"
+name: shop
+version: "1.0.0"
+profile: shop
+models:
+  shop:
+    +materialized: table
+```
+
+A model, `models/customers.sql`:
+
+```sql test file=shop/models/customers.sql title="shop/models/customers.sql"
+select * from (values (1, 'Ada', 2), (2, 'Grace', 1)) as t(id, name, orders)
+```
+
+Build it on the server and look at the result:
+
+```console test env=dbt title="Run dbt"
+$ cd shop
+$ export HARDCHARGER_PASSWORD='change-me'
+$ dbt run --quiet
+$ dbt show --select customers --quiet
+| id | name  | orders |
+| -- | ----- | ------ |
+|  1 | Ada   |      2 |
+|  2 | Grace |      1 |
+```
+
+dbt-core 1.12, Python 3.11 or later. The `grants` config is not applied yet; use `GRANT` in a
+post-hook.
+
+[GitHub](https://github.com/gizmodata/dbt-hardcharger) ·
+[PyPI](https://pypi.org/project/dbt-hardcharger/)
+
+### SQLMesh adapter
+
+Plan, test and run SQLMesh transformations on Hardcharger over native ADBC.
+
+```bash title="Install"
+pip install sqlmesh-hardcharger
+```
+
+A SQLMesh project in a directory `mesh`. Its `config.yaml` connects to a local server without
+TLS; leave `use_encryption: false` out in production, where TLS is on by default:
+
+```yaml test file=mesh/config.yaml title="mesh/config.yaml"
+gateways:
+  hardcharger:
+    connection:
+      type: hardcharger
+      host: localhost
+      port: 31337
+      username: "{{ env_var('HARDCHARGER_USERNAME') }}"
+      password: "{{ env_var('HARDCHARGER_PASSWORD') }}"
+      use_encryption: false  # a local server without TLS
+    state_connection:
+      type: duckdb
+      database: sqlmesh_state.duckdb
+model_defaults:
+  dialect: duckdb
+```
+
+A model, `models/customers.sql`:
+
+```sql test file=mesh/models/customers.sql title="mesh/models/customers.sql"
+MODEL (name shop.customers, kind FULL);
+
+SELECT * FROM (VALUES (1, 'Ada', 2), (2, 'Grace', 1)) AS t(id, name, orders)
+```
+
+`sqlmesh-hardcharger` is SQLMesh's CLI with the adapter registered. Plan and apply the model, then
+query it:
+
+```console test env=sqlmesh title="Plan, apply and query"
+$ cd mesh
+$ export HARDCHARGER_USERNAME='hardcharger' HARDCHARGER_PASSWORD='change-me'
+$ sqlmesh-hardcharger plan --auto-apply --no-prompts
+…
+**Added Models:**
+- `shop.customers` (Breaking)
+…
+Virtual layer updated
+$ hardcharger --host localhost --tls=false --username hardcharger --csv --command "SELECT * FROM shop.customers ORDER BY id"
+id,name,orders
+1,Ada,2
+2,Grace,1
+```
+
+Python 3.11 to 3.14 and SQLMesh 0.236.x. The local DuckDB state connection is for development; use
+a separate PostgreSQL state connection in production.
+
+[GitHub](https://github.com/gizmodata/sqlmesh-hardcharger) ·
+[PyPI](https://pypi.org/project/sqlmesh-hardcharger/)
+
+## Python and DataFrames
+
+### SQLAlchemy dialect
+
+SQLAlchemy Core, the ORM, pandas and Alembic on Hardcharger.
+
+```bash title="Install"
+pip install sqlalchemy-hardcharger
+```
+
+`?tls=false` is for a local server without TLS; leave it out in production, where TLS is on by
+default:
+
+```python test env=sqlalchemy title="query.py"
+from sqlalchemy import create_engine, text
+
+engine = create_engine(url="hardcharger://hardcharger:change-me@localhost:31337?tls=false")
+
+with engine.connect() as conn:
+    print(conn.execute(statement=text(text="SELECT 42 AS answer")).scalar())
+```
+
+```text output title="Output"
+42
+```
+
+Python 3.10 or later, SQLAlchemy 2.0 or 2.1. On a GizmoData Cloud cluster that stops when idle,
+leave `pool_pre_ping` off: a ping is a statement, and a statement starts the cluster.
+
+[GitHub](https://github.com/gizmodata/sqlalchemy-hardcharger) ·
+[PyPI](https://pypi.org/project/sqlalchemy-hardcharger/)
+
+### SQLFrame for Hardcharger
+
+Run your PySpark DataFrame code on Hardcharger, with no Spark cluster.
+
+```bash title="Install"
+pip install sqlframe-hardcharger
+```
+
+The example reads a `nation` table, as in TPC-H. A few of its rows:
+
+```sql test title="Create the sample table (SQL)"
+CREATE TABLE nation AS SELECT * FROM (VALUES
+  (0, 'ALGERIA', 0), (1, 'ARGENTINA', 1), (2, 'BRAZIL', 1),
+  (3, 'CANADA', 1), (4, 'EGYPT', 4), (5, 'ETHIOPIA', 0)) t(n_nationkey, n_name, n_regionkey);
+```
+
+A session (`?tls=false` is for a local server without TLS; leave it out in production):
+
+```python test env=sqlframe title="query.py"
+from sqlframe_hardcharger import HardchargerSession, functions as F
+
+spark = HardchargerSession.builder.config(map={
+    "hardcharger.uri": "hardcharger://localhost?tls=false",
+    "hardcharger.username": "hardcharger",
+    "hardcharger.password": "change-me",
+}).getOrCreate()
+
+nations = spark.table(tableName="nation").groupBy("n_regionkey").agg(F.count(col="*").alias("nations"))
+nations.orderBy("n_regionkey").show()
+```
+
+```text output title="Output"
++-------------+---------+
+| n_regionkey | nations |
++-------------+---------+
+|      0      |    2    |
+|      1      |    3    |
+|      4      |    1    |
++-------------+---------+
+```
+
+Python 3.11 or later. Python UDFs can't run on the server.
+
+[GitHub](https://github.com/gizmodata/sqlframe-hardcharger) ·
+[PyPI](https://pypi.org/project/sqlframe-hardcharger/)
+
+### Ibis backend
+
+Write Ibis dataframe expressions in Python and run them on Hardcharger as DuckDB SQL.
+
+```bash title="Install"
+pip install ibis-hardcharger
+# The example starts a throwaway local server:
+pip install hardcharger
+```
+
+The example starts its own server, in memory, and connects without TLS:
+
+```python test server=none release env=ibis title="query.py"
+import hardcharger
+import ibis
+
+with hardcharger.Server() as server:  # a throwaway server on this machine
+    con = ibis.hardcharger.connect(
+        host=server.host,
+        port=server.port,
+        user=server.username,
+        password=server.password,
+        use_encryption=False,  # the throwaway server speaks plain HTTP
+    )
+    trips = con.create_table(
+        "trips",
+        obj=ibis.memtable(
+            {"city": ["Boston", "Denver", "Boston", "Austin"], "miles": [12.5, 30.0, 4.0, 8.5]}
+        ),
+    )
+    by_city = (
+        trips.group_by("city")
+        .agg(trips=trips.count(), miles=trips.miles.sum())
+        .order_by(ibis.desc("miles"))
+    )
+    print(by_city.to_pandas())
+    con.disconnect()
+```
+
+```text output title="Output"
+     city  trips  miles
+0  Denver      1   30.0
+1  Boston      2   16.5
+2  Austin      1    8.5
+```
+
+Python 3.11 to 3.15, Ibis 12.0. TLS is on unless `use_encryption=False`, or `?tls=false` in a URL.
+Python, pandas and PyArrow UDFs are not supported.
+
+[GitHub](https://github.com/gizmodata/ibis-hardcharger) ·
+[PyPI](https://pypi.org/project/ibis-hardcharger/)
+
+## Data loading
+
+### adbc-replicate-hardcharger
+
+Copy whole schemas from Oracle, PostgreSQL, Snowflake, DuckDB or another Hardcharger, on a
+schedule.
+
+```bash title="Install"
+pip install "adbc-replicate-hardcharger[all]"   # or [oracle], [postgresql], [snowflake], [duckdb]
+```
+
+The example copies from a local DuckDB file, `shop.duckdb`. Make one:
+
+```python test env=replicate title="make_source.py: a DuckDB file to copy"
+import duckdb
+
+with duckdb.connect(database="shop.duckdb") as con:
+    con.execute(query="CREATE SCHEMA sales")
+    con.execute(query="""
+        CREATE TABLE sales.customers AS SELECT * FROM (VALUES
+          (1, 'Ada', '123-45-6789'), (2, 'Grace', '987-65-4321')) t(id, name, ssn)
+    """)
+```
+
+`replicate.yaml` copies the `sales` schema and hashes the `ssn` column inside the source, so the raw
+values never leave it. `?tls=false` is for a local server without TLS; leave it out in production:
+
+```yaml test file=replicate.yaml title="replicate.yaml"
+version: 1
+name: shop-to-hardcharger
+
+source:
+  type: duckdb
+  path: ./shop.duckdb
+
+target:
+  type: hardcharger
+  uri: hardcharger://localhost?tls=false
+  username: hardcharger
+  password: ${HARDCHARGER_PASSWORD}
+
+objects:
+  - db_schemas: [sales]
+
+columns:
+  - tables: [sales.customers]
+    mask:
+      ssn: hash
+
+parallelism: 2
+```
+
+Run it (`plan`, `validate` and `test-connection` take the same `--config`), then query the copy:
+
+```console test env=replicate title="Replicate and check"
+$ export HARDCHARGER_PASSWORD='change-me'
+$ adbc-replicate-hardcharger run --config replicate.yaml
+🚀 adbc-replicate-hardcharger 2.3.1: duckdb → hardcharger (catalog …), run …
+🔍 Discovering source objects…
+🗺️  1 table(s) and 0 view(s) selected (…s)
+📦 Copying tables (parallelism 2)…
+  📦 Copying sales.customers → sales.customers (missing in target)
+  ✅ sales.customers: 2 rows in …s
+📊 Tables: 1 copied (2 rows), 0 unchanged, 0 failed in …s
+🏁 Run completed
+⏱️  …s
+$ hardcharger --host localhost --tls=false --username hardcharger --csv --command "SELECT * FROM sales.customers ORDER BY id"
+id,name,ssn
+1,Ada,01a54629efb952287e554eb23ef69c52097a75aecc0e3a93ca0855ab6d7a31a0
+2,Grace,ecdbc061a36dd6495e016ba4696dedbc4c0b822b4d6ec55b4fb57d17f1df5695
+```
+
+Python 3.11 or later.
+
+[GitHub](https://github.com/gizmodata/adbc-replicate-hardcharger) ·
+[PyPI](https://pypi.org/project/adbc-replicate-hardcharger/)
+
+### dlt destination
+
+Load anything [dlt](https://dlthub.com) can extract into Hardcharger, as Arrow over Chargewire.
+
+```bash title="Install"
+pip install dlt-hardcharger
+```
+
+`destination="hardcharger"` works with no import: dlt finds the destination through the package,
+and reads its URL from `.dlt/secrets.toml` (or an environment variable). `?tls=false` is for a
+local server without TLS; leave it out in production:
+
+```toml test file=.dlt/secrets.toml title=".dlt/secrets.toml"
+[destination.hardcharger]
+credentials = "hardcharger://hardcharger:change-me@localhost:31337?tls=false"
+```
+
+Run a pipeline:
+
+```python test env=dlt title="load.py"
+import dlt
+
+pipeline = dlt.pipeline(pipeline_name="from_secrets", destination="hardcharger", dataset_name="crm")
+pipeline.run(data=[{"id": 1, "name": "Ada"}], table_name="contacts")
+print(pipeline.dataset().contacts.select("id", "name").fetchall())
+```
+
+```text output title="Output"
+[(1, 'Ada')]
+```
+
+Python 3.10 to 3.14, dlt 1.32.0 or later (below 2). TLS is on unless the URL says `?tls=false`.
+
+[GitHub](https://github.com/gizmodata/dlt-hardcharger) ·
+[PyPI](https://pypi.org/project/dlt-hardcharger/)
+
+## BI and dashboards
+
+### Power BI connector
+
+DirectQuery and Import in Power BI Desktop, with native ADBC and query folding. Needs the
+standalone Windows x64 Power BI Desktop installer; the Microsoft Store app is not supported.
+
+<Steps>
+
+1. Download and run
+   [Hardcharger-PowerBI-Setup-x64.msi](https://github.com/gizmodata/hardcharger-powerbi-connector/releases/latest/download/Hardcharger-PowerBI-Setup-x64.msi),
+   then restart Power BI Desktop.
+2. Choose **Get Data → Database → Hardcharger**.
+3. **Server** `localhost`, **Port** `31337`, **Use Encryption (TLS)** `false` for a local server
+   without TLS. Use `true` in production. Choose **Import** or **DirectQuery**.
+4. Sign in with **Username/Password** (`hardcharger` / `change-me`), a **Bearer token** or
+   **OAuth (Browser)**.
+5. Pick catalogs, schemas and tables in the Navigator, then **Load**.
+
+</Steps>
+
+The same source in Power Query M:
+
+```powerquery title="Power Query M (Advanced Editor)"
+let
+    // Sign in through Power BI's credential dialog.
+    Source = Hardcharger.Contents("db.example.com", 31337, true)
+in
+    Source
+// For local plain HTTP: Hardcharger.Contents("localhost", 31337, false)
+```
+
+Repair the connector installation after a Desktop update if its driver directory was replaced.
+Browser sign-in tokens need an interactive sign-in again when they expire.
+
+[GitHub](https://github.com/gizmodata/hardcharger-powerbi-connector) ·
+[Download the MSI](https://github.com/gizmodata/hardcharger-powerbi-connector/releases/latest/download/Hardcharger-PowerBI-Setup-x64.msi)
+
+### Grafana data source
+
+Dashboards, alerts and Explore in Grafana, on Hardcharger, in DuckDB SQL. Grafana 13.3 or later,
+self-hosted. The data source signs in as one Hardcharger user for all its Grafana users, so give
+it a user that can only read.
+
+The plugin is not signed yet, so it installs from its GitHub release. Unpack it into Grafana's
+plugin directory:
+
+```bash title="Install the plugin"
+curl -fLO https://github.com/gizmodata/grafana-hardcharger-datasource/releases/download/v1.0.0/gizmodata-hardcharger-datasource-1.0.0.zip
+unzip gizmodata-hardcharger-datasource-1.0.0.zip -d /var/lib/grafana/plugins
+```
+
+Allow it in `grafana.ini`, then restart Grafana. Grafana Cloud does not load unsigned plugins.
+
+```ini title="grafana.ini"
+[plugins]
+allow_loading_unsigned_plugins = gizmodata-hardcharger-datasource
+```
+
+<Steps>
+
+1. Choose **Connections → Data sources → Add new data source → Hardcharger**.
+2. **Host** `localhost`, **Port** `31337`. Turn **Use TLS** off only for a local server without
+   TLS.
+3. **Sign in with** `Username and password`: **Username** `hardcharger`, **Password** `change-me`.
+4. Click **Save & test**. It reports the server's version, catalog and schema.
+
+</Steps>
+
+A query in the **Time series** format, over a table `demo.metrics`:
+
+```sql title="Time series query (SQL)"
+SELECT $__timeGroup(ts, $__interval) AS time, host, avg(cpu_percent) AS cpu
+FROM demo.metrics
+WHERE $__timeFilter(ts)
+GROUP BY 1, 2
+ORDER BY 1
+```
+
+Each text column, here `host`, becomes a label: one series per host. Queries are written as SQL;
+there is no query builder.
+
+[GitHub](https://github.com/gizmodata/grafana-hardcharger-datasource) ·
+[Downloads](https://github.com/gizmodata/grafana-hardcharger-datasource/releases/latest)
+
+### Metabase driver
+
+Questions, dashboards and SQL in Metabase, on Hardcharger. Metabase 0.65; the driver does not load
+in 0.64 or earlier.
+
+Put the driver jar in Metabase's plugins directory and restart Metabase. With Docker:
+
+```bash title="Install the driver and start Metabase"
+mkdir -p plugins
+curl -fL -o plugins/hardcharger.metabase-driver.jar \
+  https://github.com/gizmodata/metabase-hardcharger-driver/releases/latest/download/hardcharger.metabase-driver.jar
+chmod 777 plugins   # Metabase unpacks its own bundled drivers into the same directory
+
+docker run -d --name metabase -p 3000:3000 \
+  -v "$PWD/plugins:/plugins" -e MB_PLUGINS_DIR=/plugins \
+  metabase/metabase:v0.65.4.3
+```
+
+<Steps>
+
+1. In Metabase, choose **Admin > Databases > Add database** and pick **Hardcharger**.
+2. **Display name** `Hardcharger`, **Host** `localhost`, **Port** `31337`. Turn off **Use a secure
+   connection (TLS)** only for a local server without TLS.
+3. **Username** `hardcharger`, **Password** `change-me`. Leave **Catalog** empty for the catalog
+   the server starts sessions in.
+4. Click **Save**. Metabase syncs the catalog's tables.
+
+</Steps>
+
+Community drivers are for self-hosted Metabase; Metabase Cloud does not load them. Uploads and
+transforms write to the server as the connection's user, and stay off until an admin turns each
+on.
+
+[GitHub](https://github.com/gizmodata/metabase-hardcharger-driver) ·
+[Download the driver](https://github.com/gizmodata/metabase-hardcharger-driver/releases/latest/download/hardcharger.metabase-driver.jar)
+
+## SQL clients
+
+### DBeaver
+
+Browse and query Hardcharger in DBeaver through the JDBC driver. Other JDBC tools take the same
+jar, driver class and URL.
+
+<Steps>
+
+1. Download [hardcharger-jdbc.jar](https://github.com/gizmodata/hardcharger-jdbc/releases/latest/download/hardcharger-jdbc.jar).
+2. In **Database > Driver Manager > New**, add a driver: class name
+   `com.gizmodata.hardcharger.jdbc.HardchargerDriver`, URL template
+   `jdbc:hardcharger://{host}[:{port}][/{database}]`, default port `31337`, and the jar under
+   **Libraries**.
+3. **Database > New Database Connection > Hardcharger**: host `localhost`, port `31337`, user
+   `hardcharger`, password `change-me`.
+4. On **Driver properties**, set `useEncryption` to `false` for a local server without TLS.
+5. **Test Connection**, then **Finish**.
+
+</Steps>
+
+The [DBeaver setup](/clients/jdbc/#dbeaver) has every step.
+
+[DBeaver setup](/clients/jdbc/#dbeaver) ·
+[Download the jar](https://github.com/gizmodata/hardcharger-jdbc/releases/latest/download/hardcharger-jdbc.jar) ·
+[Download DBeaver](https://dbeaver.io/download/)
+
+### DuckDB ADBC Scanner (Query.Farm)
+
+Query Hardcharger from a local DuckDB with Query.Farm's `adbc_scanner` community extension and
+the Hardcharger ADBC driver.
+
+Install the DuckDB CLI and the driver, then register the driver so DuckDB finds it by the name
+`hardcharger`. Keep that Python environment installed: the registration points at its driver
+library.
+
+```bash title="Install"
+pip install duckdb-cli==1.5.6 adbc-driver-hardcharger
+```
+
+```console test env=duckdb-adbc server=none title="Register the driver"
+$ python -m adbc_driver_hardcharger.manifest
+…/.config/adbc/drivers/hardcharger.toml
+```
+
+Save this as `query-farm.sql`. It attaches the server as `hc`, lists its tables, and runs a query
+with a bound parameter on the server with `adbc_scan()`:
+
+```sql test file=query-farm.sql title="query-farm.sql"
+INSTALL adbc_scanner FROM community;
+LOAD adbc_scanner;
+
+-- Local Hardcharger started with password change-me.
+CREATE SECRET hardcharger_secret (
+    TYPE adbc,
+    SCOPE 'hardcharger://localhost?tls=false',
+    driver 'hardcharger',
+    uri 'hardcharger://localhost?tls=false',
+    username 'hardcharger',
+    password 'change-me'
+);
+ATTACH 'hardcharger://localhost?tls=false' AS hc (TYPE adbc);
+SHOW ALL TABLES;
+
+SELECT * FROM adbc_scan(
+    'hc', 'SELECT 42 AS answer, CAST(? AS VARCHAR) AS greeting',
+    params := row('hello')
+);
+-- answer: 42, greeting: hello
+```
+
+Run it with the DuckDB CLI, or paste it into any DuckDB 1.5.6 session:
+
+```console test env=duckdb-adbc title="Run it"
+$ duckdb -f query-farm.sql
+┌─────────┐
+│ Success │
+│ boolean │
+├─────────┤
+│ true    │
+└─────────┘
+…
+┌────────┬──────────┐
+│ answer │ greeting │
+│ int32  │ varchar  │
+├────────┼──────────┤
+│     42 │ hello    │
+└────────┴──────────┘
+```
+
+For a TLS server, replace both URIs with `hardcharger://your-server:31337` (TLS is the default).
+Tested with DuckDB 1.5.6.
+
+[Query.Farm docs](https://query.farm/products/extensions/adbc_scanner/) ·
+[Community extension](https://duckdb.org/community_extensions/extensions/adbc_scanner) ·
+[Driver setup](https://github.com/gizmodata/hardcharger-adbc#readme)
+
+### DuckDB ADBC (Columnar)
+
+Use Columnar.tech's `adbc` community extension with a reusable Hardcharger connection profile. Run
+it in its own DuckDB session: it and `adbc_scanner` both register `TYPE adbc`.
+
+Install the DuckDB CLI and the driver, register the driver, and make a directory for profiles:
+
+```bash title="Install"
+pip install duckdb-cli==1.5.6 adbc-driver-hardcharger
+```
+
+```console test env=duckdb-adbc server=none title="Register the driver"
+$ python -m adbc_driver_hardcharger.manifest
+…/.config/adbc/drivers/hardcharger.toml
+$ mkdir -p adbc-profiles
+```
+
+Save the connection profile as `adbc-profiles/hardcharger.toml`. It reads the credentials from
+environment variables:
+
+```toml test file=adbc-profiles/hardcharger.toml server=none title="adbc-profiles/hardcharger.toml"
+profile_version = 1
+driver = "hardcharger"
+
+[Options]
+uri = "hardcharger://localhost?tls=false"
+username = "{{ env_var(HARDCHARGER_USERNAME) }}"
+password = "{{ env_var(HARDCHARGER_PASSWORD) }}"
+```
+
+Save this as `columnar.sql`. SQL inside `read_adbc()` runs on the server; `ATTACH` lets you browse
+the server's tables and join them with local data:
+
+```sql test file=columnar.sql server=none title="columnar.sql"
+INSTALL adbc FROM community;
+LOAD adbc;
+
+SELECT * FROM read_adbc(
+    'profile://hardcharger', 'SELECT 42 AS answer'
+);
+-- answer: 42
+
+ATTACH 'profile://hardcharger' AS hc (TYPE adbc);
+SHOW ALL TABLES;
+-- Query your remote tables as hc.main.your_table.
+```
+
+Point the extension at the profile directory, set the credentials and run it:
+
+```console test env=duckdb-adbc title="Run it"
+$ export ADBC_PROFILE_PATH="$PWD/adbc-profiles"
+$ export HARDCHARGER_USERNAME='hardcharger'
+$ export HARDCHARGER_PASSWORD='change-me'
+$ duckdb -f columnar.sql
+┌────────┐
+│ answer │
+│ int32  │
+├────────┤
+│     42 │
+└────────┘
+…
+```
+
+Filters on attached tables run locally, so put filters and aggregations inside `read_adbc()` to
+reduce the data on the server. The extension uses autocommit and does not run concurrent ADBC
+operations in one process. For TLS, remove `?tls=false` and set your server's host in the profile.
+Tested with DuckDB 1.5.6.
+
+[Columnar docs](https://github.com/columnar-tech/duckdb-adbc-client#readme) ·
+[Community extension](https://duckdb.org/community_extensions/extensions/adbc) ·
+[Connection profiles](https://github.com/gizmodata/hardcharger-adbc#readme)
+
+---
+
+Missing a tool you use? [Ask for an integration](https://gizmodata.com/contact) or open a
+[GitHub issue](https://github.com/gizmodata/hardcharger/issues).

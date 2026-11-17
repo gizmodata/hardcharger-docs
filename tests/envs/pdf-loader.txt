@@ -1,0 +1,2 @@
+# hardcharger-pdf-loader, for the PDF Loader example on clients/integrations
+hardcharger-pdf-loader==0.2.2

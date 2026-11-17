@@ -1,0 +1,2 @@
+# sqlframe-hardcharger, for the SQLFrame example on clients/integrations
+sqlframe-hardcharger==2.2.0

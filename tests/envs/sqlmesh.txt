@@ -1,0 +1,2 @@
+# sqlmesh-hardcharger, for the SQLMesh example on clients/integrations
+sqlmesh-hardcharger==1.1.1

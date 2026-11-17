@@ -1,0 +1,2 @@
+# dlt-hardcharger, for the dlt example on clients/integrations
+dlt-hardcharger==1.0.0

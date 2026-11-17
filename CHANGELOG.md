@@ -7,6 +7,12 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.13.1.post4] - 2026-11-17
+
+### Fixed
+
+- The **GizmoData Cloud** links on the Install and home pages go to https://gizmodata.com/cloud.
+
 ## [2.13.1.post3] - 2026-11-17
 
 ### Added

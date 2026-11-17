@@ -80,9 +80,11 @@ export default defineConfig({
 				{
 					label: 'Get started',
 					items: [
+						{ label: 'Install', slug: 'get-started/install' },
 						{ label: 'Quickstart', slug: 'get-started/quickstart' },
 						{ label: 'Your first query', slug: 'get-started/first-query' },
 						{ label: 'Desktop app (v2.1.0+)', slug: 'guides/desktop-app' },
+						{ label: 'iOS app', slug: 'guides/ios-app' },
 						{ label: 'Android app (v2.12.0+)', slug: 'guides/android-app' },
 						{ label: 'Web UI', slug: 'guides/web-ui' },
 						{ label: 'Coming from GizmoSQL', slug: 'get-started/coming-from-gizmosql' },

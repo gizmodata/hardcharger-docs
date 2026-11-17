@@ -4,7 +4,12 @@
 max_retries = 3
 retry_wait_time = 5
 timeout = 30
-accept = ["200..=299", "403", "429"]   # some sites refuse bots (403) or rate-limit (429)
+# Some sites refuse bots (403) or rate-limit (429). GitHub answers bulk requests for its file pages
+# (github.com/<org>/<repo>/blob/...) with 503 when it throttles the runner: since the docs went public
+# (DOCS_GA, 2026-11-17) those links are checked, and 503s on links that load fine failed three release
+# runs in an hour (2.13.1.post4 and post5). A 503 is "temporarily unavailable", not a broken link;
+# 404 and 410 still fail.
+accept = ["200..=299", "403", "429", "503"]
 
 exclude = [
   # gizmodata's repositories are excluded by docs.yml while they are internal (DOCS_GA unset).

@@ -18,7 +18,8 @@ see the credentials.
 <Steps>
 
 1. Run PostgreSQL for the catalog and an S3-compatible gateway for the data. The ports are
-   chosen to stay out of the way of anything you already run:
+   chosen to stay out of the way of anything you already run, and below the range your system
+   hands out for outgoing connections:
 
    ```yaml test file=compose.yaml server=none run="docker compose up -d --wait" cleanup="docker compose down"
    services:
@@ -28,7 +29,7 @@ see the credentials.
          POSTGRES_USER: ducklake
          POSTGRES_PASSWORD: ducklake
          POSTGRES_DB: ducklake
-       ports: ["127.0.0.1:55460:5432"]
+       ports: ["127.0.0.1:25460:5432"]
        healthcheck:
          test: ["CMD-SHELL", "pg_isready -U ducklake"]
          interval: 2s
@@ -38,7 +39,7 @@ see the credentials.
        environment:
          ROOT_ACCESS_KEY: lake-key
          ROOT_SECRET_KEY: lake-secret
-       ports: ["127.0.0.1:59460:9000"]
+       ports: ["127.0.0.1:29460:9000"]
        # Serve directories under /data as buckets, with a bucket named "lake".
        entrypoint: ["sh", "-c", "mkdir -p /data/lake && exec versitygw --port :9000 --health /health posix /data"]
        healthcheck:
@@ -62,8 +63,8 @@ see the credentials.
    LOAD ducklake; LOAD postgres; LOAD httpfs;
 
    CREATE SECRET lake_s3 (TYPE s3, KEY_ID 'lake-key', SECRET 'lake-secret',
-     ENDPOINT '127.0.0.1:59460', URL_STYLE 'path', USE_SSL false, REGION 'us-east-1');
-   CREATE SECRET lake_catalog (TYPE postgres, HOST '127.0.0.1', PORT 55460,
+     ENDPOINT '127.0.0.1:29460', URL_STYLE 'path', USE_SSL false, REGION 'us-east-1');
+   CREATE SECRET lake_catalog (TYPE postgres, HOST '127.0.0.1', PORT 25460,
      DATABASE 'ducklake', USER 'ducklake', PASSWORD 'ducklake');
    CREATE SECRET lake (TYPE ducklake, METADATA_PATH '', DATA_PATH 's3://lake/',
      METADATA_PARAMETERS MAP {'TYPE': 'postgres', 'SECRET': 'lake_catalog'});

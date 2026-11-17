@@ -26,6 +26,12 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
   the Quickstart, the client guides, Raspberry Pi and Versions. Every build is now the public
   site unless `DOCS_GA=false` is set explicitly.
 
+### Fixed
+
+- DuckLake and S3: the example's PostgreSQL and S3 ports move to 25460 and 29460, below the
+  range Linux and macOS use for outgoing connections, where an outgoing connection could hold the
+  port and the containers failed to start ("address already in use").
+
 ## [2.13.1.post4] - 2026-11-17
 
 ### Fixed

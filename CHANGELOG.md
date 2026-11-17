@@ -7,6 +7,15 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.13.1.post7] - 2026-11-17
+
+### Changed
+
+- **All integrations, SQLMesh:** the example queries the model it built with
+  `sqlmesh-hardcharger fetchdf`, as a SQLMesh user would, now that sqlmesh-hardcharger 1.1.2 exits
+  cleanly after it (1.1.1 printed a "Cannot close AdbcConnection with open AdbcStatement"
+  traceback after the result). The example's environment pins 1.1.2.
+
 ## [2.13.1.post6] - 2026-11-17
 
 ### Added

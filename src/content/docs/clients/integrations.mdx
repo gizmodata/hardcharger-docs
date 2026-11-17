@@ -524,10 +524,10 @@ $ sqlmesh-hardcharger plan --auto-apply --no-prompts
 - `shop.customers` (Breaking)
 …
 Virtual layer updated
-$ hardcharger --host localhost --tls=false --username hardcharger --csv --command "SELECT * FROM shop.customers ORDER BY id"
-id,name,orders
-1,Ada,2
-2,Grace,1
+$ sqlmesh-hardcharger fetchdf "SELECT * FROM shop.customers ORDER BY id"
+   id   name  orders
+0   1    Ada       2
+1   2  Grace       1
 ```
 
 Python 3.11 to 3.14 and SQLMesh 0.236.x. The local DuckDB state connection is for development; use

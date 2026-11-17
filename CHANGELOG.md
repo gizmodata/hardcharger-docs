@@ -7,6 +7,12 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.13.1.post3] - 2026-11-17
+
+### Added
+
+- An **Install** card first on the home page, next to the Quickstart's.
+
 ## [2.13.1.post2] - 2026-11-17
 
 ### Added

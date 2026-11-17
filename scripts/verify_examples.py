@@ -110,7 +110,7 @@ def parse_info(info: str) -> tuple[str, dict, set]:
     return lang, meta, words
 
 
-GA = os.environ.get("DOCS_GA") == "true"  # the one preview/GA switch (src/components/ga.ts)
+GA = os.environ.get("DOCS_GA") != "false"  # public unless DOCS_GA=false (src/components/ga.ts)
 WRAPPER = re.compile(r"^\s*<(/?)(Preview|Ga)>\s*$")
 
 

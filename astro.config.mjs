@@ -6,12 +6,11 @@ import starlightLinksValidator from 'starlight-links-validator';
 import starlightLlmsTxt from 'starlight-llms-txt';
 
 // The site's address. DOCS_SITE and DOCS_BASE point a build at wherever it is served (the
-// custom domain, the private preview on GitHub Pages, localhost). DOCS_GA=true is the one
-// switch between the private preview and the public site (README, "Private preview and GA"):
-// without it every page says noindex and carries the preview banner (src/components/ga.ts).
+// custom domain, localhost). Every build is the public site (indexable, no preview banner)
+// unless DOCS_GA=false is set explicitly (src/components/ga.ts).
 const site = process.env.DOCS_SITE ?? 'https://docs.hardcharger.gizmodata.com';
 const base = process.env.DOCS_BASE ?? '/';
-const indexable = process.env.DOCS_GA === 'true';
+const indexable = process.env.DOCS_GA !== 'false';
 
 export default defineConfig({
 	site,
@@ -77,6 +76,7 @@ export default defineConfig({
 				starlightLlmsTxt({ projectName: 'Hardcharger' }),
 			],
 			sidebar: [
+				{ label: '🏠 Home', slug: 'index' },
 				{
 					label: 'Get started',
 					items: [

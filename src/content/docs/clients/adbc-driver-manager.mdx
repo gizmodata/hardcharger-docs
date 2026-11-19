@@ -1,19 +1,65 @@
 ---
 title: "C, C++, R, Rust (ADBC)"
-description: "Load Hardcharger's ADBC driver into any ADBC driver manager by the name \"hardcharger\", through its driver manifest."
+description: "Install Hardcharger's ADBC driver with one command and load it by the name \"hardcharger\" from any ADBC driver manager: C/C++, Go's drivermgr, R, Rust or Python."
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
 Hardcharger's ADBC driver is one C shared library, `libadbc_driver_hardcharger`, built from the
 same Go code for every platform. Any [ADBC driver manager](https://arrow.apache.org/adbc/)
-(C/C++, R's `adbcdrivermanager`, Rust's `adbc_driver_manager`, Python's, ...) loads it by name
-once its **driver manifest**, `hardcharger.toml`, is installed.
+(C/C++, Go's `drivermgr`, R's `adbcdrivermanager`, Rust's `adbc_driver_manager`, Python's, ...)
+loads it by name once its **driver manifest**, `hardcharger.toml`, is in a directory the driver
+manager searches.
 
-## Install the manifest
+## Install the driver
 
-With the Python package installed, it writes the manifest for you, pointing at the library inside
-the wheel:
+GizmoData's ADBC driver installer downloads the latest release's library for your platform,
+checks it against the release's checksums, and writes the manifest to your user's driver
+directory:
+
+```console test server=none title="Linux, macOS"
+$ curl https://install.adbc.gizmodata.com/hardcharger | sh
+…
+==> Installed the Hardcharger ADBC driver …
+  library:  …/hardcharger/…/libadbc_driver_hardcharger.so
+  manifest: …/.config/adbc/drivers/hardcharger.toml
+  driver = "hardcharger"
+…
+```
+
+```powershell title="Windows (PowerShell)"
+irm https://install.adbc.gizmodata.com/hardcharger.ps1 | iex
+```
+
+It installs into the directory every driver manager searches for your user:
+
+| Platform | Directory |
+|---|---|
+| Linux | `~/.config/adbc/drivers/` (`$XDG_CONFIG_HOME/adbc/drivers/`) |
+| macOS | `~/Library/Application Support/ADBC/Drivers/` |
+| Windows | `%LOCALAPPDATA%\ADBC\Drivers\` |
+
+Options go to the `sh` that runs the script:
+
+```bash title="Options (Linux, macOS)"
+# A pinned release (2.6.1 or later: the first with checksums)
+curl https://install.adbc.gizmodata.com/hardcharger | ADBC_VERSION=2.6.1 sh
+# For every user: /etc/adbc/drivers, /Library/Application Support/ADBC/Drivers
+curl https://install.adbc.gizmodata.com/hardcharger | sudo sh -s -- --system
+# Another directory: driver managers search it when it is on ADBC_DRIVER_PATH
+curl https://install.adbc.gizmodata.com/hardcharger | sh -s -- --dir ~/my-drivers
+# Remove it
+curl https://install.adbc.gizmodata.com/hardcharger | sh -s -- --uninstall
+```
+
+The same installer sets up GizmoData's other ADBC drivers (`chargewire`, `gizmosql`, `oracle`,
+`db2` and `quack`); its [README](https://github.com/gizmodata/adbc-install#readme) lists every
+option, the PowerShell ones included.
+
+### From the Python package
+
+With the Python package installed (`pip install adbc-driver-hardcharger`), you already have the
+library, inside the wheel, and the package writes a manifest that points at it:
 
 ```console test server=none
 $ python3 -m adbc_driver_hardcharger.manifest --print | grep -E '^(name|entrypoint) ='
@@ -24,31 +70,19 @@ $ ls drivers
 hardcharger.toml
 ```
 
-Without `--dir` it goes to your user's driver directory:
-
-| Platform | Directory |
-|---|---|
-| Linux | `~/.config/adbc/drivers/` |
-| macOS | `~/Library/Application Support/ADBC/Drivers/` |
-| Windows | `%LOCALAPPDATA%\ADBC\Drivers\` |
-| Any | a directory on `ADBC_DRIVER_PATH` |
-
-Without Python, take the library from a [release](https://github.com/gizmodata/hardcharger-adbc/releases)
-and fill in the template
-[`packaging/hardcharger.toml.in`](https://github.com/gizmodata/hardcharger-adbc/blob/main/packaging/hardcharger.toml.in).
+Without `--dir` it writes `hardcharger.toml` to your user's driver directory (the table above),
+the same file the installer writes, so whichever ran last is the one loaded. Use it for programs
+that run in that Python environment: the manifest stops working when the environment is removed.
 
 ## Load it by name
 
 Every driver manager then finds it as `hardcharger`, with the same options in every language.
-Through Python's driver manager:
+Through Python's driver manager (`pip install adbc-driver-manager pyarrow`):
 
 ```python test
 import adbc_driver_manager.dbapi
-import subprocess
 
-subprocess.run(args=["python3", "-m", "adbc_driver_hardcharger.manifest", "--dir", "drivers"], check=True,
-               capture_output=True)
-with adbc_driver_manager.dbapi.connect(driver="drivers/hardcharger.toml", db_kwargs={
+with adbc_driver_manager.dbapi.connect(driver="hardcharger", db_kwargs={
         "uri": "hardcharger://localhost?tls=false", "username": "hardcharger", "password": "change-me",
         "adbc.hardcharger.query_tag": '{"app": "driver-manager"}'}) as conn:
     with conn.cursor() as cur:
@@ -60,15 +94,20 @@ with adbc_driver_manager.dbapi.connect(driver="drivers/hardcharger.toml", db_kwa
 (42,)
 ```
 
-Here `driver` names the manifest file; with the manifest in a search directory, `driver="hardcharger"`
-is enough.
+`driver` also takes a manifest's path (`driver="drivers/hardcharger.toml"`), for a manifest that
+isn't in a searched directory.
 
-In C, the same takes `AdbcDatabaseSetOption(&database, "driver", "hardcharger", &error)` after
-`AdbcDriverManagerDatabaseSetLoadFlags(&database, ADBC_LOAD_FLAG_DEFAULT, &error)`, then the
-`uri`, `username` and `password` options.
+In C, the same takes `AdbcDriverManagerDatabaseSetLoadFlags(&database, ADBC_LOAD_FLAG_DEFAULT, &error)`
+and then `AdbcDatabaseSetOption(&database, "driver", "hardcharger", &error)`, then the `uri`,
+`username` and `password` options. Without the load flags, the C driver manager doesn't search
+the driver directories, and loading `hardcharger` fails.
 [`examples/c/hello.c`](https://github.com/gizmodata/hardcharger-adbc/blob/main/examples/c/hello.c)
-is a complete program, and hardcharger-adbc's CI builds and runs it against a real server. R and
-Rust load it the same way, by the name `hardcharger`.
+is a complete program, and hardcharger-adbc's CI builds and runs it against a real server. Go's
+[`drivermgr`](https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc/drivermgr) (cgo) searches
+them by default: pass `"driver": "hardcharger"` with the other options to
+`drivermgr.Driver{}.NewDatabaseWithContext`. (A Go program can also import the driver itself,
+with no installer: see [Go](/clients/go/).) R and Rust load it the same way, by the name
+`hardcharger`.
 
 The options are listed on the [Go page](/clients/go/#options): they are the same everywhere,
 since every language runs the same driver.

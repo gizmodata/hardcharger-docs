@@ -29,12 +29,20 @@ password `change-me`); in production, leave TLS on. The same list is on
 
 `adbc-driver-hardcharger`: query Hardcharger from Python, Go, C/C++, R, Rust or any ADBC
 language. Python gets DB-API 2.0 with Arrow results, Go programs import it directly, and C/C++, R
-and Rust load it through an ADBC driver manager.
+and Rust load it through an ADBC driver manager, by the name `hardcharger`, after a one-line
+install.
 
 ```bash title="Install"
+# Python
 pip install adbc-driver-hardcharger
 # Go
 go get github.com/gizmodata/hardcharger-adbc/go/v2
+# Any ADBC driver manager (C/C++, R, Rust, ...) on Linux or macOS
+curl https://install.adbc.gizmodata.com/hardcharger | sh
+```
+
+```powershell title="Install for any ADBC driver manager (Windows)"
+irm https://install.adbc.gizmodata.com/hardcharger.ps1 | iex
 ```
 
 ```python test title="query.py"
@@ -56,10 +64,13 @@ greeting: [["hello"]]
 ```
 
 Python 3.11 or later. `?tls=false` is for a local server on plain HTTP; production servers use
-TLS, so leave it out there.
+TLS, so leave it out there. The installer puts the native driver and its manifest where every ADBC
+driver manager looks, so `driver = "hardcharger"` loads it; it also installs GizmoData's other ADBC
+drivers (`chargewire`, `gizmosql`, `oracle`, `db2` and `quack`).
 
 [Python](/clients/python/) · [Go](/clients/go/) ·
 [ADBC driver manager](/clients/adbc-driver-manager/) ·
+[ADBC driver installer](https://github.com/gizmodata/adbc-install#readme) ·
 [GitHub](https://github.com/gizmodata/hardcharger-adbc) ·
 [PyPI](https://pypi.org/project/adbc-driver-hardcharger/) ·
 [Native driver downloads](https://github.com/gizmodata/hardcharger-adbc/releases/latest)
@@ -934,7 +945,10 @@ the Hardcharger ADBC driver.
 
 Install the DuckDB CLI and the driver, then register the driver so DuckDB finds it by the name
 `hardcharger`. Keep that Python environment installed: the registration points at its driver
-library.
+library. Or install the driver with `curl https://install.adbc.gizmodata.com/hardcharger | sh`
+(Windows: `irm https://install.adbc.gizmodata.com/hardcharger.ps1 | iex`) instead of the
+`adbc-driver-hardcharger` package and the registration step: DuckDB finds it by the same name,
+with no Python environment behind it.
 
 ```bash title="Install"
 pip install duckdb-cli==1.5.6 adbc-driver-hardcharger
@@ -1002,7 +1016,8 @@ Tested with DuckDB 1.5.6.
 Use Columnar.tech's `adbc` community extension with a reusable Hardcharger connection profile. Run
 it in its own DuckDB session: it and `adbc_scanner` both register `TYPE adbc`.
 
-Install the DuckDB CLI and the driver, register the driver, and make a directory for profiles:
+Install the DuckDB CLI and the driver, register the driver (or install it with the one-line
+installer, as for `adbc_scanner` above), and make a directory for profiles:
 
 ```bash title="Install"
 pip install duckdb-cli==1.5.6 adbc-driver-hardcharger

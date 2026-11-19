@@ -7,6 +7,8 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.13.1.post8] - 2026-11-19
+
 ### Changed
 
 - **C, C++, R, Rust (ADBC):** installing the driver is one command,
@@ -16,12 +18,14 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
   checksums and writes the manifest where every driver manager looks. The page shows it (tested
   in CI), its options (`ADBC_VERSION`, `--system`, `--dir`, `--uninstall`), and the example loads
   the installed driver with `driver="hardcharger"`, in place of filling in the manifest template
-  by hand. The Python package's manifest stays, for programs in that Python environment. The page
+  by hand; the page links gizmodata.com's install page and the installer's README for every
+  option. The Python package's manifest stays, for programs in that Python environment. The page
   also says the C driver manager searches the driver directories only with
   `ADBC_LOAD_FLAG_DEFAULT`, and how Go's `drivermgr` loads it by name.
-- **All integrations:** the ADBC driver's install block has the installer (and a link to its
-  README), and the DuckDB `adbc_scanner` and `adbc` sections offer it in place of the Python
-  package and its registration step.
+- **All integrations:** the ADBC driver's install block has the installer (and a link to
+  gizmodata.com's ADBC driver install page, which lists all six drivers), and the DuckDB
+  `adbc_scanner` and `adbc` sections offer it in place of the Python package and its
+  registration step.
 - **Go:** the Go module needs no shared library or manifest; the installer is for loading the
   driver through `drivermgr`.
 

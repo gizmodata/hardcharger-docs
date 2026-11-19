@@ -16,6 +16,10 @@ with no driver manager and no cgo:
 go get github.com/gizmodata/hardcharger-adbc/go/v2
 ```
 
+The module is the whole driver: there is no shared library or driver manifest to install. To load
+the driver by name through ADBC's driver manager instead (Go's `drivermgr`, with cgo), install it
+with the one-line installer: see [ADBC driver manager](/clients/adbc-driver-manager/#install-the-driver).
+
 ## Read-only connections
 
 See [read-only connections](/guides/read-only-connections/) for the connection option,

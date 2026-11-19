@@ -29,6 +29,14 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 - **Go:** the Go module needs no shared library or manifest; the installer is for loading the
   driver through `drivermgr`.
 
+### Fixed
+
+- The examples that run the Hardcharger installer against CI's release mirror (Quickstart,
+  Upgrading) pass the mirror tarball's SHA-256 as `HARDCHARGER_INSTALL_SHA256`: since
+  install.hardcharger.gizmodata.com's 2026-11-19 update, a mirror is checked against the GitHub
+  release's `SHA256SUMS`, which a tarball built from the pinned image doesn't match. This failed
+  the 2.13.1.post8 release run.
+
 ## [2.13.1.post7] - 2026-11-17
 
 ### Changed

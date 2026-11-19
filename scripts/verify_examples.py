@@ -23,7 +23,9 @@ Options in the info string:
                    Python package's server). While the releases are internal, CI has no token
                    for them, so the block gets a release mirror built from the server under
                    test (HARDCHARGER_INSTALL_MIRROR, HARDCHARGER_VERSION, the tarball in its
-                   directory) and HARDCHARGER_SERVER_BINARY: it exercises the real installer
+                   directory), the tarball's SHA-256 (HARDCHARGER_INSTALL_SHA256: the installer
+                   checks a mirror against the GitHub release's SHA256SUMS, which this build
+                   doesn't match) and HARDCHARGER_SERVER_BINARY: it exercises the real installer
                    script and the real package, with this build instead of a download
     stop           stop the page's background processes (and run their cleanup) first
     cleanup=CMD    run CMD when the page ends or its background stops (`docker rm -f NAME`)
@@ -390,7 +392,13 @@ class Page:
             digest = hashlib.sha256((release / f"{name}.tar.gz").read_bytes()).hexdigest()
             (release / "SHA256SUMS").write_text(f"{digest}  {name}.tar.gz\n")
         shutil.copy(MIRROR / f"v{version}" / f"{name}.tar.gz", self.dir / f"{name}.tar.gz")
+        # From install.hardcharger.gizmodata.com's 2026-11-19 update, a mirror's tarball is checked
+        # against the GitHub release's SHA256SUMS, never the mirror's own; the release's tarball
+        # isn't this build, so the expected digest is passed the way the installer offers for a
+        # machine that can't reach github.com. A wrong one still fails the install.
+        digest = hashlib.sha256((MIRROR / f"v{version}" / f"{name}.tar.gz").read_bytes()).hexdigest()
         return {"HARDCHARGER_INSTALL_MIRROR": str(MIRROR), "HARDCHARGER_VERSION": version,
+                "HARDCHARGER_INSTALL_SHA256": digest,
                 "HARDCHARGER_SERVER_BINARY": str(self.bin_dir / "hardcharger-server")}
 
     def close(self) -> None:

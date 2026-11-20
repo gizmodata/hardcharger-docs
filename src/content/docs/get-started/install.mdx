@@ -50,7 +50,8 @@ in the menu bar or system tray.
 
 ## One-line installer
 
-On macOS (Apple silicon) and Linux (x86-64 or arm64, glibc 2.28 or newer), the installer puts
+On macOS (Apple silicon) and Linux (x86-64 or arm64, glibc 2.28 or newer; see
+[older x86-64 CPUs](#older-and-virtual-x86-64-cpus)), the installer puts
 `hardcharger-server` and the `hardcharger` client in `~/.hardcharger`:
 
 ```bash
@@ -118,6 +119,26 @@ Every [release](https://github.com/gizmodata/hardcharger/releases/latest) has ta
 Linux (x86-64, arm64) and macOS (Apple silicon), zips and MSIs for Windows (x64, Arm64), the
 desktop apps, and a `SHA256SUMS` file covering them all. The
 [Quickstart](/get-started/quickstart/) shows how to unpack and start each one.
+
+## Older and virtual x86-64 CPUs
+
+On Linux x86-64 there are two builds. `hardcharger-linux-amd64.tar.gz` is optimized for
+x86-64-v3 CPUs (AVX2: Intel Haswell, AMD Excavator or newer); on an older CPU its programs stop
+at once with a message naming what the CPU lacks. From 2.13.2 on,
+`hardcharger-linux-amd64-baseline.tar.gz` runs on any x86-64 CPU, such as a virtual machine whose
+CPU model is QEMU's `kvm64` ("Common KVM processor"), but slower.
+
+The one-line installer and the Python package choose the baseline build by themselves on such a
+CPU, and say so; `--cpu-target baseline` (installer) or `HARDCHARGER_CPU_TARGET=baseline` (both)
+asks for it, `optimized` for the other. Often the better fix is the virtual machine's CPU model:
+`host` (QEMU's `-cpu host`, libvirt's `host-passthrough`, Proxmox's `host`), or a model with AVX2
+when the machine moves between hosts (QEMU's `Haswell`, Proxmox's `x86-64-v3`), gives the guest
+AVX2 and the faster build.
+
+DuckDB's downloadable extensions need AVX2 as well, so the baseline build has `httpfs`,
+`ducklake` and `postgres_scanner` built in, next to `core_functions`, `parquet`, `json` and `icu`.
+On a CPU without AVX2 it installs and loads no other extension, and says why instead of
+crashing. The container image is the optimized build.
 
 ## iPhone, iPad and Android
 

@@ -956,7 +956,7 @@ pip install duckdb-cli==1.5.6 adbc-driver-hardcharger
 
 ```console test env=duckdb-adbc server=none title="Register the driver"
 $ python -m adbc_driver_hardcharger.manifest
-…/.config/adbc/drivers/hardcharger.toml
+…hardcharger.toml
 ```
 
 Save this as `query-farm.sql`. It attaches the server as `hc`, lists its tables, and runs a query
@@ -1025,7 +1025,7 @@ pip install duckdb-cli==1.5.6 adbc-driver-hardcharger
 
 ```console test env=duckdb-adbc server=none title="Register the driver"
 $ python -m adbc_driver_hardcharger.manifest
-…/.config/adbc/drivers/hardcharger.toml
+…hardcharger.toml
 $ mkdir -p adbc-profiles
 ```
 

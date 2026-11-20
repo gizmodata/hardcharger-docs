@@ -14,6 +14,8 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 - Document DuckLake inspection, maintenance and checkpoint grants, bind-time checks, cascading
   drop permissions and the administrator-only extension repository setting in Hardcharger 2.13.4.
 - Update the server reference and pins to 2.13.4 and the ADBC examples to 2.7.2.
+- Accept the platform's driver-manifest directory in the DuckDB integration examples;
+  macOS uses `Library/Application Support/ADBC/Drivers` instead of Linux's `.config/adbc/drivers`.
 
 - **ADBC option names follow the [ADBC driver style guide](https://adbc-drivers.org/building-drivers/style-guide.html)**
   (`hardcharger-adbc` 2.7.0): every page and example uses the new `hardcharger.*` keys

@@ -7,6 +7,19 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.13.2] - 2026-11-20
+
+### Added
+
+- Install: **older and virtual x86-64 CPUs**. The baseline Linux x86-64 build (Hardcharger 2.13.2,
+  [#62](https://github.com/gizmodata/hardcharger/issues/62)), how the installer and the Python
+  package choose it, the CPU model setting of a virtual machine, and its built-in extensions.
+
+### Changed
+
+- The reference and pins follow Hardcharger 2.13.2: the release notes, the server image and
+  source the reference is generated from, the Python package in the examples, and the versions page.
+
 ## [2.13.1.post8] - 2026-11-19
 
 ### Changed

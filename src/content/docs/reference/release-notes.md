@@ -13,6 +13,52 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+## [2.13.2] - 2026-11-20
+
+### Added
+
+- **A Linux x86_64 build for CPUs without AVX2**
+  ([#62](https://github.com/gizmodata/hardcharger/issues/62)). Each release now also ships
+  `hardcharger-linux-amd64-baseline.tar.gz`, which runs on any x86-64 CPU: DuckDB and Arrow are
+  built for the compiler's baseline (`DUCKDB_OPTIMIZATION_PROFILE=NONE`, `ARROW_SIMD_LEVEL=NONE`)
+  instead of x86-64-v3 (AVX2) and x86-64-v2 (SSE4.2). It is for virtual machines whose CPU model
+  hides those instructions, such as QEMU's `kvm64` ("Common KVM processor"), and for older
+  processors. It is slower than the optimized build, because DuckDB does not choose instructions
+  at run time, so use it only where the optimized one can't run (a VM's CPU model setting, such
+  as `host` or `x86-64-v3`, is often the better fix). Every release gate runs its smoke test on an
+  emulated `kvm64` CPU on Oracle Linux 8, and its full test suite. The container image keeps the
+  optimized build. Thanks to jhonvirtucio for the report and the diagnosis.
+- **The baseline build has httpfs, ducklake and postgres_scanner built in, and never loads an
+  extension that would crash it.** The extensions DuckDB publishes for download are compiled for
+  x86-64-v3 too, so on an older CPU loading one (httpfs, autoloaded by any `https://` or `s3://`
+  path) died with "Illegal instruction" and took the server down. The baseline build compiles
+  httpfs, ducklake and postgres_scanner in, next to core_functions, parquet, json and icu, and on a
+  CPU without x86-64-v3 it installs and loads no other extension: `INSTALL` and `LOAD` fail with a
+  message that says why and names the built-in ones, and the server logs a warning at startup. On a
+  CPU with AVX2 it loads every extension, as the optimized build does. As in any build once httpfs
+  is loaded, DuckDB asks a custom extension repository given as `http://` over https.
+- **Building from source for a CPU target.** `HARDCHARGER_CPU_TARGET=baseline` (or `optimized`,
+  the default) chooses the target for `server/scripts/build-deps.sh`; the server's CMake reads the
+  target from the dependency installs and refuses a mix. See `server/scripts/cpu-target.sh`.
+
+### Fixed
+
+- **The optimized Linux x86_64 binaries explain an unsupported CPU instead of crashing**
+  ([#62](https://github.com/gizmodata/hardcharger/issues/62)). On a CPU without the instructions
+  they were built for, `hardcharger-server` and `hardcharger` died with "Illegal instruction"
+  before printing anything, even for `--version`. They now check the CPU before any other code
+  runs and exit 1 with a message that names the missing features and the baseline build. The
+  server needs x86-64-v3 (AVX2: Intel Haswell, AMD Excavator or newer); the client needs
+  x86-64-v2 (SSE4.2), as before.
+
+### Changed
+
+- **Android builds reach internal testers automatically.** Each release publishes its Android
+  build to Google Play's internal testing track, as iOS builds reach TestFlight, instead of
+  leaving a draft to publish by hand in Play Console. A leftover draft no longer stops the
+  upload (2.13.1's was refused because 2.13.0's draft was still there), and an older build never
+  replaces a newer one. Closed and open testing and production stay manual in Play Console.
+
 ## [2.13.1] - 2026-11-15
 
 ### Fixed

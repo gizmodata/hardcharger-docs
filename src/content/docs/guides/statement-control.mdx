@@ -56,7 +56,7 @@ Three places set a statement's time limit; the most specific wins:
 |---|---|
 | [`query_timeout_seconds`](/reference/configuration/#query_timeout_seconds) | The server's default (0: none) |
 | `SET [SESSION \| GLOBAL] hardcharger.query_timeout = <seconds>` | A session, or every session |
-| `Chargewire-Statement-Timeout: <ms>` (JDBC `setQueryTimeout`, ADBC `adbc.chargewire.statement.timeout_seconds`) | One statement |
+| `Chargewire-Statement-Timeout: <ms>` (JDBC `setQueryTimeout`, ADBC `hardcharger.query.timeout_seconds`) | One statement |
 
 ```python test profile=instrumentation
 from adbc_driver_hardcharger import dbapi as hardcharger

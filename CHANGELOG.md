@@ -7,6 +7,16 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+### Changed
+
+- **ADBC option names follow the [ADBC driver style guide](https://adbc-drivers.org/building-drivers/style-guide.html)**
+  (`hardcharger-adbc` 2.7.0): every page and example uses the new `hardcharger.*` keys
+  (`hardcharger.query.result_partitions`, `hardcharger.ingest.parts`, `hardcharger.session.query_tag`,
+  ...) instead of `adbc.chargewire.*` and `adbc.hardcharger.*`, and the Python examples name them
+  through the `StatementOptions` enum. Upgrading has a new section with every old name and its new
+  one; the old names still work, with a warning. The examples run against `hardcharger-adbc` 2.7.0,
+  and the versions page lists it and `chargewire-adbc` 2.5.0.
+
 ## [2.13.3] - 2026-11-20
 
 ### Changed

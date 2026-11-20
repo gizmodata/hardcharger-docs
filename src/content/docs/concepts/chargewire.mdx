@@ -60,7 +60,7 @@ costs one round trip.
 statement document (state `queued` or `running`). The client long-polls the statement with
 `Prefer: wait=N` until it is `succeeded`, `failed` or `cancelled`, then reads the result. No
 request has to stay open for the whole query, which matters behind proxies that cut idle
-connections. The drivers switch to it with one option (`adbc.chargewire.statement.async`,
+connections. The drivers switch to it with one option (`hardcharger.query.async` in ADBC,
 JDBC `async=true`).
 
 ## Retained, resumable results
@@ -112,11 +112,12 @@ over its own connection. The CLI asks for 8 by default; a result of fewer than t
 still comes as one stream:
 
 ```python test
+from adbc_driver_hardcharger import StatementOptions
 from adbc_driver_hardcharger import dbapi as hardcharger
 
 with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger",
                          password="change-me",
-                         db_kwargs={"adbc.chargewire.statement.result_partitions": "8"}) as conn:
+                         db_kwargs={StatementOptions.RESULT_PARTITIONS.value: "8"}) as conn:
     with conn.cursor() as cur:
         cur.execute(operation="SELECT i FROM range(10000000) t(i) ORDER BY i")
         table = cur.fetch_arrow_table()
@@ -255,7 +256,7 @@ reason [`token_revoked`](/reference/errors/#invalid_token-reasons).
 - A connection opened after the Stop signs in afresh at its first request, which starts the
   cluster, even when its database or a cache holds a token from before the Stop: a password, a
   browser sign-in (Python and Go), a JavaScript `tokenProvider` or single sign-on.
-- A token you pass in yourself (ADBC's `adbc.chargewire.auth.access_token`, JavaScript's `token`,
+- A token you pass in yourself (ADBC's `hardcharger.auth.access_token`, JavaScript's `token`,
   JDBC's `token`) is sent as it is, and fails with `token_revoked`: get a new one.
 
 ### Which clients do this

@@ -16,7 +16,7 @@ Four settings decide whether it works *well*:
 | **Long timeouts, or asynchronous submits** | A streamed query keeps its request open while it runs. | `proxy_read_timeout`, `proxy_send_timeout` |
 
 A client that can't get long timeouts through a proxy can submit asynchronously instead
-(`adbc.chargewire.statement.async`, JDBC `async=true`): no request then stays open longer than a
+(`hardcharger.query.async` in ADBC, JDBC `async=true`): no request then stays open longer than a
 long-poll (10 seconds by default).
 
 ## nginx
@@ -62,12 +62,13 @@ Through the proxy, load 8 MiB in one upload and read a large result in eight par
 
 ```python test
 import pyarrow as pa
+from adbc_driver_hardcharger import StatementOptions
 from adbc_driver_hardcharger import dbapi as hardcharger
 
 payload = pa.table({"blob": pa.array([b"x" * 1024] * 8192, type=pa.binary())})  # 8 MiB
 with hardcharger.connect(uri="hardcharger://localhost:8080?tls=false", username="hardcharger",
                          password="change-me",
-                         db_kwargs={"adbc.chargewire.statement.result_partitions": "8"}) as conn:
+                         db_kwargs={StatementOptions.RESULT_PARTITIONS.value: "8"}) as conn:
     with conn.cursor() as cur:
         print(cur.adbc_ingest(table_name="uploads", data=payload, mode="replace"))
         cur.execute(operation="SELECT i FROM range(5000000) t(i) ORDER BY i")

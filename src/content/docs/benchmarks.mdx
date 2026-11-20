@@ -139,7 +139,8 @@ Scripts: `bench/remote/` (provisioning, server start, client harness, summarizer
 - **TLS on both servers**, one self-signed P-256 certificate, TLS 1.3. `threads=32`,
   `memory_limit=40GB`, the same database file in `/dev/shm`.
 - **Hardcharger:** the `hardcharger-linux-arm64` CI artifact from `main`, default settings (122,880-row batches, `max_result_partitions` 32). Client:
-  `adbc-driver-chargewire`. "n partitions" rows set `adbc.chargewire.statement.result_partitions` = n and
+  `adbc-driver-chargewire`. "n partitions" rows set `chargewire.query.result_partitions` (then
+  `adbc.chargewire.statement.result_partitions`) = n and
   `result_order` = `any` or `preserve` ("in order"). **GizmoSQL** 1.42.0 (DuckDB 1.5.6) through
   `adbc-driver-gizmosql` 2.0.15.
 - **Fetch:** `SELECT * FROM <table>`, drained as Arrow batches. **Ingest:** `adbc_ingest(mode="create")`
@@ -320,13 +321,13 @@ Two changes since the runs above, measured on fresh VMs with the same scripts:
    ingest, sends its upload as N parts at once, each over its own connection, and commits them as
    one. The server reads every part through one reader, so DuckDB inserts from all of them in
    parallel, in one transaction. All or nothing; rows land in no defined order. The ADBC driver
-   (`adbc.chargewire.ingest.parts`) uses 8 parts for uploads of two batches or more.
+   (`chargewire.ingest.parts`, then `adbc.chargewire.ingest.parts`) uses 8 parts for uploads of two batches or more.
 2. **Split results by default**: the ADBC driver and the `hardcharger` CLI ask for up to 8
    partitions, in order. Results of fewer than two batches stay one stream.
 
 Same setup as above (c8gn.8xlarge, LAN in one placement group, WAN across regions, TLS,
-`threads=32`). Hardcharger with default settings; "Chargewire" rows set `adbc.chargewire.ingest.parts`
-and `result_partitions` to 1. Five measured repetitions after a warm-up; every ingest is checked
+`threads=32`). Hardcharger with default settings; "Chargewire" rows set `chargewire.ingest.parts`
+(then `adbc.chargewire.ingest.parts`) and `result_partitions` to 1. Five measured repetitions after a warm-up; every ingest is checked
 (row count, `sum(l_extendedprice)`, `count(DISTINCT l_orderkey)` against the source) and every
 fetch's warm-up sums three columns of every batch. All matched.
 

@@ -85,7 +85,7 @@ import adbc_driver_manager.dbapi
 
 with adbc_driver_manager.dbapi.connect(driver="hardcharger", db_kwargs={
         "uri": "hardcharger://localhost?tls=false", "username": "hardcharger", "password": "change-me",
-        "adbc.hardcharger.query_tag": '{"app": "driver-manager"}'}) as conn:
+        "hardcharger.session.query_tag": '{"app": "driver-manager"}'}) as conn:
     with conn.cursor() as cur:
         cur.execute(operation="SELECT 42 AS answer")
         print(cur.fetchone())

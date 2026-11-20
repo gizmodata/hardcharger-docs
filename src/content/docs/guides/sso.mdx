@@ -150,8 +150,8 @@ $ curl -s localhost:31337/chargewire/v1/auth/token -H 'Content-Type: application
 Bearer
 ```
 
-The Chargewire ADBC driver takes the ID token as `adbc.chargewire.auth.subject_token`, and JDBC as
-`subjectToken`.
+The ADBC driver takes the ID token as `hardcharger.auth.subject_token` (Python
+`connect(subject_token=...)`), and JDBC as `subjectToken`.
 
 </TabItem>
 </Tabs>

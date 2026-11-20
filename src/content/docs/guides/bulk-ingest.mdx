@@ -189,7 +189,7 @@ of 14.0 s; see the [benchmarks](/benchmarks/#partitioned-uploads-2026-10-17)).
 
 <Aside type="note" title="In the drivers">
 The ADBC drivers (`adbc-driver-hardcharger`, the Go package) send loads of two batches or more
-as 8 parts by default (`adbc.chargewire.ingest.parts`, also `adbc.hardcharger.ingest.parts`; `1` keeps
+as 8 parts by default (`hardcharger.ingest.parts`; `1` keeps
 one ordered stream). The protocol below is how to use it directly.
 </Aside>
 
@@ -232,7 +232,7 @@ nothing else.
 - One stream can't go faster than one network flow (about 1.1 GB/s of Arrow on AWS).
   [Partitioned uploads](#partitioned-uploads) use several; on a fast LAN, DuckDB's insert then
   becomes the limit (the server used about 25 cores for SF10 lineitem).
-- zstd (`adbc.chargewire.ipc_compression=zstd`) pays off only on slow links: the client compresses on
+- zstd (`hardcharger.ipc.compression=zstd` in ADBC) pays off only on slow links: the client compresses on
   one core.
 - Batches of about 100,000 rows are a good size.
 

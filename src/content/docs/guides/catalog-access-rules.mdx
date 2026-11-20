@@ -104,6 +104,15 @@ catalog that doesn't exist.
 
 ## Roles still apply
 
+From **2.13.4**, DuckLake functions follow the rules for the catalog they name: inspection
+such as `ducklake_snapshots('sales')` needs read access; maintenance, compaction and
+`CHECKPOINT` of a DuckLake catalog need write access. A `readonly` token still cannot change
+the lake. Use a literal catalog name and call the function directly: wrapping it in a view or
+macro is refused. `ducklake_add_data_files`, `ducklake_scan` and `ducklake_commit` remain
+administrator-only. For new deployments, prefer the
+[DuckLake roles and grants](/guides/access-control/#ducklake-functions); catalog rules never
+override a store user's RBAC grants.
+
 The token's `role` limits what kind of statement runs, and the rules limit where:
 
 | Role | Can |

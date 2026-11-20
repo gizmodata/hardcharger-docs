@@ -1,4 +1,4 @@
 # The DuckDB CLI and the Hardcharger ADBC driver, for the DuckDB adbc_scanner and adbc extension
 # examples on clients/integrations (the website verified them with DuckDB 1.5.6)
 duckdb-cli==1.5.6
-adbc-driver-hardcharger==2.6.0
+adbc-driver-hardcharger==2.7.2

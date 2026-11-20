@@ -707,8 +707,9 @@ has no USAGE privilege on sequence my.published.ticket_ids
 
 ### Maintenance
 
-`MAINTAIN` lets a role run `ANALYZE` and `VACUUM` of a table and nothing else: no `SELECT`, no
-writes. It is granted on a table, a schema or a catalog, and a table's owner holds it. `ANALYZE` or
+`MAINTAIN` lets a role run `ANALYZE` and `VACUUM` of a table without granting `SELECT` or ordinary
+writes. On a DuckLake catalog it also permits [DuckLake maintenance](#ducklake-functions).
+It is granted on a table, a schema or a catalog, and a table's owner holds it. `ANALYZE` or
 `VACUUM` without a table stays the administrator's, since it would touch tables the user can't see.
 
 ```sql test profile=rbac
@@ -807,6 +808,87 @@ administrator's: the server's own `hardcharger_*()`, `query()` and `query_table(
 profiling functions, `duckdb_logs()`, `pragma_storage_info()`, ...). `hardcharger_grants()`,
 `hardcharger_effective_privileges()` and `SHOW GRANTS` list it as `EXECUTE` on a `TABLE FUNCTION`,
 with the declared path arguments where `SELECT` lists columns.
+
+### DuckLake functions
+
+From **2.13.4**, calling a DuckLake function needs both `EXECUTE` on the function and a privilege
+on the catalog it names. A grant on a table or schema does not cover an operation on the whole
+catalog. For inspection (`ducklake_snapshots`, `ducklake_table_info`, `ducklake_list_files`,
+`ducklake_options`, `ducklake_settings`, and a catalog's own `lake.snapshots()`), grant
+`SELECT ON CATALOG`:
+
+```sql test profile=rbac
+INSTALL ducklake; LOAD ducklake;
+ATTACH 'ducklake:lake_metadata.duckdb' AS lake (DATA_PATH 'lake_data/');
+CREATE TABLE lake.sample AS SELECT 1 AS id;
+CREATE ROLE lake_reader;
+GRANT EXECUTE ON TABLE FUNCTION ducklake_snapshots TO lake_reader;
+GRANT SELECT ON CATALOG lake TO lake_reader;
+GRANT lake_reader TO vic;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+    --command "SELECT count(*) > 0 AS has_snapshots FROM ducklake_snapshots('lake')"
+has_snapshots
+true
+```
+
+Maintenance (`ducklake_expire_snapshots`, `ducklake_cleanup_old_files`,
+`ducklake_delete_orphaned_files`, `ducklake_set_option`, `ducklake_set_commit_message`) and
+compaction (`ducklake_merge_adjacent_files`, `ducklake_rewrite_data_files`,
+`ducklake_flush_inlined_data`) need `MAINTAIN ON CATALOG`, beside `EXECUTE` on each function used:
+
+```sql test profile=rbac
+CREATE ROLE lake_maintenance;
+GRANT EXECUTE ON TABLE FUNCTION ducklake_merge_adjacent_files TO lake_maintenance;
+GRANT MAINTAIN ON CATALOG lake TO lake_maintenance;
+GRANT CHECKPOINT TO lake_maintenance;
+CREATE USER lake_operator WITH PASSWORD 'lake-secret';
+GRANT lake_maintenance TO lake_operator;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='lake-secret' hardcharger --host localhost --tls=false --username lake_operator --csv \
+    --command "CHECKPOINT lake"
+Success
+```
+
+Compaction needs no `SELECT`: the rows it reads to rewrite files are not returned to the caller.
+`CHECKPOINT lake` can compact, expire snapshots and remove old files, so it needs both the
+`CHECKPOINT` system privilege and `MAINTAIN ON CATALOG lake`. Checkpoints of other databases keep
+their existing rule. `GRANT ALL ON CATALOG` includes `SELECT` and `MAINTAIN`, but never `EXECUTE`.
+
+Call the functions directly with a literal catalog name. Views and macros wrapping DuckLake
+functions are refused for everyone except an administrator without catalog rules. A table with
+row or masking policies cannot be compacted by a restricted session. `ducklake_table_changes`
+uses `ducklake_table_insertions` and `ducklake_table_deletions`, so grant `EXECUTE` on those too;
+the returned rows still follow row and masking policies.
+
+For legacy tokens with `catalog_access` rules, the rules permit inspection with read access and
+maintenance, compaction and DuckLake checkpoints with write access. A `readonly` token cannot
+run maintenance even with a write rule. `ducklake_add_data_files`, `ducklake_scan` and
+`ducklake_commit` remain administrator-only for these tokens. Roles and grants are recommended
+for new deployments.
+
+### Checks before binding and cascading drops
+
+From **2.13.4**, expressions DuckDB evaluates while binding are checked before they run,
+including table-function arguments, PRAGMA parameters, `AT` clauses, `EXECUTE` values and macro
+bodies with the caller's arguments. `nextval()` needs `USAGE` on its sequence; `setval()` also
+needs `DROP SEQUENCE` on its schema, wherever the call appears. A `readonly` token cannot advance
+a sequence. Prepared statements recheck the current grants on every execution.
+
+`delta_*()` and `iceberg_*()` can follow paths in manifests through their own storage clients.
+They require `READ FILESYSTEM`, `READ OBJECT STORAGE` and `READ HTTP` everywhere; location grants
+cannot bound those reads. A user's own macro with a similar name keeps ordinary macro rules.
+
+`DROP ... CASCADE` requires permission to drop every object it takes, including objects in other
+or nested schemas. A sequence `OWNED BY` a table needs `DROP SEQUENCE` on its schema when that
+table is dropped or replaced, with or without `CASCADE`. An index or trigger goes with its own
+table; an index taken while its table remains requires the administrator's `DROP INDEX` right.
+DuckDB 2.0.1 records dependencies on column types, so dropping a type used by a table is refused
+without `CASCADE`. Refusals name only dependent objects the caller can see.
 
 ## What users can see
 

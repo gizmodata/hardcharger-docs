@@ -25,6 +25,7 @@ see the credentials.
    services:
      catalog:
        image: postgres:18
+       shm_size: 256mb
        environment:
          POSTGRES_USER: ducklake
          POSTGRES_PASSWORD: ducklake
@@ -119,6 +120,11 @@ docker compose down
   secrets, so users can't point the server at other storage. Under
   [access control](/guides/access-control/), grant on the lake's catalog like any other:
   `GRANT SELECT ON CATALOG lake TO analyst`.
+  In **2.13.4+**, DuckLake inspection functions additionally need `EXECUTE` on each function and
+  `SELECT ON CATALOG`; maintenance and compaction need `EXECUTE` plus `MAINTAIN ON CATALOG`.
+  `CHECKPOINT lake` needs `CHECKPOINT` plus `MAINTAIN ON CATALOG`. See the tested
+  [DuckLake grants](/guides/access-control/#ducklake-functions). Legacy `catalog_access` tokens
+  use read rules for inspection and write rules for maintenance; roles and grants are recommended.
 - **Make it the default.** End the init SQL with `USE lake;` to make it every session's
   starting catalog, or set the session option `catalog` from the client.
 - **Many files.** A query over a DuckLake table holds many of its data files open at once, so a

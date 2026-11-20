@@ -45,6 +45,25 @@ existing extension-management authority.
 
 ## Choose or replace a module
 
+**Hardcharger 2.13.4 uses DuckDB 2.0.1.** Reinstall extensions installed for DuckDB 2.0.0;
+their binaries belong to a different version's repository and cache directory.
+
+Adding a named extension repository trusts its signing key. By default,
+`CREATE EXTENSION REPOSITORY` is refused, including the host form, until an unrestricted
+administrator explicitly enables it:
+
+```sql
+SET GLOBAL allow_extension_repositories = 'allowed';
+```
+
+Use `'hosts_only'` to permit only repositories named by their host. This change cannot be
+undone while the server runs. Only an administrator without `catalog_access` rules may set or
+reset it; `MANAGE CONFIG` does not grant that authority. The default is `'hosts'`, which
+Hardcharger keeps restrictive as DuckDB 2.0.0's `'undecided'` was. Remove `'undecided'` from
+startup SQL when upgrading: DuckDB 2.0.1 no longer accepts it. Existing repositories,
+`DROP EXTENSION REPOSITORY` and `INSTALL` retain their behavior, and extension signature
+verification remains enabled.
+
 An administrator can use a compatible repository:
 
 ```sql

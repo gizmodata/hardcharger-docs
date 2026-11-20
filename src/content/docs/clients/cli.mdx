@@ -341,8 +341,8 @@ answer
 
 The drivers wait for a resuming server too, each with a resume timeout of its own: JDBC's
 `resumeTimeout` ([A stopped cluster that resumes](/clients/jdbc/#a-stopped-cluster-that-resumes)),
-the ADBC driver's `adbc.hardcharger.resume_timeout` (Python `connect(resume_timeout=...)`;
-`hardcharger-adbc` 2.3.0+), the JavaScript driver's `resumeTimeout` and `onResuming`, and the
+the ADBC driver's `hardcharger.retry.resume_timeout_seconds` (Python `connect(resume_timeout=...)`;
+`hardcharger-adbc` 2.3.0+, under this name from 2.7.0), the JavaScript driver's `resumeTimeout` and `onResuming`, and the
 ODBC driver's `ResumeTimeout` (1.3.0+).
 
 ## A stopped server

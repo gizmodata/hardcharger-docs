@@ -39,6 +39,46 @@ say what, under **Changed**. Patch versions only fix things.
 
 </Steps>
 
+## Driver option names (hardcharger-adbc 2.7.0)
+
+From `hardcharger-adbc` 2.7.0 (the Python package `adbc-driver-hardcharger` and the Go module) the
+ADBC driver names its options as the
+[ADBC driver style guide](https://adbc-drivers.org/building-drivers/style-guide.html) asks: its own
+options start with `hardcharger.`, and `adbc.` is left to the options the ADBC specification
+defines (`uri`, `username`, `password`, `adbc.connection.readonly`, `adbc.ingest.*`, ...), which
+don't change.
+
+- **The old names keep working**, for setting and for reading an option. The first time a process
+  uses each one, the driver prints one line to stderr (keys only, never the value):
+
+  ```text
+  [hardcharger] option "adbc.chargewire.statement.timeout_seconds" is deprecated; use "hardcharger.query.timeout_seconds"
+  ```
+
+- **With both names given, the new one wins.**
+- **Python's `connect()` arguments, the `DatabaseOptions`, `ConnectionOptions` and
+  `StatementOptions` members, and the Go constants keep their names** and now carry the new keys,
+  so code that uses them needs no change.
+- **Upgrade the driver before you switch a key**: a 2.6 or older driver refuses the new names.
+
+| Before 2.7.0 | From 2.7.0 |
+|---|---|
+| `adbc.chargewire.tls.*`, `adbc.chargewire.auth.access_token`, `adbc.chargewire.auth.subject_token`, `adbc.chargewire.retry.max_attempts`, `adbc.chargewire.session.*` | `hardcharger.tls.*`, `hardcharger.auth.access_token`, `hardcharger.auth.subject_token`, `hardcharger.retry.max_attempts`, `hardcharger.session.*` |
+| `adbc.chargewire.statement.async`, `.retain_result`, `.timeout_seconds`, `.result_partitions`, `.result_order`, `.id` | `hardcharger.query.async`, `.retain_result`, `.timeout_seconds`, `.result_partitions`, `.result_order`, `.id` |
+| `adbc.chargewire.statement.query_tag` (one statement's tag) | `hardcharger.query.tag` |
+| `adbc.chargewire.ipc_compression` | `hardcharger.ipc.compression` |
+| `adbc.chargewire.resume_timeout`, `adbc.hardcharger.resume_timeout` | `hardcharger.retry.resume_timeout_seconds` |
+| `adbc.chargewire.ingest.parts`, `adbc.hardcharger.ingest.parts` | `hardcharger.ingest.parts` |
+| `adbc.hardcharger.auth_type` | `hardcharger.auth.type` |
+| `adbc.hardcharger.oauth.timeout_seconds`, `.browser`, `.share_sign_in`, `.sign_in_key` | `hardcharger.oauth.timeout_seconds`, `.browser`, `.share_sign_in`, `.sign_in_key` |
+| `adbc.hardcharger.session_tag` | `hardcharger.session.tag` |
+| `adbc.hardcharger.query_tag` (the session's query tag) | `hardcharger.session.query_tag` |
+| `adbc.hardcharger.setting.NAME`, `adbc.hardcharger.global_setting.NAME` | `hardcharger.setting.NAME`, `hardcharger.global_setting.NAME` |
+| `adbc.warp.*` | as `adbc.chargewire.*` above |
+
+The Chargewire driver (`chargewire-adbc` 2.5.0) renamed its options the same way, to
+`chargewire.*` (`chargewire.query.timeout_seconds`, `chargewire.ipc.compression`, ...).
+
 ## Upgrading from 2.2
 
 Hardcharger's protocol is now named Chargewire. The server answers at `/chargewire` and
@@ -51,7 +91,8 @@ the spelling they use.
 - **The new drivers work with 2.2 servers too**, at the default base path, so servers and drivers
   can be upgraded in either order.
 - **Connection strings keep working.** `hardcharger://` URIs, `jdbc:hardcharger://` URLs and the
-  `adbc.hardcharger.*` options are unchanged, and the drivers still read `warp://` URIs and
+  `adbc.hardcharger.*` options are unchanged (they were renamed later, in
+  [hardcharger-adbc 2.7.0](#driver-option-names-hardcharger-adbc-270), and still work), and the drivers still read `warp://` URIs and
   `adbc.warp.*` option keys, as `chargewire://` and `adbc.chargewire.*`.
 - **Single sign-on: register the new redirect URI before upgrading.** When
   [`oauth_redirect_uri`](/reference/configuration/#oauth_redirect_uri) isn't set, the server now

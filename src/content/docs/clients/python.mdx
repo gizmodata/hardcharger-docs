@@ -142,11 +142,12 @@ every `hardcharger.*` setting as an Arrow table. A bad setting name or value fai
 ## Large results
 
 ```python test
+from adbc_driver_hardcharger import StatementOptions
 from adbc_driver_hardcharger import dbapi as hardcharger
 
 with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hardcharger", password="change-me",
-                         db_kwargs={"adbc.chargewire.statement.result_partitions": "8",
-                                    "adbc.chargewire.statement.result_order": "any"}) as conn:
+                         db_kwargs={StatementOptions.RESULT_PARTITIONS.value: "8",
+                                    StatementOptions.RESULT_ORDER.value: "any"}) as conn:
     with conn.cursor() as cur:
         cur.execute(operation="SELECT * FROM range(20000000) t(i)")
         total = 0
@@ -161,15 +162,21 @@ with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="hard
 
 | Option (`db_kwargs`, or per statement) | Default | Does |
 |---|---|---|
-| `adbc.chargewire.statement.result_partitions` | `8` | Read a large result over up to n connections at once ([partitions](/concepts/chargewire/#partitioned-results)); `1`: one stream. Small results are one stream anyway |
-| `adbc.chargewire.ingest.parts` | `8` | Send a bulk load of two batches or more over up to n connections at once ([partitioned uploads](/guides/bulk-ingest/#partitioned-uploads)); `1`: one stream, in the upload's order |
-| `adbc.chargewire.statement.result_order` | `preserve` | `any`: batches in arrival order (faster when order doesn't matter) |
-| `adbc.chargewire.ipc_compression` | `none` | `zstd` for slow links |
-| `adbc.chargewire.statement.async` | `false` | Submit, poll, fetch: for long queries behind proxies |
-| `adbc.chargewire.statement.retain_result` | server's | Keep results on the server so a broken download resumes |
-| `adbc.chargewire.statement.timeout_seconds` | none | The server cancels the statement after this long |
-| `adbc.chargewire.retry.max_attempts` | `4` | Sends of a request that is safe to repeat |
-| `adbc.chargewire.session.reconnect` | `true` | Replace a session the server lost, and say so |
+| `hardcharger.query.result_partitions` | `8` | Read a large result over up to n connections at once ([partitions](/concepts/chargewire/#partitioned-results)); `1`: one stream. Small results are one stream anyway |
+| `hardcharger.ingest.parts` | `8` | Send a bulk load of two batches or more over up to n connections at once ([partitioned uploads](/guides/bulk-ingest/#partitioned-uploads)); `1`: one stream, in the upload's order |
+| `hardcharger.query.result_order` | `preserve` | `any`: batches in arrival order (faster when order doesn't matter) |
+| `hardcharger.ipc.compression` | `none` | `zstd` for slow links |
+| `hardcharger.query.async` | `false` | Submit, poll, fetch: for long queries behind proxies |
+| `hardcharger.query.retain_result` | server's | Keep results on the server so a broken download resumes |
+| `hardcharger.query.timeout_seconds` | none | The server cancels the statement after this long |
+| `hardcharger.retry.max_attempts` | `4` | Sends of a request that is safe to repeat |
+| `hardcharger.session.reconnect` | `true` | Replace a session the server lost, and say so |
+
+The `StatementOptions`, `ConnectionOptions` and `DatabaseOptions` enums in `adbc_driver_hardcharger`
+name each key (`StatementOptions.RESULT_PARTITIONS.value` is `"hardcharger.query.result_partitions"`).
+These names follow the [ADBC driver style guide](https://adbc-drivers.org/building-drivers/style-guide.html)
+from `adbc-driver-hardcharger` 2.7.0; the older `adbc.chargewire.*` and `adbc.hardcharger.*` names
+still work, with a warning ([Upgrading](/guides/upgrading/#driver-option-names-hardcharger-adbc-270)).
 
 ## Bulk ingest
 

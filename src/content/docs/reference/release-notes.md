@@ -13,6 +13,20 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+## [2.13.3] - 2026-11-20
+
+### Added
+
+- **The baseline Linux x86_64 build has sqlite_scanner built in**
+  ([#62](https://github.com/gizmodata/hardcharger/issues/62)). On a CPU without AVX2 the
+  baseline build loads only its built-in extensions, and 2.13.2's set (httpfs, ducklake,
+  postgres_scanner) left out SQLite, so DuckLake with a SQLite catalog (`ATTACH
+  'ducklake:sqlite:...'`) and SQLite files were refused there. sqlite_scanner is now compiled in
+  too, at the commit DuckDB's own build uses; `INSTALL sqlite; LOAD sqlite` succeeds without
+  downloading anything. The server's guard on its own files covers SQLite's paths as before.
+  Every release gate now also runs a DuckLake with a SQLite catalog in its emulated `kvm64` smoke
+  test. The optimized build and the container image are unchanged.
+
 ## [2.13.2] - 2026-11-20
 
 ### Added
@@ -25,7 +39,7 @@ own changelog in `python/CHANGELOG.md`.
   hides those instructions, such as QEMU's `kvm64` ("Common KVM processor"), and for older
   processors. It is slower than the optimized build, because DuckDB does not choose instructions
   at run time, so use it only where the optimized one can't run (a VM's CPU model setting, such
-  as `host` or `x86-64-v3`, is often the better fix). Every release gate runs its smoke test on an
+  as `host`, QEMU's `Haswell` or Proxmox's `x86-64-v3`, is often the better fix). Every release gate runs its smoke test on an
   emulated `kvm64` CPU on Oracle Linux 8, and its full test suite. The container image keeps the
   optimized build. Thanks to jhonvirtucio for the report and the diagnosis.
 - **The baseline build has httpfs, ducklake and postgres_scanner built in, and never loads an

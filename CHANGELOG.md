@@ -7,6 +7,16 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.13.3] - 2026-11-20
+
+### Changed
+
+- Install: the baseline Linux x86-64 build also has `sqlite_scanner` built in from Hardcharger
+  2.13.3, so DuckLake with a SQLite catalog works on a CPU without AVX2
+  ([#62](https://github.com/gizmodata/hardcharger/issues/62)).
+- The reference and pins follow Hardcharger 2.13.3: the release notes, the server image and
+  source the reference is generated from, the Python package in the examples, and the versions page.
+
 ## [2.13.2] - 2026-11-20
 
 ### Added

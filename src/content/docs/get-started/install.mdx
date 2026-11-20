@@ -136,7 +136,8 @@ when the machine moves between hosts (QEMU's `Haswell`, Proxmox's `x86-64-v3`), 
 AVX2 and the faster build.
 
 DuckDB's downloadable extensions need AVX2 as well, so the baseline build has `httpfs`,
-`ducklake` and `postgres_scanner` built in, next to `core_functions`, `parquet`, `json` and `icu`.
+`ducklake`, `postgres_scanner` and (from 2.13.3) `sqlite_scanner` built in, next to
+`core_functions`, `parquet`, `json` and `icu` (so DuckLake with a SQLite catalog works too).
 On a CPU without AVX2 it installs and loads no other extension, and says why instead of
 crashing. The container image is the optimized build.
 

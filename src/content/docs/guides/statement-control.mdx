@@ -125,10 +125,13 @@ so you can always get in to look.
 ### Idle sessions
 
 [`session_idle_timeout`](/reference/configuration/#session_idle_timeout) (15 minutes; 0 never)
-evicts a session with no request for that long. A request still in flight counts: a client
-waiting on a statement (`Prefer: wait`, which every driver does while a statement runs), a
-result being read, a bulk ingest in progress, or a retained result not yet expired keeps the
-session. A statement that is still running with nobody waiting on it does not: a client that is
+evicts a session (within 5 seconds) once that long has passed since its last response ended. A
+request still in flight counts: a client waiting on a statement (`Prefer: wait`, which every
+driver does while a statement runs), a result being read, a bulk ingest in progress, or a
+retained result not yet expired keeps the session. Since the time counts from the end of the last
+response, a client that long-polls for longer than the timeout keeps its session. A request
+queued behind a statement that is still running (metadata, a commit, a prepare) does not keep it
+while it waits for its turn (v2.14.0+). A statement that is still running with nobody waiting on it does not: a client that is
 there polls its statement and is heard from within the timeout, while one that died mid-write
 (a pod killed at its deadline) must not keep the session, and the write's open transaction,
 alive for the hours the write runs. The eviction cancels the statement (`cancel_reason`

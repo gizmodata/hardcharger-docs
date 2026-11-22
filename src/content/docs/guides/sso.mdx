@@ -220,6 +220,90 @@ Ann's token lists the group `okta-analysts`, which maps to `analyst`. A group ne
 user: a token naming a user the store doesn't have is refused. `SHOW GROUP MAPPINGS` lists the
 mappings; `DROP GROUP MAPPING 'okta-analysts' ISSUER '…'` removes one.
 
+### Accounts with both sign-in methods (v2.14.0+)
+
+A store user can sign in with a password and through the identity provider. The account records
+the provider identity it belongs to (the token's issuer and subject), so once it is linked, an
+SSO sign-in for that name must present the same pair, and a provider that issues the name to
+someone else later doesn't sign them in as this user.
+
+An SSO sign-in whose name (the token's `email`, else `sub`) matches an enabled user without a link
+signs in as that user, as before 2.14. The link is recorded only when the provider vouches for the
+name:
+
+- the `email` claim matched and the token says `email_verified: true` (or `"true"`), or
+- the token has no `email` claim and its `sub` is exactly the user's name.
+
+Any other match signs in and records nothing, so a later trustworthy sign-in can still link the
+account. While the access-control store doesn't answer, nothing is recorded either (an unlinked
+user signs in from the last snapshot), and a linked user is still held to its pair. Linking keeps
+the user's password, grants and ownership.
+
+The stand-in provider's tokens carry an `email` but no `email_verified`, so Ann's sign-in above
+recorded nothing:
+
+```console test profile=sso_rbac
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv \
+    --command "SELECT name, has_sso_link FROM hardcharger_users() WHERE name = 'ann@example.com'"
+name,has_sso_link
+ann@example.com,false
+```
+
+The administrator (or a session acting as [System Admin](/guides/access-control/#system-admin-v2140);
+the `ALTER USER` privilege is not enough) links an account explicitly, and can give an SSO user a
+password:
+
+```sql test profile=sso_rbac
+ALTER USER "ann@example.com" SET IDENTITY PROVIDER 'http://127.0.0.1:8099' SUBJECT '00u-ann-elsewhere';
+ALTER USER "ann@example.com" WITH PASSWORD 'ann-secret-example';
+```
+
+Now a token with Ann's name but another subject is refused, while her password still works:
+
+```console test profile=sso_rbac
+$ HARDCHARGER_PASSWORD="$(python3 idp.py token ann@example.com okta-analysts)" hardcharger --host localhost --tls=false \
+    --username token --csv --command "SELECT amount FROM sales" 2>&1 | grep -o "the sign-in identity does not match an enabled user"
+the sign-in identity does not match an enabled user
+$ HARDCHARGER_PASSWORD='ann-secret-example' hardcharger --host localhost --tls=false --username ann@example.com --csv \
+    --command "SELECT HARDCHARGER_USER() AS who"
+who
+ann@example.com
+```
+
+(Signed in with her password, Ann has her own grants only: `analyst` came from her token's group,
+so `sales` is out of reach until a role is granted to her directly.)
+
+Setting another pair replaces the link (an identity-provider migration, a wrong first link); a
+pair another user already has is refused. `UNSET IDENTITY PROVIDER` clears it, so the next
+trustworthy sign-in records a pair again:
+
+```sql test profile=sso_rbac
+ALTER USER "ann@example.com" SET IDENTITY PROVIDER 'http://127.0.0.1:8099' SUBJECT 'ann@example.com';
+```
+
+```console test profile=sso_rbac
+$ HARDCHARGER_PASSWORD="$(python3 idp.py token ann@example.com okta-analysts)" hardcharger --host localhost --tls=false \
+    --username token --csv --command "SELECT amount FROM sales"
+amount
+42
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv \
+    --command "SELECT name, idp_issuer, idp_subject FROM hardcharger_users() WHERE has_sso_link AND has_password ORDER BY name"
+name,idp_issuer,idp_subject
+ann@example.com,http://127.0.0.1:8099,ann@example.com
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv \
+    --command 'ALTER USER "ann@example.com" UNSET IDENTITY PROVIDER'
+result
+SSO identity unlinked from user ann@example.com
+```
+
+Each change is an `ALTER USER` record in the [audit log](/guides/instrumentation-and-audit/#the-audit-log)
+(`SSO identity linked` or `SSO identity unlinked`) and reaches the other replicas like any other
+account change. Sessions the user already has are not ended: disable the user too if they should
+be. `has_sso_link`, `idp_issuer` and `idp_subject` in `hardcharger_users()` are shown to the
+administrator and to System Admin sessions, and `auth_method` in `hardcharger_sessions()` and the
+instrumentation sessions table says how each session signed in. Run 2.14 on every replica before
+relying on the links.
+
 ## Browser sign-in
 
 For people at a desktop (the CLI, a notebook, a driver in a desktop tool) and for the

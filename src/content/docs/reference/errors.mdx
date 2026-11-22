@@ -60,7 +60,7 @@ can't serve now. A statement's own failure is never `5xx`.
 | `idempotency_key_reused` | 422 | The same `Idempotency-Key` with a different request | Use a new key for a new request |
 | `headers_too_large` | 431 | Request headers over [`max_header_bytes`](/reference/configuration/#max_header_bytes) | Raise the limit (large identity tokens) |
 | `too_many_sessions` | 429 | Past [`max_sessions`](/reference/configuration/#max_sessions) | Close sessions, or retry later |
-| `rate_limited` | 429 | The [statement queue](/guides/statement-control/#the-statement-queue) is full, a statement waited longer than `max_queue_wait`, or more browser sign-ins are in progress than [`oauth_max_flows`](/reference/configuration/#oauth_max_flows) | Retry after `Retry-After` |
+| `rate_limited` | 429 | The [statement queue](/guides/statement-control/#the-statement-queue) is full, a statement waited longer than `max_queue_wait`, more browser sign-ins are in progress than [`oauth_max_flows`](/reference/configuration/#oauth_max_flows), or (v2.14.0+) too many [failed password sign-ins](/guides/access-control/#failed-sign-ins-v2140) | Retry after `Retry-After` |
 | `result_quota_exceeded` | 429 | Too many retained results | Read and delete results |
 | `statement_cancelled` | 409 | The statement was cancelled; `cancel_reason` says why (`client`, `killed`, `privilege_revoked`, `server_shutdown`, ...) | |
 | `statement_timeout` | 409 | The statement ran past its timeout and was cancelled (`cancel_reason: timeout`) | Raise the timeout, or speed the query up |
@@ -156,16 +156,16 @@ other reasons. Any reason a client doesn't know is a generic one: the session is
 
 ```console test profile=rbac
 $ export HARDCHARGER_PASSWORD='change-me'
-$ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "CREATE USER joe WITH PASSWORD 'old-secret'" < /dev/null > /dev/null
+$ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "CREATE USER joe WITH PASSWORD 'old-secret-example'" < /dev/null > /dev/null
 $ token() { curl -s localhost:31337/chargewire/v1/auth/token -H 'Content-Type: application/json' \
     -d "{\"grant_type\": \"password\", \"username\": \"joe\", \"password\": \"$1\"}" | jq -r .access_token; }
-$ TOKEN=$(token old-secret)
+$ TOKEN=$(token old-secret-example)
 $ SESSION=$(curl -s localhost:31337/chargewire/v1/sessions -H "Authorization: Bearer $TOKEN" \
     -H 'Content-Type: application/json' -d '{}' | jq -r .session_id)
-$ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "ALTER USER joe WITH PASSWORD 'new-secret'" > /dev/null; sleep 2
+$ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "ALTER USER joe WITH PASSWORD 'new-secret-example'" > /dev/null; sleep 2
 $ curl -s localhost:31337/chargewire/v1/sessions/$SESSION -H "Authorization: Bearer $TOKEN" | jq -c '{code, reason}'
 {"code":"invalid_token","reason":"credentials_changed"}
-$ curl -s localhost:31337/chargewire/v1/sessions/$SESSION -H "Authorization: Bearer $(token new-secret)" | jq -c '{code, reason}'
+$ curl -s localhost:31337/chargewire/v1/sessions/$SESSION -H "Authorization: Bearer $(token new-secret-example)" | jq -c '{code, reason}'
 {"code":"session_ended","reason":"credentials_changed"}
 ```
 
@@ -191,7 +191,7 @@ token's session: it gets `session_not_found`. Sessions belong to both the user a
 authority, preventing credentials with different permissions from sharing a session.
 
 ```console test profile=rbac
-$ SHORT=$(HARDCHARGER_PASSWORD='new-secret' hardcharger --host localhost --tls=false --username joe --quiet --csv \
+$ SHORT=$(HARDCHARGER_PASSWORD='new-secret-example' hardcharger --host localhost --tls=false --username joe --quiet --csv \
     --command "CREATE SCOPED TOKEN short ALLOW SELECT VALID FOR '3 seconds'" | tail -1 | cut -d, -f6)
 $ SESSION=$(curl -s localhost:31337/chargewire/v1/sessions -H "Authorization: Bearer $SHORT" \
     -H 'Content-Type: application/json' -d '{}' | jq -r .session_id)
@@ -199,7 +199,7 @@ $ sleep 5
 $ curl -s localhost:31337/chargewire/v1/sessions/$SESSION -H "Authorization: Bearer $SHORT" | jq -c '{code, reason}'
 {"code":"invalid_token","reason":"token_expired"}
 $ JOE=$(curl -s localhost:31337/chargewire/v1/auth/token -H 'Content-Type: application/json' \
-    -d '{"grant_type": "password", "username": "joe", "password": "new-secret"}' | jq -r .access_token)
+    -d '{"grant_type": "password", "username": "joe", "password": "new-secret-example"}' | jq -r .access_token)
 $ curl -s localhost:31337/chargewire/v1/sessions/$SESSION -H "Authorization: Bearer $JOE" | jq -c '{code, reason}'
 {"code":"session_not_found","reason":null}
 ```

@@ -20,8 +20,8 @@ CREATE TABLE emp AS SELECT * FROM (VALUES
   (3, 'Cho', 'APAC', 'cho@example.com', '333-33-3333')) t(id, name, region, email, ssn);
 CREATE ROLE staff;
 GRANT SELECT ON emp TO staff;
-CREATE USER ann WITH PASSWORD 'ann-secret';
-CREATE USER bob WITH PASSWORD 'bob-secret';
+CREATE USER ann WITH PASSWORD 'ann-secret-example';
+CREATE USER bob WITH PASSWORD 'bob-secret-example';
 GRANT staff TO ann;
 GRANT staff TO bob;
 ALTER USER ann SET ATTRIBUTE region = 'EU';
@@ -35,10 +35,10 @@ CREATE ROW POLICY region_rows ON emp TO staff USING (region = session_attribute(
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='ann-secret' hardcharger --host localhost --tls=false --username ann --csv --command "SELECT id, name, region FROM emp"
+$ HARDCHARGER_PASSWORD='ann-secret-example' hardcharger --host localhost --tls=false --username ann --csv --command "SELECT id, name, region FROM emp"
 id,name,region
 1,Ann,EU
-$ HARDCHARGER_PASSWORD='bob-secret' hardcharger --host localhost --tls=false --username bob --csv --command "SELECT id, name, region FROM emp"
+$ HARDCHARGER_PASSWORD='bob-secret-example' hardcharger --host localhost --tls=false --username bob --csv --command "SELECT id, name, region FROM emp"
 id,name,region
 2,Bob,US
 ```
@@ -82,7 +82,7 @@ ALTER TABLE emp MODIFY COLUMN ssn SET MASKING POLICY hide EXEMPT ROLE hr;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='ann-secret' hardcharger --host localhost --tls=false --username ann --csv --command "SELECT name, email, ssn FROM emp"
+$ HARDCHARGER_PASSWORD='ann-secret-example' hardcharger --host localhost --tls=false --username ann --csv --command "SELECT name, email, ssn FROM emp"
 name,email,ssn
 Ann,****@example.com,***-**-****
 ```
@@ -97,6 +97,72 @@ SHOW MASKING POLICIES
 
 Masking applies wherever the column's value would leave: in results, in views built on the table,
 and in expressions (`lower(email)` is computed on the masked value).
+
+## Policy functions and exemptions
+
+### The policy functions in plain SQL (v2.14.0+)
+
+The functions a policy uses are ordinary functions too, so a query, a view or a macro gets the
+same answer a row or masking policy gets for the same session: `current_user`, `session_user` and
+`user` return the Hardcharger user (as `hardcharger_user()` does), `is_role_active(name)` whether
+one of the session's active roles is or holds `name`, `session_attribute(name)` the user's
+attribute, and `current_role()` the role `SET ROLE` made active (NULL while all of them are).
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='ann-secret-example' hardcharger --host localhost --tls=false --username ann --csv \
+    --command "SELECT current_user AS who, current_role() AS active_role, is_role_active('staff') AS staff, is_role_active('hr') AS hr, session_attribute('region') AS region"
+who,active_role,staff,hr,region
+ann,NULL,true,false,EU
+$ printf "SET ROLE staff;\nSELECT current_role() AS active_role;\n" | \
+    HARDCHARGER_PASSWORD='ann-secret-example' hardcharger --host localhost --tls=false --username ann --csv --quiet
+result
+Active role: staff
+active_role
+staff
+```
+
+Each is worked out when the statement runs, so `SET ROLE` counts from the next statement,
+prepared ones included. `is_role_active` is false alike for a role the user doesn't hold and one
+that doesn't exist. Without access control, and for the administrator, every role is active and
+there are no attributes. A policy still can't call `current_role()`.
+
+### Exemptions (v2.14.0+)
+
+A trusted job, such as a replication service, can read every table without row-policy filters and
+every column unmasked, tables created later included, without running as the administrator:
+
+```sql test profile=rbac
+CREATE ROLE replicator;
+GRANT EXEMPT ROW POLICIES, EXEMPT MASKING POLICIES TO ROLE replicator;
+GRANT SELECT ON emp TO replicator;
+CREATE USER rex WITH PASSWORD 'rex-secret-example';
+GRANT replicator TO rex;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='rex-secret-example' hardcharger --host localhost --tls=false --username rex --csv \
+    --command "SELECT name, region, email, ssn FROM emp ORDER BY id"
+name,region,email,ssn
+Ann,EU,ann@example.com,111-11-1111
+Bob,US,bob@example.com,222-22-2222
+Cho,APAC,cho@example.com,333-33-3333
+```
+
+- The two are separate: `EXEMPT ROW POLICIES` lifts every row policy, `EXEMPT MASKING POLICIES`
+  every mask.
+- A principal exempt from every row policy and mask on a table writes it as freely as it reads it
+  (`INSERT`, `UPDATE`, `MERGE`, `INSERT ... ON CONFLICT`, `DELETE ... RETURNING`, bulk ingest).
+  Everyone else's writes into such a table are refused as before.
+- Only the administrator (or a session acting as [System Admin](/guides/access-control/#system-admin-v2140))
+  grants them, never with an admin option or to `PUBLIC`, and a role carries them only through
+  memberships they granted. Scoped tokens, tokens with `catalog_access` rules and a tenant's
+  users never use them. A trigger's body uses its owner's exemptions, never the writer's.
+- A revoke counts at the next statement, on every replica at once: a session that holds one asks
+  the store before each statement, and while the store doesn't answer no exemption applies.
+- `SHOW GRANTS`, `hardcharger_grants()` and `hardcharger_effective_privileges()` list them,
+  `hardcharger_policies()` says which policies no longer apply, and the audit record of each
+  statement an exemption let through names it. A 2.13 replica on the same store applies every
+  policy.
 
 ## Tenants
 

@@ -89,7 +89,7 @@ CREATE TABLE main.customers AS
 CREATE ROLE analyst;
 GRANT SELECT ON SCHEMA analytics TO analyst;               -- every table there, now and later
 GRANT SELECT (id, email) ON main.customers TO analyst;     -- two columns only
-CREATE USER joe WITH PASSWORD 'joe-secret';
+CREATE USER joe WITH PASSWORD 'joe-secret-example';
 GRANT analyst TO joe;
 ```
 
@@ -101,7 +101,7 @@ Now sign in as `joe`. What he may read works; what he may not is refused, with t
 ```python test profile=rbac
 from adbc_driver_hardcharger import dbapi as hardcharger
 
-with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="joe", password="joe-secret") as conn:
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="joe", password="joe-secret-example") as conn:
     with conn.cursor() as cur:
         cur.execute(operation="SELECT sum(amount) AS total FROM analytics.orders")
         print(cur.fetchone())
@@ -178,14 +178,14 @@ GRANT CREATE SCHEMA ON SCHEMA analytics TO analyst;      -- schemas nested in an
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe --csv \
+$ HARDCHARGER_PASSWORD='joe-secret-example' hardcharger --host localhost --tls=false --username joe --csv \
     --command "SELECT count(*) AS n FROM analytics.archive.orders_2024"
 n
 2
-$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe --csv \
+$ HARDCHARGER_PASSWORD='joe-secret-example' hardcharger --host localhost --tls=false --username joe --csv \
     --command "CREATE SCHEMA analytics.joes"
 OK
-$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe --csv \
+$ HARDCHARGER_PASSWORD='joe-secret-example' hardcharger --host localhost --tls=false --username joe --csv \
     --command "CREATE SCHEMA joes" 2>&1 | grep -o "no CREATE SCHEMA privilege on catalog my"
 no CREATE SCHEMA privilege on catalog my
 ```
@@ -233,7 +233,7 @@ Each kind of storage has its own privilege, so a role that reads the server's fi
 bucket and no URL. `joe` can read files now, but not the web:
 
 ```console test profile=rbac exit=1
-$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe \
+$ HARDCHARGER_PASSWORD='joe-secret-example' hardcharger --host localhost --tls=false --username joe \
     --command "SELECT * FROM read_csv('https://example.com/orders.csv')"
 Error: Hardcharger blocked read_csv() of 'https://example.com/orders.csv', which needs the READ HTTP system privilege, everywhere or on a location that covers it. User joe does not hold it (see SHOW GRANTS)
 ```
@@ -320,17 +320,17 @@ CREATE VIEW published.revenue_by_region AS
   SELECT region, sum(amount) AS revenue FROM analytics.orders GROUP BY region;
 CREATE ROLE viewer;
 GRANT SELECT ON published.revenue_by_region TO viewer;
-CREATE USER vic WITH PASSWORD 'vic-secret';
+CREATE USER vic WITH PASSWORD 'vic-secret-example';
 GRANT viewer TO vic;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT * FROM published.revenue_by_region ORDER BY region"
 region,revenue
 EU,120.0
 US,80.0
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT * FROM analytics.orders" > /dev/null 2>&1 || echo "refused"
 refused
 ```
@@ -346,7 +346,7 @@ GRANT view_maker TO vic;
 ```
 
 ```console test profile=rbac exit=1
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE VIEW published.all_orders AS SELECT * FROM analytics.orders"
 Error: Permission Error: Hardcharger blocked this statement: user vic may create a view only over what it can SELECT itself, and the query of view my.published.all_orders reads more: user vic has no SELECT privilege on table my.analytics.orders. Access control on this server lets user vic do only what their roles are granted (see SHOW GRANTS)
 ```
@@ -375,7 +375,7 @@ ALTER TABLE lifecycle.report RENAME TO renamed_report;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT * FROM lifecycle.renamed_report"
 answer
 42
@@ -397,7 +397,7 @@ ALTER TABLE lifecycle.renamed_report OWNER TO ROLE lifecycle_owner;
 ```python test profile=rbac
 from adbc_driver_hardcharger import dbapi as hardcharger
 
-with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="vic", password="vic-secret") as conn:
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="vic", password="vic-secret-example") as conn:
     with conn.cursor() as cur:
         try:
             cur.execute(operation="SELECT * FROM lifecycle.renamed_report")
@@ -438,10 +438,10 @@ GRANT CREATE MACRO, DROP MACRO ON SCHEMA published TO view_maker;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE MACRO published.cents(amount) AS CAST(amount * 100 AS INTEGER)"
 OK
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT published.cents(1.25) AS cents"
 cents
 125
@@ -462,10 +462,10 @@ everyone but the administrator:
   where the macro is called, and binding a table function already reads.)
 
 ```console test profile=rbac exit=1
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE MACRO published.lower(x) AS 'mine'"
 Error: Permission Error: Hardcharger blocked this statement: a macro named lower would replace the built-in function lower wherever it is called, in queries and views alike; give the macro a name of its own. …
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE TEMP MACRO mine(x) AS x"
 Error: Permission Error: Hardcharger blocked this statement: creating temporary macros needs an administrator: …
 ```
@@ -482,10 +482,10 @@ GRANT CREATE TYPE, DROP TYPE ON SCHEMA published TO view_maker;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE TYPE published.priority AS ENUM ('low', 'high')"
 OK
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT typeof('high'::published.priority) AS t"
 t
 "ENUM('low', 'high')"
@@ -508,10 +508,10 @@ or replacing the type changes nothing there. `duckdb_types()` lists a user's own
 the built-in ones.
 
 ```console test profile=rbac exit=1
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE TYPE published.integer AS VARCHAR"
 Error: Permission Error: Hardcharger blocked this statement: a type named integer would replace the built-in type integer wherever it is named, in queries and views alike; give the type a name of its own. …
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE TEMP TYPE mine AS INTEGER"
 Error: Permission Error: Hardcharger blocked this statement: creating temporary types needs an administrator: …
 ```
@@ -540,21 +540,21 @@ macro can take their place. `duckdb_triggers()` lists the triggers of the tables
 
 ```sql test profile=rbac
 GRANT CREATE TABLE, CREATE TRIGGER ON SCHEMA published TO view_maker;
-CREATE USER wes WITH PASSWORD 'wes-secret';
+CREATE USER wes WITH PASSWORD 'wes-secret-example';
 GRANT viewer TO wes;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE TABLE published.ticket_notes (ticket_id BIGINT, note VARCHAR)"
 OK
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE TABLE published.note_log (what VARCHAR)"
 OK
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE TRIGGER log_notes AFTER INSERT ON published.ticket_notes FOR EACH STATEMENT INSERT INTO published.note_log VALUES ('note added')"
 OK
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "GRANT INSERT ON published.ticket_notes TO viewer"
 result
 Granted INSERT on my.published.ticket_notes to viewer
@@ -564,13 +564,13 @@ wes may write `ticket_notes` and nothing else in `published`; the trigger's body
 with vic's rights:
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+$ HARDCHARGER_PASSWORD='wes-secret-example' hardcharger --host localhost --tls=false --username wes --csv \
     --command "INSERT INTO published.ticket_notes VALUES (1, 'called back')"
 OK, 1 row affected
-$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+$ HARDCHARGER_PASSWORD='wes-secret-example' hardcharger --host localhost --tls=false --username wes --csv \
     --command "INSERT INTO published.note_log VALUES ('by wes')" 2>&1 | grep -o "has no INSERT privilege on table [a-z_.]*note_log"
 has no INSERT privilege on table my.published.note_log
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT what FROM published.note_log"
 what
 note added
@@ -584,13 +584,13 @@ writer's. (Before 2.13.1, chains like these were refused under access control.) 
 each insert into `ticket_notes`, and the archive's own trigger logs it:
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE TABLE published.note_archive (ticket_id BIGINT, note VARCHAR)"
 OK
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE TRIGGER archive_notes AFTER INSERT ON published.ticket_notes REFERENCING NEW TABLE AS added FOR EACH STATEMENT INSERT INTO published.note_archive SELECT ticket_id, note FROM added"
 OK
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE TRIGGER log_archive AFTER INSERT ON published.note_archive FOR EACH STATEMENT INSERT INTO published.note_log VALUES ('notes archived')"
 OK
 ```
@@ -598,15 +598,15 @@ OK
 wes still holds only `INSERT` on `ticket_notes`:
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+$ HARDCHARGER_PASSWORD='wes-secret-example' hardcharger --host localhost --tls=false --username wes --csv \
     --command "WITH new_notes (ticket_id, note) AS (VALUES (2, 'closed'), (3, 'reopened')) INSERT INTO published.ticket_notes SELECT ticket_id, note FROM new_notes"
 OK, 2 rows affected
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT ticket_id, note FROM published.note_archive ORDER BY ticket_id"
 ticket_id,note
 2,closed
 3,reopened
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT what, count(*) AS n FROM published.note_log GROUP BY what ORDER BY what"
 what,n
 note added,2
@@ -635,13 +635,13 @@ the policies apply to, with `MERGE (or INSERT ... ON CONFLICT)` in the message.
 vic keeps one status per ticket, logged by a trigger, and lets `viewer` insert:
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE TABLE published.ticket_status (ticket_id BIGINT PRIMARY KEY, status VARCHAR)"
 OK
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "CREATE TRIGGER log_status AFTER INSERT ON published.ticket_status FOR EACH STATEMENT INSERT INTO published.note_log VALUES ('status set')"
 OK
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "GRANT INSERT ON published.ticket_status TO viewer"
 result
 Granted INSERT on my.published.ticket_status to viewer
@@ -650,20 +650,20 @@ Granted INSERT on my.published.ticket_status to viewer
 To skip a ticket that has a status already, wes needs to read the key column too:
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+$ HARDCHARGER_PASSWORD='wes-secret-example' hardcharger --host localhost --tls=false --username wes --csv \
     --command "INSERT INTO published.ticket_status VALUES (1, 'open') ON CONFLICT DO NOTHING" 2>&1 | grep -o "has no SELECT privilege on table [a-z_.]*ticket_status"
 has no SELECT privilege on table my.published.ticket_status
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "GRANT SELECT (ticket_id) ON published.ticket_status TO viewer"
 result
 Granted SELECT (ticket_id) on my.published.ticket_status to viewer
-$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+$ HARDCHARGER_PASSWORD='wes-secret-example' hardcharger --host localhost --tls=false --username wes --csv \
     --command "INSERT INTO published.ticket_status VALUES (1, 'open') ON CONFLICT DO NOTHING"
 OK, 1 row affected
-$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+$ HARDCHARGER_PASSWORD='wes-secret-example' hardcharger --host localhost --tls=false --username wes --csv \
     --command "INSERT OR IGNORE INTO published.ticket_status VALUES (1, 'closed')"
 OK
-$ HARDCHARGER_PASSWORD='wes-secret' hardcharger --host localhost --tls=false --username wes --csv \
+$ HARDCHARGER_PASSWORD='wes-secret-example' hardcharger --host localhost --tls=false --username wes --csv \
     --command "INSERT INTO published.ticket_status VALUES (1, 'closed') ON CONFLICT (ticket_id) DO UPDATE SET status = excluded.status" 2>&1 | grep -o "has no UPDATE privilege on table [a-z_.]*ticket_status"
 has no UPDATE privilege on table my.published.ticket_status
 ```
@@ -672,7 +672,7 @@ The trigger ran for both statements that were allowed (a statement trigger fires
 statement, whether or not it added a row):
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT count(*) AS n FROM published.note_log WHERE what = 'status set'"
 n
 2
@@ -695,10 +695,10 @@ GRANT INSERT, SELECT ON published.tickets TO viewer;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "INSERT INTO published.tickets (title) VALUES ('first')"
 OK, 1 row affected
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT nextval('published.ticket_ids') AS n" 2>&1 | grep -o "has no USAGE privilege on sequence [a-z_.]*ticket_ids"
 has no USAGE privilege on sequence my.published.ticket_ids
 ```
@@ -717,10 +717,10 @@ GRANT MAINTAIN ON published.tickets TO viewer;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "ANALYZE published.tickets"
 OK
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "ANALYZE" 2>&1 | grep -o "ANALYZE or VACUUM of every table needs an administrator"
 ANALYZE or VACUUM of every table needs an administrator
 ```
@@ -737,10 +737,10 @@ GRANT ALTER TABLE ON SCHEMA published TO view_maker;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "COMMENT ON TABLE published.tickets IS 'support tickets'"
 OK
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "COMMENT ON TABLE analytics.orders IS 'x'" 2>&1 | grep -o "may not comment on table [a-z_.]*orders"
 may not comment on table my.analytics.orders
 ```
@@ -757,11 +757,11 @@ GRANT EXECUTE ON TABLE FUNCTION pg_timezone_names TO viewer;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT count(*) > 100 AS many FROM pg_timezone_names()"
 many
 true
-$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe --csv \
+$ HARDCHARGER_PASSWORD='joe-secret-example' hardcharger --host localhost --tls=false --username joe --csv \
     --command "SELECT count(*) FROM pg_timezone_names()" 2>&1 | grep -o "or to a role granted EXECUTE ON TABLE FUNCTION pg_timezone_names"
 or to a role granted EXECUTE ON TABLE FUNCTION pg_timezone_names
 ```
@@ -782,7 +782,7 @@ GRANT EXECUTE ON TABLE FUNCTION sqlite_scan (PATH ARGUMENT 1) TO viewer;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT * FROM sqlite_scan('tickets.sqlite', 'open_tickets')" 2>&1 | grep -o "which needs the READ FILESYSTEM system privilege"
 which needs the READ FILESYSTEM system privilege
 ```
@@ -792,7 +792,7 @@ GRANT READ FILESYSTEM TO viewer;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT * FROM sqlite_scan('tickets.sqlite', 'open_tickets')"
 id,title
 1,first
@@ -828,7 +828,7 @@ GRANT lake_reader TO vic;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT count(*) > 0 AS has_snapshots FROM ducklake_snapshots('lake')"
 has_snapshots
 true
@@ -844,12 +844,12 @@ CREATE ROLE lake_maintenance;
 GRANT EXECUTE ON TABLE FUNCTION ducklake_merge_adjacent_files TO lake_maintenance;
 GRANT MAINTAIN ON CATALOG lake TO lake_maintenance;
 GRANT CHECKPOINT TO lake_maintenance;
-CREATE USER lake_operator WITH PASSWORD 'lake-secret';
+CREATE USER lake_operator WITH PASSWORD 'lake-secret-example';
 GRANT lake_maintenance TO lake_operator;
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='lake-secret' hardcharger --host localhost --tls=false --username lake_operator --csv \
+$ HARDCHARGER_PASSWORD='lake-secret-example' hardcharger --host localhost --tls=false --username lake_operator --csv \
     --command "CHECKPOINT lake"
 Success
 ```
@@ -900,7 +900,7 @@ still receive the engine's diagnostic suggestions.
 ```python test profile=rbac
 from adbc_driver_hardcharger import dbapi as hardcharger
 
-with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="vic", password="vic-secret") as conn:
+with hardcharger.connect(uri="hardcharger://localhost?tls=false", username="vic", password="vic-secret-example") as conn:
     with conn.cursor() as cur:
         try:
             cur.execute(operation="SELECT * FROM analytics.ordres")
@@ -928,7 +928,7 @@ or in it or own something there. That covers the drivers' metadata calls (ADBC `
 stay listed. `vic` sees the view he may read and the table his role may write:
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "SELECT table_schema, table_name FROM information_schema.tables WHERE table_catalog = 'my' ORDER BY table_name"
 table_schema,table_name
 published,note_archive
@@ -944,16 +944,16 @@ published,tickets
 `pragma_table_info()` lists the columns they may read:
 
 ```console test profile=rbac exit=1
-$ HARDCHARGER_PASSWORD='vic-secret' hardcharger --host localhost --tls=false --username vic --csv \
+$ HARDCHARGER_PASSWORD='vic-secret-example' hardcharger --host localhost --tls=false --username vic --csv \
     --command "DESCRIBE analytics.orders"
 Error: Hardcharger blocked this statement: user vic holds no privilege on table my.analytics.orders, so it cannot describe it
-$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe --csv \
+$ HARDCHARGER_PASSWORD='joe-secret-example' hardcharger --host localhost --tls=false --username joe --csv \
     --command "DESCRIBE main.customers"
 Error: Hardcharger blocked this statement: user joe may read only some columns of table my.main.customers, and DESCRIBE shows them all; pragma_table_info('my.main.customers') lists the ones it may read
 ```
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe --csv \
+$ HARDCHARGER_PASSWORD='joe-secret-example' hardcharger --host localhost --tls=false --username joe --csv \
     --command "SELECT name FROM pragma_table_info('main.customers')"
 name
 id
@@ -987,7 +987,7 @@ The same, as tables to query: `hardcharger_grants()`, `hardcharger_role_members(
 `joe` created in [Nested schemas](#nested-schemas) is his, as `OWNERSHIP`):
 
 ```console test profile=rbac
-$ HARDCHARGER_PASSWORD='joe-secret' hardcharger --host localhost --tls=false --username joe --csv \
+$ HARDCHARGER_PASSWORD='joe-secret-example' hardcharger --host localhost --tls=false --username joe --csv \
     --command "SELECT privilege, object_type, schema_name, object_name, column_name, via FROM hardcharger_effective_privileges() ORDER BY ALL"
 privilege,object_type,schema_name,object_name,column_name,via
 CREATE SCHEMA,SCHEMA,analytics,NULL,NULL,analyst
@@ -1008,8 +1008,8 @@ columns.
 ## Managing users
 
 ```sql test profile=rbac
-CREATE USER ann WITH PASSWORD 'ann-secret';
-ALTER USER joe WITH PASSWORD 'n3w-secret';   -- ends joe's tokens and sessions at once
+CREATE USER ann WITH PASSWORD 'ann-secret-example';
+ALTER USER joe WITH PASSWORD 'n3w-secret-example';   -- ends joe's tokens and sessions at once
 ALTER USER joe DISABLE;                      -- and ENABLE
 ALTER USER joe PASSWORD NULL;                -- token sign-in only (SSO, scoped tokens)
 ALTER USER ann SET ATTRIBUTE region = 'EU';  -- for row policies: session_attribute('region')
@@ -1023,6 +1023,182 @@ statement that is running. The user's tokens stop working at once (`401 invalid_
 their old sessions answer `401 session_ended` with a
 [`reason`](/reference/errors/#session_ended-reasons): `principal_dropped` (dropped or disabled) or
 `credentials_changed` (a new password, or anything else access control revoked).
+
+## System Admin (v2.14.0+)
+
+Named operators can act as the administrator under their own names, so the administrator's
+password stays in the vault and every audit record says who did what. `GRANT SYSTEM ADMIN` to a
+user (or `TO ROLE dba`); holding it changes nothing by itself:
+
+```sql test profile=rbac
+CREATE USER alice WITH PASSWORD 'alice-secret-example';
+GRANT SYSTEM ADMIN TO alice;
+```
+
+In a session, `SET ROLE SYSTEM ADMIN` makes it act as the administrator (users, roles, grants,
+policies, tenants, administrative commands; no grant, row policy or mask applies to it) until
+`RESET ROLE`:
+
+```console test profile=rbac
+$ printf '%s\n' "SELECT HARDCHARGER_IS_SYSTEM_ADMIN() AS acting;" "SET ROLE SYSTEM ADMIN;" \
+      "SELECT HARDCHARGER_IS_SYSTEM_ADMIN() AS acting, HARDCHARGER_ACTIVE_ROLE() AS active_role;" \
+      "SELECT sum(amount) AS total FROM analytics.orders;" "RESET ROLE;" \
+      "SELECT HARDCHARGER_IS_SYSTEM_ADMIN() AS acting;" | \
+    HARDCHARGER_PASSWORD='alice-secret-example' hardcharger --host localhost --tls=false --username alice --csv --quiet
+acting
+false
+result
+Active role: SYSTEM ADMIN (this session acts as the administrator until RESET ROLE)
+acting,active_role
+true,SYSTEM ADMIN
+total
+200.0
+result
+All of alice's roles are active
+acting
+false
+```
+
+- No new, reconnected or replaced session inherits it: each says `SET ROLE SYSTEM ADMIN` again.
+- Only the administrator, or a session acting as System Admin, grants and revokes it. It has no
+  admin option, is no part of `ALL PRIVILEGES`, and a role carries it only through memberships
+  they granted (and [group mappings](/guides/sso/#with-access-control-users-and-group-mappings)).
+- It is checked against the store on every statement, so a revoke, a dropped role or a removed
+  membership ends it for open sessions at their next statement, on every replica at once. While
+  the store doesn't answer, nothing runs as System Admin.
+- Sessions limited by a scoped token, `catalog_access` rules, a read-only connection, the
+  `readonly` role or a tenant can't use it. The administrator itself stays outside it, as the way
+  in.
+- `SHOW GRANTS`, `hardcharger_grants()` and `hardcharger_effective_privileges()` show who holds
+  it; `HARDCHARGER_IS_SYSTEM_ADMIN()`, `HARDCHARGER_ACTIVE_ROLE()` and the `system_admin` column of
+  `hardcharger_sessions()` and `hardcharger_active_connections()` show which sessions act as one.
+  The [audit log](/guides/instrumentation-and-audit/#the-audit-log) records each start, refusal and
+  end of it (`acting_as`), and every statement run that way. The [web UI](/guides/web-ui/) shows a
+  **System Admin** badge on such a tab and offers the administrator's pages while it lasts.
+
+## Account managers (v2.14.0+)
+
+`CREATE USER`, `ALTER USER`, `DROP USER`, `CREATE ROLE` and `DROP ROLE` are system privileges, so a
+help desk manages accounts without reading data or holding `SYSTEM ADMIN`:
+
+```sql test profile=rbac
+CREATE ROLE helpdesk;
+GRANT CREATE USER, ALTER USER TO helpdesk;
+CREATE USER hal WITH PASSWORD 'hal-secret-example';
+GRANT helpdesk TO hal;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='hal-secret-example' hardcharger --host localhost --tls=false --username hal --csv \
+    --command "CREATE USER kim WITH PASSWORD 'kim-temporary-1'"
+result
+"User kim created, with a temporary password: it must be changed at the first sign-in"
+$ HARDCHARGER_PASSWORD='hal-secret-example' hardcharger --host localhost --tls=false --username hal --csv \
+    --command "ALTER USER alice WITH PASSWORD 'not-yours-to-set'" 2>&1 | grep -o "user alice holds SYSTEM ADMIN"
+user alice holds SYSTEM ADMIN
+```
+
+A holder reaches only the server's own users and roles that are no more than its session: never
+a `SYSTEM ADMIN` holder or the administrator, nor a user holding a role, admin option or session
+attribute the session lacks, nor (for a password or `ENABLE`) one that owns objects. A role is
+dropped only when nothing beyond the session goes with it and no policy names it. Session
+attributes stay the administrator's, a new role holds nothing and gives its creator no admin
+option, and tenants stay with their tenant admins. Only an unrestricted administrator grants these
+privileges (no admin option, not to `PUBLIC` or a tenant's role), scoped tokens and
+`catalog_access` tokens never use them, and a revoke counts at the next statement on every replica.
+
+## Passwords (v2.14.0+)
+
+- **A password policy.** A password set by `CREATE USER` or `ALTER USER` needs
+  [`password_min_length`](/reference/configuration/#password_min_length) characters (12).
+  [`password_min_character_classes`](/reference/configuration/#password_min_character_classes)
+  (lowercase, uppercase, digits, others) and
+  [`password_max_age_days`](/reference/configuration/#password_max_age_days) are off by default.
+  Existing passwords keep working, and an expired one still signs in, held like a temporary one.
+- **Temporary passwords.** A password someone else sets for a user (an account manager, a tenant
+  admin), or the administrator sets with `EXPIRE`, must be changed before anything else runs. Its
+  sign-in succeeds, but the session runs only the change, and the password stops working after
+  [`password_temporary_max_age_hours`](/reference/configuration/#password_temporary_max_age_hours)
+  (72).
+- **Changing your own password needs the current one**, for every user but the administrator:
+  `ALTER USER CURRENT_USER WITH PASSWORD '<new>' REPLACE '<current>'`. A wrong current password
+  counts as a [failed sign-in](#failed-sign-ins-v2140).
+
+`kim`'s password was set by `hal`, so kim changes it first:
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='kim-temporary-1' hardcharger --host localhost --tls=false --username kim --csv \
+    --command "SELECT 42 AS answer" 2>&1 | grep -o "must be changed before anything else runs"
+must be changed before anything else runs
+$ HARDCHARGER_PASSWORD='kim-temporary-1' hardcharger --host localhost --tls=false --username kim --csv \
+    --command "ALTER USER CURRENT_USER WITH PASSWORD 'kim-own-secret-1' REPLACE 'kim-temporary-1'"
+result
+Password changed for user kim: sign in again with the new one
+$ HARDCHARGER_PASSWORD='kim-own-secret-1' hardcharger --host localhost --tls=false --username kim --csv \
+    --command "SELECT 42 AS answer"
+answer
+42
+```
+
+The administrator gives a user a temporary password, or makes the current one temporary:
+
+```sql test profile=rbac
+ALTER USER hal WITH PASSWORD 'hal-reset-example' EXPIRE;
+ALTER USER kim PASSWORD EXPIRE;
+```
+
+```console test profile=rbac
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv \
+    --command "SELECT name, password_must_change FROM hardcharger_users() WHERE name IN ('hal', 'kim') ORDER BY name"
+name,password_must_change
+hal,true
+kim,true
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv \
+    --command "CREATE USER tess WITH PASSWORD 'short'" 2>&1 | grep -o "it needs at least 12 characters"
+it needs at least 12 characters
+```
+
+`hardcharger_users()` also shows `last_sign_in_at` and `failed_sign_ins`, `--verify-credentials`
+answers `"password_must_change": true` for a temporary password, and the
+[web UI](/guides/web-ui/) asks for a new password when it signs in with one.
+
+## Failed sign-ins (v2.14.0+)
+
+After five wrong passwords for one user from one client address, that pair is locked for 15
+minutes; other addresses still sign in. Per user across addresses, and per address across users,
+attempts are spaced by a growing delay (at most 30 s), never a lock, so no account can be locked
+out from everywhere. Refusals are `429 rate_limited` with `Retry-After`, the same for every user
+name:
+
+```console test profile=rbac
+$ for i in 1 2 3 4 5; do HARDCHARGER_PASSWORD='wrong-password' hardcharger --host localhost --tls=false --username kim --command "SELECT 1" > /dev/null 2>&1 || echo refused; done
+refused
+refused
+refused
+refused
+refused
+$ HARDCHARGER_PASSWORD='kim-own-secret-1' hardcharger --host localhost --tls=false --username kim --command "SELECT 1" 2>&1 | grep -o "too many failed sign-in attempts"
+too many failed sign-in attempts
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv \
+    --command "SELECT scope, failures, locked FROM hardcharger_login_locks() WHERE user_name = 'kim' ORDER BY scope"
+scope,failures,locked
+pair,5,true
+user,5,false
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv \
+    --command "SELECT hardcharger_clear_login_lock('kim', NULL) AS cleared"
+cleared
+2
+```
+
+`hardcharger_clear_login_lock(user, address)` clears the matching locks and counts (NULL matches
+any). Every number is a setting
+([`login_lockout_threshold`](/reference/configuration/#login_lockout_threshold),
+[`login_lockout_seconds`](/reference/configuration/#login_lockout_seconds), the `login_*` options
+after them); counts are shared through the store by every replica and by `--verify-credentials`,
+which takes an optional `client_address`. Locks are logged and audited, with their own
+[metrics](/guides/metrics/). The client address honours
+[`trusted_proxies`](/reference/configuration/#trusted_proxies) and
+[`trusted_proxy_secret`](/guides/load-balancers/#the-client-address).
 
 ## Users who sign in with a certificate
 
@@ -1075,7 +1251,7 @@ CREATE TABLE IF NOT EXISTS sales.orders AS
   SELECT * FROM (VALUES (1, 'EU', 120.0), (2, 'US', 80.0)) t(id, region, amount);
 CREATE ROLE IF NOT EXISTS reader;
 GRANT SELECT ON SCHEMA sales TO reader;
-CREATE USER IF NOT EXISTS ann WITH PASSWORD 'ann-secret';
+CREATE USER IF NOT EXISTS ann WITH PASSWORD 'ann-secret-example';
 GRANT reader TO ann;
 ```
 
@@ -1085,7 +1261,7 @@ HARDCHARGER_ADMIN_PASSWORD='change-me' HARDCHARGER_RBAC_STORE_URI='duckdb:startu
 ```
 
 ```console test server=none
-$ HARDCHARGER_PASSWORD='ann-secret' hardcharger --host localhost --tls=false --username ann --csv \
+$ HARDCHARGER_PASSWORD='ann-secret-example' hardcharger --host localhost --tls=false --username ann --csv \
     --command "SELECT sum(amount) AS total FROM sales.orders"
 total
 200.0
@@ -1112,14 +1288,14 @@ JSON line on stdout, and logs to stderr. Here a server with its store in a DuckD
 user:
 
 ```sql test profile=rbac_duckdb stop
-CREATE USER ops WITH PASSWORD 'ops-secret';
+CREATE USER ops WITH PASSWORD 'ops-secret-example';
 ```
 
 Then, with that server stopped, the check runs with the same configuration:
 
 ```console test server=self
 $ export HARDCHARGER_ADMIN_PASSWORD=change-me HARDCHARGER_RBAC_STORE_URI=duckdb:rbac.duckdb
-$ echo '{"grant_type": "password", "username": "ops", "password": "ops-secret"}' | hardcharger-server --verify-credentials 2>/dev/null
+$ echo '{"grant_type": "password", "username": "ops", "password": "ops-secret-example"}' | hardcharger-server --verify-credentials 2>/dev/null
 {"verified":true,"user":"ops","role":"user","method":"password","would_provision":false}
 $ echo '{"grant_type": "password", "username": "ops", "password": "wrong"}' | hardcharger-server --verify-credentials 2>/dev/null; echo "exit $?"
 {"verified":false,"reason":"invalid_credentials","message":"the user name or password is not correct"}
@@ -1139,8 +1315,11 @@ restart. The credential never appears in the output or the log.
 ## Active roles
 
 A user's roles are all active by default. `SET ROLE analyst` narrows a session to one role,
-`SET ROLE ALL` restores them, `SET ROLE NONE` drops to `PUBLIC`'s grants. Row policies can test
-roles with `is_role_active('hr')`.
+`SET ROLE ALL` (or `RESET ROLE`) restores them, `SET ROLE NONE` drops to `PUBLIC`'s grants, and
+`SET ROLE SYSTEM ADMIN` acts as the administrator for a [holder](#system-admin-v2140).
+`current_role()` returns the role `SET ROLE` chose (NULL while all are active), and queries, views
+and row policies can test roles with
+[`is_role_active('hr')`](/guides/row-policies-and-masking/#the-policy-functions-in-plain-sql-v2140).
 
 ## Next
 

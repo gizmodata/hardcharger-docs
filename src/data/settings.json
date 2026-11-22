@@ -207,6 +207,15 @@
     "description": "Runtime metrics are collected and served (/metrics, hardcharger_metrics())."
   },
   {
+    "name": "hardcharger.enable_sql_auto_complete",
+    "scope": "STARTUP",
+    "input_type": "BOOLEAN",
+    "default_value": "false",
+    "cli_flag": "--enable-sql-auto-complete",
+    "env_var": "HARDCHARGER_ENABLE_SQL_AUTO_COMPLETE",
+    "description": "DuckDB's autocomplete functions (sql_auto_complete and its siblings) run, for administrators only; off, they are refused to everyone."
+  },
+  {
     "name": "hardcharger.health_check_interval_seconds",
     "scope": "STARTUP",
     "input_type": "INTEGER",
@@ -297,6 +306,78 @@
     "description": "Schema of the logs table (empty when catalog logging is off)."
   },
   {
+    "name": "hardcharger.login_address_backoff_after",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "20",
+    "cli_flag": "--login-address-backoff-after",
+    "env_var": "HARDCHARGER_LOGIN_ADDRESS_BACKOFF_AFTER",
+    "description": "Failed sign-ins from one client address (any users) before its attempts are delayed (0: never)."
+  },
+  {
+    "name": "hardcharger.login_backoff_base_seconds",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "1",
+    "cli_flag": "--login-backoff-base-seconds",
+    "env_var": "HARDCHARGER_LOGIN_BACKOFF_BASE_SECONDS",
+    "description": "The first sign-in delay; each further failure doubles it."
+  },
+  {
+    "name": "hardcharger.login_backoff_max_seconds",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "30",
+    "cli_flag": "--login-backoff-max-seconds",
+    "env_var": "HARDCHARGER_LOGIN_BACKOFF_MAX_SECONDS",
+    "description": "The longest sign-in delay (0: no delays)."
+  },
+  {
+    "name": "hardcharger.login_failure_window_seconds",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "900",
+    "cli_flag": "--login-failure-window-seconds",
+    "env_var": "HARDCHARGER_LOGIN_FAILURE_WINDOW_SECONDS",
+    "description": "A failure count is forgotten this many seconds after its last failure."
+  },
+  {
+    "name": "hardcharger.login_known_address_days",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "30",
+    "cli_flag": "--login-known-address-days",
+    "env_var": "HARDCHARGER_LOGIN_KNOWN_ADDRESS_DAYS",
+    "description": "A client address a user signed in from within this many days skips the delays (0: none)."
+  },
+  {
+    "name": "hardcharger.login_lockout_seconds",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "900",
+    "cli_flag": "--login-lockout-seconds",
+    "env_var": "HARDCHARGER_LOGIN_LOCKOUT_SECONDS",
+    "description": "How long a (user, client address) lock lasts, in seconds."
+  },
+  {
+    "name": "hardcharger.login_lockout_threshold",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "5",
+    "cli_flag": "--login-lockout-threshold",
+    "env_var": "HARDCHARGER_LOGIN_LOCKOUT_THRESHOLD",
+    "description": "Failed password sign-ins of one user from one client address that lock the pair (0: never)."
+  },
+  {
+    "name": "hardcharger.login_user_backoff_after",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "5",
+    "cli_flag": "--login-user-backoff-after",
+    "env_var": "HARDCHARGER_LOGIN_USER_BACKOFF_AFTER",
+    "description": "Failed sign-ins of one user (any address) before its attempts are delayed (0: never)."
+  },
+  {
     "name": "hardcharger.max_header_bytes",
     "scope": "STARTUP",
     "input_type": "INTEGER",
@@ -315,6 +396,15 @@
     "description": "Maximum wire bytes per Arrow ingest message and total expanded buffer bytes per batch."
   },
   {
+    "name": "hardcharger.max_joined_tables",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "64",
+    "cli_flag": "--max-joined-tables",
+    "env_var": "HARDCHARGER_MAX_JOINED_TABLES",
+    "description": "The most tables one FROM clause may join (all of a statement's together: eight times as many); a statement that joins more is refused before DuckDB plans it (0: no limit)."
+  },
+  {
     "name": "hardcharger.max_result_partitions",
     "scope": "STARTUP",
     "input_type": "INTEGER",
@@ -331,6 +421,15 @@
     "cli_flag": "--max-sessions",
     "env_var": "HARDCHARGER_MAX_SESSIONS",
     "description": "Most non-admin sessions at once; more get too_many_sessions (0: unlimited)."
+  },
+  {
+    "name": "hardcharger.max_sql_nesting",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "1000",
+    "cli_flag": "--max-sql-nesting",
+    "env_var": "HARDCHARGER_MAX_SQL_NESTING",
+    "description": "The deepest nesting a statement may have: DuckDB's max_expression_depth, which no session can raise past it (default: what the statement threads' 8 MB stacks take, 1000)."
   },
   {
     "name": "hardcharger.memory_limit",
@@ -358,6 +457,42 @@
     "cli_flag": "--metrics-port",
     "env_var": "HARDCHARGER_METRICS_PORT",
     "description": "Configured metrics HTTP port (0: no endpoint; requires enable_metrics)."
+  },
+  {
+    "name": "hardcharger.password_max_age_days",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "0",
+    "cli_flag": "--password-max-age-days",
+    "env_var": "HARDCHARGER_PASSWORD_MAX_AGE_DAYS",
+    "description": "Days after which a store user's password must be changed at its next sign-in (0: never)."
+  },
+  {
+    "name": "hardcharger.password_min_character_classes",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "0",
+    "cli_flag": "--password-min-character-classes",
+    "env_var": "HARDCHARGER_PASSWORD_MIN_CHARACTER_CLASSES",
+    "description": "Kinds of characters (lowercase, uppercase, digits, others) a new password needs."
+  },
+  {
+    "name": "hardcharger.password_min_length",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "12",
+    "cli_flag": "--password-min-length",
+    "env_var": "HARDCHARGER_PASSWORD_MIN_LENGTH",
+    "description": "Characters a password set by CREATE USER or ALTER USER needs."
+  },
+  {
+    "name": "hardcharger.password_temporary_max_age_hours",
+    "scope": "STARTUP",
+    "input_type": "INTEGER",
+    "default_value": "72",
+    "cli_flag": "--password-temporary-max-age-hours",
+    "env_var": "HARDCHARGER_PASSWORD_TEMPORARY_MAX_AGE_HOURS",
+    "description": "Hours after which a temporary password stops signing in (0: no limit)."
   },
   {
     "name": "hardcharger.port",

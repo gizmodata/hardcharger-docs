@@ -660,6 +660,17 @@ from the server, as that user. With [access control](/guides/access-control/) on
 - **Sessions**: an administrator sees every session and can end one (`KILL SESSION`); everyone
   else sees their own. A user whose sessions an administrator ends is sent back to sign in.
 
+- **Temporary passwords** (v2.14.0+): signing in with a
+  [temporary or expired password](/guides/access-control/#passwords-v2140) asks for a new one
+  first.
+- **System Admin** (v2.14.0+): a tab whose session acts as
+  [System Admin](/guides/access-control/#system-admin-v2140) (`SET ROLE SYSTEM ADMIN`) shows a
+  **System Admin** badge in the tab and the header, and while it does the UI offers the
+  administrator's pages (Server Configuration, SQL Monitor, every session with **End** on the
+  Sessions page), each through a session of its own that acts as System Admin too. The UI asks
+  the server after `SET ROLE`, `RESET ROLE` and refusals, so `RESET ROLE`, a revoke or a new
+  session closes them again.
+
 The page has no permissions of its own to configure: grant and revoke as usual, and the next
 refresh of the schema browser shows the change.
 

@@ -34,7 +34,7 @@ Besides the options below, the server takes these command-line actions, which ru
 | `--verify-audit-log FILE [--verify-audit-log-partial]` | Check an [audit log](/guides/instrumentation-and-audit/#the-audit-log)'s hash chain |
 | `--verify-credentials` | Decide a credential read from stdin as the token endpoint would, [writing nothing](/guides/access-control/#checking-a-credential-without-the-server); exit 0 verified, 1 refused, 2 bad input, 3 undecided |
 
-100 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
+116 options in 15 groups: [Listener](#listener) · [TLS](#tls) · [Database](#database) · [Authentication](#authentication) · [Browser sign-in](#browser-sign-in) · [Sessions](#sessions) · [Statements](#statements) · [Access control](#access-control) · [Statement queue](#statement-queue) · [Guards](#guards) · [Cluster](#cluster) · [Operations](#operations) · [Instrumentation](#instrumentation) · [Catalog logging](#catalog-logging) · [Metrics](#metrics).
 
 ## Listener
 
@@ -144,6 +144,18 @@ Reverse proxies (CIDRs such as 10.0.0.0/8 or fd00::/8, or single addresses) whos
 | Environment | `HARDCHARGER_TRUSTED_PROXIES` |
 | YAML | `trusted_proxies: …` |
 | Type | list |
+| Default | `(empty)` |
+
+### `trusted_proxy_secret`
+
+A secret (at least 32 characters) a reverse proxy adds to each request in the X-Hardcharger-Proxy-Secret header: a request carrying it is read as from a trusted proxy (its X-Forwarded-For or Forwarded names the client), whatever its address; for a proxy whose address range other workloads share. Never used for authentication or TLS (prefer the environment variable)
+
+| | |
+|---|---|
+| Flag | `--trusted-proxy-secret <value>` |
+| Environment | `HARDCHARGER_TRUSTED_PROXY_SECRET` |
+| YAML | `trusted_proxy_secret: …` |
+| Type | string |
 | Default | `(empty)` |
 
 ## TLS
@@ -658,6 +670,150 @@ Browser sign-ins in progress at once.
 | Type | integer |
 | Default | `10000` |
 
+### `login_lockout_threshold`
+
+Failed password sign-ins of one user from one client address that lock that pair for login_lockout_seconds (other addresses still sign in). 0: never lock.
+
+| | |
+|---|---|
+| Flag | `--login-lockout-threshold <n>` |
+| Environment | `HARDCHARGER_LOGIN_LOCKOUT_THRESHOLD` |
+| YAML | `login_lockout_threshold: …` |
+| Type | integer |
+| Default | `5` |
+
+### `login_lockout_seconds`
+
+How long a (user, client address) lock lasts.
+
+| | |
+|---|---|
+| Flag | `--login-lockout-seconds <n>` |
+| Environment | `HARDCHARGER_LOGIN_LOCKOUT_SECONDS` |
+| YAML | `login_lockout_seconds: …` |
+| Type | integer |
+| Default | `900` |
+
+### `login_failure_window_seconds`
+
+A failure count is forgotten once this long has passed since its last failure.
+
+| | |
+|---|---|
+| Flag | `--login-failure-window-seconds <n>` |
+| Environment | `HARDCHARGER_LOGIN_FAILURE_WINDOW_SECONDS` |
+| YAML | `login_failure_window_seconds: …` |
+| Type | integer |
+| Default | `900` |
+
+### `login_user_backoff_after`
+
+Failed sign-ins of one user (from any address) after which its attempts are spaced by a growing delay, never a lock. 0: no per-user delay.
+
+| | |
+|---|---|
+| Flag | `--login-user-backoff-after <n>` |
+| Environment | `HARDCHARGER_LOGIN_USER_BACKOFF_AFTER` |
+| YAML | `login_user_backoff_after: …` |
+| Type | integer |
+| Default | `5` |
+
+### `login_address_backoff_after`
+
+Failed sign-ins from one client address (any users) after which its attempts are spaced by a growing delay. 0: no per-address delay.
+
+| | |
+|---|---|
+| Flag | `--login-address-backoff-after <n>` |
+| Environment | `HARDCHARGER_LOGIN_ADDRESS_BACKOFF_AFTER` |
+| YAML | `login_address_backoff_after: …` |
+| Type | integer |
+| Default | `20` |
+
+### `login_backoff_base_seconds`
+
+The first delay; each further failure doubles it.
+
+| | |
+|---|---|
+| Flag | `--login-backoff-base-seconds <n>` |
+| Environment | `HARDCHARGER_LOGIN_BACKOFF_BASE_SECONDS` |
+| YAML | `login_backoff_base_seconds: …` |
+| Type | integer |
+| Default | `1` |
+
+### `login_backoff_max_seconds`
+
+The longest delay (0: no delays at all)
+
+| | |
+|---|---|
+| Flag | `--login-backoff-max-seconds <n>` |
+| Environment | `HARDCHARGER_LOGIN_BACKOFF_MAX_SECONDS` |
+| YAML | `login_backoff_max_seconds: …` |
+| Type | integer |
+| Default | `30` |
+
+### `login_known_address_days`
+
+A client address a user signed in from within this many days skips the per-user and per-address delays (not a lock). 0: no address skips them.
+
+| | |
+|---|---|
+| Flag | `--login-known-address-days <n>` |
+| Environment | `HARDCHARGER_LOGIN_KNOWN_ADDRESS_DAYS` |
+| YAML | `login_known_address_days: …` |
+| Type | integer |
+| Default | `30` |
+
+### `password_min_length`
+
+Characters a password set by CREATE USER or ALTER USER needs (existing passwords keep working)
+
+| | |
+|---|---|
+| Flag | `--password-min-length <n>` |
+| Environment | `HARDCHARGER_PASSWORD_MIN_LENGTH` |
+| YAML | `password_min_length: …` |
+| Type | integer |
+| Default | `12` |
+
+### `password_min_character_classes`
+
+Kinds of characters (lowercase, uppercase, digits, others) a new password needs, 0 to 4.
+
+| | |
+|---|---|
+| Flag | `--password-min-character-classes <n>` |
+| Environment | `HARDCHARGER_PASSWORD_MIN_CHARACTER_CLASSES` |
+| YAML | `password_min_character_classes: …` |
+| Type | integer |
+| Default | `0` |
+
+### `password_max_age_days`
+
+Days after which a store user's password must be changed: it still signs in, but its session runs only ALTER USER CURRENT_USER ... REPLACE until it is (0: never; a password set before 2.14 never expires)
+
+| | |
+|---|---|
+| Flag | `--password-max-age-days <n>` |
+| Environment | `HARDCHARGER_PASSWORD_MAX_AGE_DAYS` |
+| YAML | `password_max_age_days: …` |
+| Type | integer |
+| Default | `0` |
+
+### `password_temporary_max_age_hours`
+
+Hours after which a temporary password (one a help desk or an administrator's EXPIRE set) stops signing in; an administrator then sets a new one (0: no limit)
+
+| | |
+|---|---|
+| Flag | `--password-temporary-max-age-hours <n>` |
+| Environment | `HARDCHARGER_PASSWORD_TEMPORARY_MAX_AGE_HOURS` |
+| YAML | `password_temporary_max_age_hours: …` |
+| Type | integer |
+| Default | `72` |
+
 ## Sessions
 
 ### `max_sessions`
@@ -674,7 +830,7 @@ Most non-admin sessions at once (0: unlimited)
 
 ### `session_idle_timeout`
 
-A session is evicted within 5 s after this many seconds without requests (0: never), unless an ingest of it is in progress, a result of it is being read, a request is waiting on a statement of it, or it holds a retained result that hasn't expired (result_retention_seconds); a statement still running is then cancelled and its transaction rolled back, so a client that died mid-write doesn't hold the write's transaction open for as long as it runs. With 0, a dead client's session and its open transaction live until the server restarts (or KILL SESSION)
+A session is evicted within 5 s after this many seconds since its last response ended (0: never), unless an ingest of it is in progress, a result of it is being read, a request is waiting on a statement of it, or it holds a retained result that hasn't expired (result_retention_seconds); a statement still running is then cancelled and its transaction rolled back, so a client that died mid-write doesn't hold the write's transaction open for as long as it runs. With 0, a dead client's session and its open transaction live until the server restarts (or KILL SESSION)
 
 | | |
 |---|---|
@@ -721,6 +877,42 @@ Default statement timeout (0: none)
 | YAML | `query_timeout_seconds: …` |
 | Type | integer |
 | Default | `0` |
+
+### `max_sql_nesting`
+
+The deepest nesting a statement may have (brackets, subqueries, chained operators, dotted names; a FROM clause may name four times as many tables): DuckDB's max_expression_depth is set to it, and no session can raise that setting past it. 0: what the 8 MB stack of the threads that run statements takes, 1000 on every platform.
+
+| | |
+|---|---|
+| Flag | `--max-sql-nesting <n>` |
+| Environment | `HARDCHARGER_MAX_SQL_NESTING` |
+| YAML | `max_sql_nesting: …` |
+| Type | integer |
+| Default | `0` |
+
+### `max_joined_tables`
+
+The most tables one FROM clause may join (a derived table or a CTE counts as one; all of a statement's FROM clauses together may join eight times as many); a statement that joins more is refused before DuckDB plans it, naming this option. DuckDB's time to choose a join order grows steeply with the tables (hundreds take minutes) and neither a statement timeout nor a cancel interrupts it. 0: no limit.
+
+| | |
+|---|---|
+| Flag | `--max-joined-tables <n>` |
+| Environment | `HARDCHARGER_MAX_JOINED_TABLES` |
+| YAML | `max_joined_tables: …` |
+| Type | integer |
+| Default | `64` |
+
+### `enable_sql_auto_complete`
+
+Turn on DuckDB's autocomplete functions (sql_auto_complete, sql_tokenize, check_peg_parser, duckdb_format_sql), for administrators only: their time grows exponentially with the brackets their input leaves open, and nothing interrupts them. Off (the default), they are refused to everyone.
+
+| | |
+|---|---|
+| Flag | `--enable-sql-auto-complete` |
+| Environment | `HARDCHARGER_ENABLE_SQL_AUTO_COMPLETE` |
+| YAML | `enable_sql_auto_complete: …` |
+| Type | boolean |
+| Default | `false` |
 
 ### `print_queries`
 

@@ -88,6 +88,32 @@
     "labels": []
   },
   {
+    "name": "hardcharger_login_failures_total",
+    "type": "counter",
+    "help": "Password sign-ins refused for a wrong user name or password.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_login_locks_active",
+    "type": "gauge",
+    "help": "(user, client address) pairs locked now.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_login_locks_total",
+    "type": "counter",
+    "help": "(user, client address) pairs this server locked.",
+    "labels": []
+  },
+  {
+    "name": "hardcharger_login_throttled_total",
+    "type": "counter",
+    "help": "Password sign-ins refused before the check (locked pair, per-user or per-address delay), by reason.",
+    "labels": [
+      "reason"
+    ]
+  },
+  {
     "name": "hardcharger_metrics_collection_duration_seconds",
     "type": "gauge",
     "help": "How long the last collection took.",

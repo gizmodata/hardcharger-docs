@@ -39,6 +39,80 @@ say what, under **Changed**. Patch versions only fix things.
 
 </Steps>
 
+## Upgrading to 2.14
+
+### The stores are upgraded in place, and 2.13 can't go back
+
+The first 2.14 server that starts writable on an existing
+[access-control store](/guides/access-control/) or
+[instrumentation store](/guides/instrumentation-and-audit/) migrates it, then records its new
+format: **2.0** for the access-control (RBAC) store, **1.1** for the instrumentation store. Users
+keep their passwords, roles and grants, and instrumentation keeps its sessions and query history
+under their ids. A store with no recorded format (every store before 2.14) is format 1.0.
+`--verify-credentials` opens the store read-only and never upgrades it.
+
+**Hardcharger 2.13 and earlier refuse an access-control store that 2.14 has upgraded**, with
+`the access control store's schema is version 2, newer than this server's (1)`: without that,
+they would run on it without 2.14's sign-in protections and fail to create users. So:
+
+<Steps>
+
+1. **Back up the access-control store before the first 2.14 server starts** (`pg_dump` of its
+   database, or a copy of its DuckDB file while no server has it open), and the instrumentation
+   store with it.
+2. **Upgrade every replica that shares the store together**: once a 2.14 server has upgraded the
+   store, a 2.13 replica can no longer start on it.
+3. **To roll back to 2.13, restore the backup**: changes made under 2.14 (users, grants, linked
+   sign-ins) are not in it.
+
+</Steps>
+
+The instrumentation store stays readable by 2.13.4, which records correctly on an upgraded one.
+An administrator reads its format in the store itself (here the default DuckDB instrumentation
+store):
+
+```console test profile=instrumentation
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv \
+    --command "SELECT value FROM _hardcharger_instr.main.store_metadata WHERE key = 'schema_version'"
+value
+1.1
+```
+
+The access-control store keeps its format as `schema_version` in `hardcharger_rbac.meta`.
+
+### What changes for existing users and clients
+
+- **New passwords need 12 characters** ([password policy](/guides/access-control/#passwords-v2140)).
+  Existing passwords keep working. Init SQL or scripts that create users with shorter passwords
+  fail with `the password is too short: it needs at least 12 characters (password_min_length)`.
+- **Changing your own password needs the current one**:
+  `ALTER USER CURRENT_USER WITH PASSWORD '<new>' REPLACE '<current>'`, for every user but the
+  administrator.
+- **Failed password sign-ins are limited**: five wrong passwords for one user from one address lock
+  that pair for 15 minutes ([failed sign-ins](/guides/access-control/#failed-sign-ins-v2140)).
+  A client that retries a wrong password in a loop now gets `429 rate_limited`.
+- **Sign-in tokens with `catalog_access` rules no longer use their user's system privileges**
+  (`READ FILESYSTEM`, `MANAGE SECRETS`, `CHECKPOINT`, the policy exemptions and the rest), as a
+  scoped token's session already didn't. Sign in without the rules for that work
+  ([catalog access rules](/guides/catalog-access-rules/)).
+- **`current_user`, `session_user` and `user` return the Hardcharger user**, not `duckdb`, and
+  `current_role()` the role `SET ROLE` chose. A view that compared them with `'duckdb'` sees the
+  user now ([policy functions](/guides/row-policies-and-masking/#policy-functions-and-exemptions)).
+- **Reserved names**: a user or role can no longer be named `SYSTEM ADMIN` (one a store already
+  has stays an ordinary role, written quoted), and a store user's new macro can no longer be named
+  `is_role_active` or `session_attribute`, which are built-in functions now.
+- **Progress estimates start after 2 seconds.** The web UI and the CLI show a running statement
+  without a percentage for its first `progress_bar_time` (2 seconds); `SET progress_bar_time = 0`
+  gives a session estimates from the start.
+- **New statement limits**: a FROM clause may join at most 64 tables and a statement 512
+  ([`max_joined_tables`](/reference/configuration/#max_joined_tables)), and DuckDB's
+  autocomplete functions (`sql_auto_complete()`, `sql_tokenize()`, ...) are refused unless
+  [`enable_sql_auto_complete`](/reference/configuration/#enable_sql_auto_complete) is on. The web
+  UI's own autocomplete is not affected.
+- **SSO accounts are linked to their provider identity** on a first trustworthy sign-in
+  ([accounts with both sign-in methods](/guides/sso/#accounts-with-both-sign-in-methods-v2140)). Run 2.14
+  on every replica before relying on the links.
+
 ## Driver option names (hardcharger-adbc 2.7.0)
 
 From `hardcharger-adbc` 2.7.0 (the Python package `adbc-driver-hardcharger` and the Go module) the
@@ -128,6 +202,11 @@ Hardcharger …
 ```
 
 `sh -s -- --uninstall 0.1.2` removes one version.
+
+<Aside type="caution" title="Rolling back from 2.14">
+A 2.13 or earlier server refuses an access-control store that 2.14 has upgraded. Restore the
+store's backup from before the upgrade too ([Upgrading to 2.14](#upgrading-to-214)).
+</Aside>
 
 <Aside type="caution" title="Coming from GizmoSQL">
 Moving from GizmoSQL 1.x is a migration, not an upgrade: new names, a new protocol and new

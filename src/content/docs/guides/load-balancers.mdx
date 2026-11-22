@@ -83,6 +83,50 @@ with hardcharger.connect(uri="hardcharger://localhost:8080?tls=false", username=
 Without `client_max_body_size 0` the upload fails with `413` once nginx's default 1 MB is
 passed; without `proxy_buffering off` nginx holds each result before the client sees a row.
 
+## The client address
+
+Behind a proxy, every connection comes from the proxy's address. The server reads the client's
+own address from `X-Forwarded-For` (or `Forwarded`) only for proxies it trusts, and uses it in
+logs, the audit log, `hardcharger_active_connections()` and the
+[limits on failed sign-ins](/guides/access-control/#failed-sign-ins-v2140), which lock a user
+from one address. Behind a proxy it doesn't trust, every client has the proxy's address, so one
+user's lock keeps that user out through the whole proxy.
+
+- [`trusted_proxies`](/reference/configuration/#trusted_proxies) lists the proxies by address
+  (CIDRs or single addresses). List only proxies that append to or overwrite these headers.
+- **v2.14.0+:** [`trusted_proxy_secret`](/reference/configuration/#trusted_proxy_secret) trusts a
+  proxy by a secret (at least 32 characters) in the `X-Hardcharger-Proxy-Secret` header instead,
+  for a proxy whose address range other workloads share, such as a shared ingress in Kubernetes.
+  Have the proxy set the header on every request, overwriting any value a client sent:
+
+  ```nginx
+  proxy_set_header X-Forwarded-For $remote_addr;
+  proxy_set_header X-Hardcharger-Proxy-Secret "<the server's trusted_proxy_secret>";
+  ```
+
+  The header is compared in constant time and removed before anything reads it; the secret is
+  never logged or listed. A wrong or missing secret leaves the connection's own address, as no
+  header would. Prefer the environment variable to the flag, which process listings show.
+
+Here a request that carries the secret is recorded under the address the proxy forwarded:
+
+```bash test server=self background
+HARDCHARGER_ADMIN_PASSWORD='change-me' HARDCHARGER_TRUSTED_PROXY_SECRET='proxy-secret-0123456789abcdef-example' \
+  hardcharger-server --database my.duckdb --health-port 31338
+```
+
+```console test server=none
+$ H='Content-Type: application/json'
+$ TOKEN=$(curl -s localhost:31337/chargewire/v1/auth/token -H "$H" \
+    -d '{"grant_type": "password", "username": "hardcharger", "password": "change-me"}' | jq -r .access_token)
+$ curl -s localhost:31337/chargewire/v1/sessions -H "Authorization: Bearer $TOKEN" -H "$H" -d '{}' \
+    -H 'X-Forwarded-For: 203.0.113.9' -H 'X-Hardcharger-Proxy-Secret: proxy-secret-0123456789abcdef-example' > /dev/null
+$ HARDCHARGER_PASSWORD='change-me' hardcharger --host localhost --tls=false --username hardcharger --csv \
+    --command "SELECT client_address, proxy_address IS NOT NULL AS through_proxy FROM hardcharger_active_connections() WHERE client_address = '203.0.113.9'"
+client_address,through_proxy
+203.0.113.9,true
+```
+
 ## Kubernetes
 
 - **Service.** `sessionAffinity: ClientIP` on the Service gives each client one replica.

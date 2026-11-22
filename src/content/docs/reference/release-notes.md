@@ -13,6 +13,273 @@ own changelog in `python/CHANGELOG.md`.
 
 ## [Unreleased]
 
+## [2.14.0] - 2026-11-22
+
+### Added
+
+- Hardcharger uses Hardcharger Engine v2.0.1, GizmoData’s performance-tuned fork of DuckDB 2.0.1.
+  It improves selective joins, filtered scans, and repeated string operations. Release builds link
+  the engine’s platform SDKs. Local source builds use the same pinned commit.
+  [Engine changes and benchmark results](https://github.com/gizmodata/hardcharger-engine/blob/v2.0.1/docs/optimizations.md)
+- RBAC and instrumentation now record their own store format versions. Version 2.14 upgrades
+  existing version 1 stores in place: the RBAC store to format 2.0, the instrumentation store to
+  format 1.1. **Hardcharger 2.13 and earlier refuse an RBAC store that 2.14 has upgraded**, so back
+  up the RBAC store before upgrading if you may need to roll back.
+- Administrators can link SSO identities to RBAC users and list accounts with both SSO and
+  password sign-in in `hardcharger_users()`. After upgrade, the first verified SSO sign-in
+  matching an unlinked account records its issuer and subject and preserves the local password.
+  A link is recorded only when the provider vouches for the name (a verified e-mail, or a subject
+  that is the user's name), not while the store is down, and an administrator can replace it with
+  `SET IDENTITY PROVIDER` or clear it with `ALTER USER … UNSET IDENTITY PROVIDER`.
+- **Web UI: start read-only from the sign-in page, or from a link**
+  ([#61](https://github.com/gizmodata/hardcharger/issues/61)). The sign-in page has **Start
+  sessions read-only**, for password, client-certificate and browser (single sign-on) sign-in:
+  every new editor session on the server the UI is served from (new tabs, New session, a reload,
+  the replacement for a lost session) then opens read-only, confirmed by the server before
+  anything runs, and Upload is off as on a read-only connection. It is a default for your own
+  sessions in that tab, not a restricted account: New session, then clearing **Read-only**,
+  still opens a writable one. A link with `?read_only=1` ticks the box (and makes an
+  already-signed-in page's new sessions read-only); `?sign_in=browser&read_only=1` opens a
+  read-only workspace in one click, the choice surviving the identity provider's round trip.
+  The parameter leaves the address bar at once. A server without read-only sessions refuses at
+  sign-in, with its own message, before anything runs.
+- **Desktop app: other programs on this computer can connect in Only this computer mode**
+  ([#56](https://github.com/gizmodata/hardcharger/issues/56)). The local server's administrator
+  password is generated once, kept in the macOS Keychain or Windows Credential Manager and reused
+  on every start, instead of changing at every start and never being shown. The dashboard shows
+  the user name and the masked password with **Reveal**, **Copy password** and **Generate new
+  password** (which restarts a running server after the Restart confirmation; the old password
+  stops working), and a **Connect from this computer** panel has Web UI, Python / ADBC, JDBC, CLI
+  and JavaScript examples for `127.0.0.1` over plain HTTP that read the credentials from
+  `HARDCHARGER_USER` / `HARDCHARGER_PASSWORD`. The password stays out of Export YAML, logs, the
+  command line and the examples. Upgrading users get a password on their first start.
+- **Desktop app: text size** ([#55](https://github.com/gizmodata/hardcharger/issues/55)). Every
+  window (the dashboard, the SQL workspace and query details) zooms with Safari's shortcuts:
+  ⌘+ (typed as ⌘= or ⌘⇧= on a US keyboard, or with the + key of Dutch, German and other
+  layouts), ⌘−, ⌘0 and the numeric keypad's + and −, also with the cursor in the SQL editor,
+  where they type nothing. A **View** menu has Bigger, Smaller and Actual Size, and Settings has
+  a **Text size** control. The size is remembered and applied to each window as it opens. At
+  large sizes in small windows the dashboard's sidebar keeps only its icons, and the SQL
+  workspace's editor gives way so Run and the results stay reachable. Thanks to maartenb for
+  the report.
+- `SYSTEM ADMIN`: named users act as the administrator, under their own names. `GRANT SYSTEM
+  ADMIN TO alice` (or `TO ROLE dba`) lets the user say `SET ROLE SYSTEM ADMIN` in a session,
+  which then does everything the administrator does (users, roles, grants, policies,
+  tenants, administrative commands; no grant, row policy or mask applies to it) until
+  `RESET ROLE`. Holding it changes nothing by itself, and no new, reconnected or replaced
+  session inherits it. Only the administrator or a session acting as System Admin grants and
+  revokes it: it has no admin option, is no part of `ALL PRIVILEGES`, and a role carries it
+  only through memberships they granted (and identity-provider group mappings). It is asked
+  of the grants on every statement, prepared ones included, so a revoke, a dropped role or a
+  removed membership ends it for open sessions at their next statement, on every replica
+  at once: such a session asks the store itself before every statement, and runs nothing as
+  System Admin while the store does not answer.
+  Sessions limited by a scoped token, `catalog_access` rules, a read-only connection, the
+  `readonly` role or a tenant are refused. The administrator stays outside it, as the way in.
+  `SHOW GRANTS`, `hardcharger_grants()` and `hardcharger_effective_privileges()` show who
+  holds it; `HARDCHARGER_IS_SYSTEM_ADMIN()`, `HARDCHARGER_ACTIVE_ROLE()` and a `system_admin`
+  column in `hardcharger_sessions()` and `hardcharger_active_connections()` show which
+  sessions act as one. The store gains one table on the first start; a 2.13 store is
+  upgraded in place.
+- The access-control audit records name who and what: `user_id` and `session_id` on every
+  record, and on access-control statements the users and roles they are about (`target`,
+  `target_ids`) and the privilege, membership or object they change. Acting as System Admin
+  adds `acting_as`, records each start, refusal and end of it, and records every statement
+  run that way. No record holds a password, hash, token or secret; chains written by earlier
+  versions still verify.
+- Delegated account management: `CREATE USER`, `ALTER USER`, `DROP USER`, `CREATE ROLE` and
+  `DROP ROLE` are system privileges (`GRANT CREATE USER, ALTER USER TO helpdesk`), so a help
+  desk manages accounts without reading data or holding `SYSTEM ADMIN`. A holder reaches only
+  the server's own users and roles that are no more than its session: never a `SYSTEM ADMIN`
+  holder or the server administrator, nor a user holding a role, admin option or session
+  attribute the session lacks (or a role the administrator granted it that the session holds
+  only through a delegated membership), nor (for a password or `ENABLE`) one that owns objects; a role
+  is dropped only when nothing beyond the session goes with it and no policy names it. Session
+  attributes stay the administrator's, a new role holds nothing and gives its creator no
+  admin option, and tenants stay with their tenant admins. Only an unrestricted administrator
+  grants them (no admin option, not to `PUBLIC` or a tenant's role), a role carries them only
+  through memberships the administrator granted, scoped tokens and `catalog_access` tokens
+  never use them, and a revoke counts at the next statement on every replica. A 2.13 server
+  on the same store keeps working (to it, nobody holds them).
+- Temporary passwords and self-service password changes. A password a delegate sets for
+  someone else (a holder of `CREATE USER` / `ALTER USER`, a tenant admin), or an administrator
+  sets with `WITH PASSWORD '…' EXPIRE` (or `ALTER USER name PASSWORD EXPIRE`), must be changed
+  before anything else: its sign-in succeeds, but the session (which opens with the server's
+  default options and may not change them) runs only `ALTER USER
+  CURRENT_USER WITH PASSWORD '<new>' REPLACE '<current>'`, which every user may run for itself
+  and which needs the current password (and a new one that differs from it). `hardcharger_users()` gains `password_must_change`,
+  `--verify-credentials` says `"password_must_change": true`, and the web UI asks for a new
+  password when it signs in with a temporary one. A temporary password stops working after
+  `password_temporary_max_age_hours` (72; 0: no limit), and an administrator then sets a new one.
+- Access-control audit records of account changes (users, roles, memberships, account
+  privileges) carry what authorized them (`authorized_by`), the account's sanitized state
+  `before` and `after` (never a password, hash or attribute value), and the privilege the
+  statement needs; every access-control record carries the statement's Chargewire id
+  (`statement_id`) and the session's `active_role`, refusals included.
+- Web UI: a tab whose session acts as System Admin says so (a "System Admin" badge in the tab
+  and the header), and while one does, the UI offers the administrator's pages (Server
+  Configuration, SQL Monitor, every session with End on the Sessions page), each through a
+  session of its own that says `SET ROLE SYSTEM ADMIN` too. It follows the server, never a
+  remembered flag: the tab asks its session after `SET ROLE`, `RESET ROLE`, a refused
+  statement or a refusal on one of those pages, so `RESET ROLE`, a revoke, or a new session
+  closes them again.
+- **Access control: exemptions from row and masking policies**
+  ([#59](https://github.com/gizmodata/hardcharger/issues/59)). `GRANT EXEMPT ROW POLICIES,
+  EXEMPT MASKING POLICIES TO ROLE replicator` lets a trusted job (a replication service, say)
+  read every table without row-policy filters and every column unmasked, those created later
+  too, without running as the administrator. A principal exempt from every row policy and mask
+  on a table writes it as freely as it reads it (`INSERT`, `UPDATE`, `MERGE`, `INSERT ... ON
+  CONFLICT`, `DELETE ... RETURNING`, bulk ingest); everyone else's writes into such a table are
+  refused as before. Only the administrator or a session acting as System Admin grants them,
+  never with an admin option or to `PUBLIC`, and a role carries them only through memberships
+  they granted (as `SYSTEM ADMIN`); scoped tokens, tokens with `catalog_access` rules and a tenant's
+  users never hold them; a user's trigger body uses its owner's exemptions, never the
+  writer's. A revoke counts at the next statement, prepared ones included, on every replica at
+  once (a session that holds one asks the store before each statement, as does every session
+  while a trigger's owner holds one, and while the store doesn't answer no exemption applies,
+  in a trigger body either). `SHOW GRANTS`, `hardcharger_grants()` and
+  `hardcharger_effective_privileges()` list them, `hardcharger_policies()` says which policies
+  no longer apply, and the audit record of each statement an exemption let through names it. A
+  2.13 replica on the same store doesn't read them, and applies every policy.
+- **Access control: the policy functions work in plain SQL**
+  ([#60](https://github.com/gizmodata/hardcharger/issues/60)). `is_role_active(name)` and
+  `session_attribute(name)` are ordinary functions now, and `current_user`, `session_user` and
+  `user` return the Hardcharger user (as `hardcharger_user()` does) instead of `duckdb`;
+  `current_role()` returns the role `SET ROLE` made active, or NULL. Each gives the same answer
+  in a statement, a view or a macro as inside a row or masking policy for the same session, and
+  is worked out when the statement runs, so `SET ROLE` counts at the next statement, prepared
+  ones included. `is_role_active` is false alike for a role the user doesn't hold and one that
+  doesn't exist. Without access control, and for the administrator, every role is active and
+  there are no attributes. Policies still can't call `current_role()` (written with or without
+  parentheses).
+- **Limits on failed password sign-ins.** After 5 wrong passwords for one user from one client
+  address, that pair is locked for 15 minutes; per user across addresses, and per address
+  across users, there is a growing delay (at most 30 s), never a lock, so no account can be
+  locked out from everywhere. Attempts in flight count toward each limit, so a delay lets one
+  attempt through when it ends however many arrive at once. Refusals are `429 rate_limited`
+  with `Retry-After`, the same for every user name. Every number is a setting (`login_*`); counts are shared through the
+  access-control store by every replica and by `--verify-credentials`, which takes an optional
+  `client_address`; overlapping verifications take turns through the store, so they check no
+  more than the limits allow, and one that can't record its failure answers undecided. Administrators list and clear them with `hardcharger_login_locks()` and
+  `hardcharger_clear_login_lock(user, address)`; locks are logged and audited, with new metrics.
+  The client address honours `trusted_proxies`. The current password a user gives in `ALTER USER
+  ... REPLACE` counts the same way, as a sign-in from the session's client address.
+- **A password policy.** New passwords need 12 characters (`password_min_length`); character
+  classes (`password_min_character_classes`) and expiry (`password_max_age_days`) are optional.
+  An expired password still signs in, held like a temporary one until its user changes it.
+  Existing passwords keep working.
+- **`hardcharger_users()` shows `last_sign_in_at` and `failed_sign_ins`.**
+- **`trusted_proxy_secret`: trust a reverse proxy by a secret header, not its address.** A
+  request carrying the secret in `X-Hardcharger-Proxy-Secret` has its `X-Forwarded-For` /
+  `Forwarded` read as from a listed proxy, for proxies whose address range other workloads share.
+  The header is compared in constant time, always removed from requests, and the secret is never
+  logged or listed.
+- **A performance regression suite (`bench/regress`, #6).** It runs a candidate server and
+  published releases (installed by the official installer) on one machine with identical
+  settings, interleaved round-robin over repeated server starts: TPC-H (per-query latency, cold
+  and warm suite time), plans with many pipelines (q311's shape), concurrent clients at 1, 4 and
+  10 (throughput, p50/p90/p99, errors) and the ten-client TPC-H case, with server CPU and peak
+  memory. Every answer is checked, separately from timing. The report flags changes whose
+  bootstrap interval is past configurable thresholds and keeps raw JSON and per-host baselines.
+  Release CI gates publication on comparisons with previous stable releases and a 25% warm-query
+  overhead budget against stock DuckDB. Each GitHub Release includes the measurements, thresholds
+  and verdict. The suite also runs weekly, on demand and on AWS. See `docs/benchmarks.md`.
+
+### Changed
+
+- Chargewire 2.6.2: the C++ SDK and protocol release this server builds on. It carries the
+  trusted-proxy secret, sign-in context for lockouts, and the idle-session fixes.
+
+- CI checks Clang thread-safety annotations, treats native compiler warnings as errors and
+  checks formatting on changed C/C++ lines. Linux ARM64 runs Clang 18’s address and undefined-behavior
+  sanitizers with stack-use-after-return detection enabled. Manual CI can target a single
+  build leg while release tags still require the full matrix.
+
+- Linux server and CLI binaries use PIE, full RELRO and stack protection. The CLI reports a failure to change to the home directory when running `.cd`.
+
+- **Desktop app: a network administrator password has at least 12 characters**, as 2.14.0's
+  password policy asks of every new password. Settings refuses a shorter one with a message
+  before saving. A network setup saved earlier with a shorter password keeps working; the
+  dashboard and Settings ask you to choose a longer one.
+- **Android: built with Android Gradle plugin 9.5.1 and Gradle 9.9.1**
+  ([#58](https://github.com/gizmodata/hardcharger/issues/58)), from 8.13.2 and 8.13, as Play
+  Console recommends for R8's newer optimizations. Kotlin is compiled by the plugin's built-in
+  support. Release builds still minify and shrink, and keep the native bridge's methods.
+- The iOS simulator and signed device builds now select Xcode 27 and require iOS SDK 27 or later (#63).
+
+- Changing one's own password through `ALTER USER <own name> WITH PASSWORD '…'` needs the
+  current one (`… REPLACE '<current>'`), for every user but the administrator; `CURRENT_USER`
+  in `ALTER USER` names the session's own user (a user named `current_user` is written quoted).
+- `SYSTEM ADMIN` is no longer available as a user's or role's name (`CREATE ROLE "SYSTEM
+  ADMIN"` is refused). One a store already has stays an ordinary role, written quoted.
+- **Behaviour change for sign-in tokens with `catalog_access` rules under access control.** A
+  store user's session that signed in with a token carrying `catalog_access` rules no longer
+  uses any system privilege its roles hold (`READ FILESYSTEM`, `WRITE FILESYSTEM`, `MANAGE
+  CATALOGS`, `MANAGE EXTENSIONS`, `MANAGE SECRETS`, `MANAGE CONFIG`, `EXPORT DATABASE`, `IMPORT
+  DATABASE`, `CHECKPOINT`, the object storage and HTTP privileges, everywhere or on a location,
+  and the policy exemptions), nor grants one with an admin option, the same as a scoped token's
+  session. Until 2.13 such a session used them. Its statements that need one are refused, saying
+  the token's rules are why; the same user signed in without `catalog_access` rules is not
+  affected, and the rules still grant a store user no table access of their own.
+- `current_user`, `session_user`, `user` and `current_role()` answer for the session (above)
+  everywhere, so a view or query that compared them with `'duckdb'` sees the Hardcharger user
+  now. A user's new macro can't be named `is_role_active` or `session_attribute` (they are
+  built-in functions now), and a row or masking policy that reaches `current_role` through a
+  macro or as a bare name, or calls `hardcharger_active_role()`, is refused when a table it
+  protects is read, as a direct `current_role()` call always was.
+
+### Fixed
+
+- Fixed idle session eviction between consecutive status requests for a long-running statement.
+  The idle timeout starts again when the server finishes responding to a waiting client.
+
+- Android release UI checks recover from temporary emulator ADB disconnects during setup and evidence collection.
+
+- Align statement logging examples and integration coverage with masking for columns named `token`.
+- Verify that query detail windows preserve ordinary comments and copy credential comments with values masked.
+- Seed the shared cache with signed autocomplete before testing startup and access controls.
+- Register access-control binder hooks before database workers start.
+- Verify Hardcharger’s expression depth cap and disabled autocomplete in Chargewire conformance tests.
+- Refuse disabled autocomplete before execution or automatic installation on every build.
+- Keep login-delay and statement instrumentation regression checks reliable on slower runners.
+- Make instrumentation queue saturation and shutdown tests independent of writer scheduling.
+- SQL log redaction no longer crashes on one-token statements such as `BEGIN`, `COMMIT`, or `ROLLBACK`.
+- Read-only connections enforce sequence and table-function restrictions when DuckDB binds views and macros.
+- A blocked macro replacement reports catalog dependencies and names only objects the caller can see.
+- The iOS SQL console hint wraps at larger Dynamic Type sizes, and the LAN sharing sheet exposes its Done button.
+
+- Web UI connection notices no longer move the server tree under the pointer.
+- **Android console: result tables line up**
+  ([#57](https://github.com/gizmodata/hardcharger/issues/57)). A table's borders ran past its
+  rows: Android's monospace font has no box-drawing characters, so they came from a wider
+  fallback font. The console now uses JetBrains Mono (no ligatures), bundled under the SIL Open
+  Font License, in which every character is one cell wide.
+- **iOS console: results wider than the screen scroll sideways, at every text size**
+  ([#57](https://github.com/gizmodata/hardcharger/issues/57)). A line wider than the screen
+  wrapped, so a wide table's borders broke across lines; each result now keeps its lines whole
+  and scrolls sideways on its own, from the smallest text size to the largest accessibility
+  size. The console also no longer stops responding when `.tables` follows a few other results
+  (its transcript could re-lay itself out without end, at any text size). At the larger
+  accessibility text sizes the catalog and schema prompt moves above the input instead of
+  leaving it little or no room to type, and Run and Cancel show their icons alone.
+- Queries whose plans have many parts (a UNION ALL of dozens of SELECTs, many scalar
+  subqueries) run as fast as in 2.8.0 and earlier again. Since 2.9.0, which turned on DuckDB's
+  progress estimate for the Web UI and the CLI, DuckDB recomputed the estimate after every
+  piece of work, under a lock its worker threads need: on a 30-way UNION ALL that added stalls
+  of 150 ms to over a second and up to 13 times the CPU time on Linux servers. DuckDB is now
+  patched to compute the estimate only once a statement has run for `progress_bar_time`
+  (2 seconds unless set), and then at most every 100 ms. What changes for you: a statement
+  shows an estimated percentage once it has run for 2 seconds, not from its start (until then
+  the Web UI and the CLI show it as running, without a percentage). `SET progress_bar_time =
+  0` gives a session estimates from the start again, still computed at most every 100 ms.
+
+### Security
+
+- Read-only connections enforce their restrictions throughout view and macro evaluation. A connection held for a temporary or expired password can renew its own credential with the current password.
+- Stored expressions use the owning object's context for name resolution. Access-control checks now cover more operations on stored objects.
+- New limits bound SQL nesting and joins during statement intake. The default join limits are 64 tables per clause and 512 per statement. SQL autocomplete is disabled by default.
+- Credential masking uses DuckDB's tokenizer and applies consistently across logs, audit records and query history. Values written to a column named `token` are masked. Oversized error details are omitted when redaction exceeds its work budget.
+
 ## [2.13.4] - 2026-11-20
 
 A security and compatibility release for access control. Tokens with `catalog_access` rules, the

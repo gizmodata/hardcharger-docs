@@ -7,6 +7,44 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.14.0] - 2026-11-22
+
+### Added
+
+- Upgrading: **Upgrading to 2.14**. The access-control store becomes format 2.0 and the
+  instrumentation store 1.1 in place; Hardcharger 2.13 and earlier refuse an upgraded
+  access-control store, so back it up first and restore it to roll back. Also every behavior
+  change an existing deployment meets (the password policy, own-password changes, sign-in limits,
+  `catalog_access` tokens without system privileges, `current_user`, reserved names, progress
+  estimates, join limits and autocomplete).
+- Access control: **System Admin** (`GRANT SYSTEM ADMIN`, `SET ROLE SYSTEM ADMIN`, `RESET ROLE`),
+  **account managers** (`CREATE USER`, `ALTER USER` and the other account privileges),
+  **passwords** (the policy, temporary passwords with `EXPIRE`, `ALTER USER CURRENT_USER ...
+  REPLACE`) and **failed sign-ins** (locks, delays, `hardcharger_login_locks()`,
+  `hardcharger_clear_login_lock()`), each with examples.
+- SSO: accounts with both sign-in methods. A first SSO match is linked only for a verified e-mail
+  or a `sub` that is the user's name; `SET IDENTITY PROVIDER` links or replaces a link and
+  `UNSET IDENTITY PROVIDER` clears it.
+- Row policies and masking: the policy functions in plain SQL (`current_user`, `current_role()`,
+  `is_role_active()`, `session_attribute()`) and `EXEMPT ROW POLICIES` / `EXEMPT MASKING
+  POLICIES`.
+- Behind a load balancer: the client address, `trusted_proxies` and `trusted_proxy_secret`.
+- The audit log's new record fields; read-only web UI sessions from the sign-in page or a link;
+  the desktop app's reusable local password, **Connect from this computer** and text size; the
+  web UI's temporary-password prompt and System Admin badge.
+
+### Changed
+
+- The reference is generated from Hardcharger 2.14.0 (Chargewire 2.6.2): the configuration (the
+  `login_*`, `password_*`, `trusted_proxy_secret`, `max_joined_tables` and
+  `enable_sql_auto_complete` options; `session_idle_timeout` counts from the end of the last
+  response, as Statement control now says too), SQL functions and settings, metrics, the release
+  notes and the protocol page. The SQL reference lists the new statements.
+- Example passwords have at least 12 characters, as 2.14's password policy asks.
+- The CI pins follow Hardcharger 2.14.0 and Chargewire 2.6.2, and the versions page lists the
+  current client releases (`chargewire-adbc` 2.5.2, ODBC 2.5.1 / 1.6.1, `hardcharger-mcp` 2.6.0,
+  `adbc-replicate-hardcharger` 2.4.0).
+
 ## [2.13.4] - 2026-11-20
 
 ### Changed

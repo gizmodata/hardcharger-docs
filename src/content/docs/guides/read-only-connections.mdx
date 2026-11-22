@@ -215,3 +215,20 @@ configuration. Set each variable in the environment of the intended program.
 Existing `readonly` token roles keep their existing behavior. The new connection
 option adds a restriction to the session, including for administrator credentials;
 it does not replace [users, roles and grants](/guides/access-control/).
+
+## Start the web UI read-only (v2.14.0+)
+
+Tick **Start sessions read-only** on the [web UI](/guides/web-ui/)'s sign-in page, for password,
+client-certificate and browser sign-in: every new editor session in that tab (new tabs, **New
+session**, a reload, the replacement for a lost session) then opens read-only, confirmed by the
+server before anything runs, and **Upload** is off, as on any read-only connection.
+
+- A link with `?read_only=1` (`https://<host>/ui/?read_only=1`) ticks the box, and makes an
+  already signed-in page's new sessions read-only. `?sign_in=browser&read_only=1` opens a
+  read-only workspace through the identity provider in one click; the choice survives the
+  provider's round trip. The parameter leaves the address bar at once.
+- It is a default for your own sessions in that tab, not a restricted account: **New session**
+  with **Read-only** cleared still opens a writable one. To keep someone from writing, use
+  [grants](/guides/access-control/) or the `readonly` role.
+- A server without read-only sessions refuses at sign-in, with its own message, before anything
+  runs.

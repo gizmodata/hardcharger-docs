@@ -84,6 +84,32 @@ dashboard still leaves the server running in the menu bar or system tray.
 On macOS, the **Window** menu lists open workspaces and query inspectors, including
 windows behind the dashboard.
 
+### Connecting other programs on this computer (v2.14.0+)
+
+In **Only this computer** mode, other programs on the same computer can connect to the local
+server too. The app generates the local administrator password once, keeps it in the macOS
+Keychain or the Windows Credential Manager and reuses it at every start (before 2.14 it changed at
+every start and was never shown; upgrading users get one on their first start). The dashboard
+shows the user name and the masked password with **Reveal** and **Copy password**, and
+**Connect from this computer** has Web UI, Python / ADBC, JDBC, CLI and JavaScript examples for
+`127.0.0.1` over plain HTTP that read the credentials from `HARDCHARGER_USER` and
+`HARDCHARGER_PASSWORD`. The password stays out of **Export YAML**, the logs, the command line and
+the examples. **Generate new password** replaces it and, after the **Restart** confirmation,
+restarts a running server; the old password stops working.
+
+A network administrator password needs at least 12 characters, as the server's
+[password policy](/guides/access-control/#passwords-v2140) asks of every new password: Settings
+refuses a shorter one before saving. A network setup saved earlier with a shorter password keeps
+working, and the dashboard and Settings ask you to choose a longer one.
+
+### Text size (v2.14.0+)
+
+Every window (the dashboard, the SQL workspace and query details) zooms with **View → Bigger**,
+**Smaller** and **Actual Size**, or on macOS with Safari's shortcuts: ⌘+ (⌘= or ⌘⇧= on a US
+keyboard), ⌘−, ⌘0 and the numeric keypad's + and −, also with the cursor in the SQL editor.
+**Settings → Text size** does the same. The size is remembered and applied to each window as it
+opens.
+
 ### The workspace without the local server (v2.7.0+)
 
 **Open SQL workspace** works while the local server is stopped too. The app then runs the

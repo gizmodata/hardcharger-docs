@@ -1,5 +1,10 @@
 [
   {
+    "name": "HARDCHARGER_ACTIVE_ROLE",
+    "type": "scalar",
+    "return_type": "VARCHAR"
+  },
+  {
     "name": "HARDCHARGER_CURRENT_CLUSTER",
     "type": "scalar",
     "return_type": "VARCHAR"
@@ -35,6 +40,11 @@
     "return_type": "BOOLEAN"
   },
   {
+    "name": "HARDCHARGER_IS_SYSTEM_ADMIN",
+    "type": "scalar",
+    "return_type": "BOOLEAN"
+  },
+  {
     "name": "HARDCHARGER_ROLE",
     "type": "scalar",
     "return_type": "VARCHAR"
@@ -53,6 +63,11 @@
     "name": "hardcharger_cancel",
     "type": "scalar",
     "return_type": "BOOLEAN"
+  },
+  {
+    "name": "hardcharger_clear_login_lock",
+    "type": "scalar",
+    "return_type": "BIGINT"
   },
   {
     "name": "hardcharger_reset_session_setting",
@@ -191,6 +206,10 @@
       },
       {
         "name": "is_current",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "system_admin",
         "type": "BOOLEAN"
       }
     ]
@@ -357,6 +376,49 @@
       {
         "name": "cursor_close_time",
         "type": "TIMESTAMP WITH TIME ZONE"
+      }
+    ]
+  },
+  {
+    "name": "hardcharger_login_locks",
+    "type": "table",
+    "return_type": null,
+    "columns": [
+      {
+        "name": "scope",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "user_name",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "client_address",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "failures",
+        "type": "BIGINT"
+      },
+      {
+        "name": "last_failure_at",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "locked",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "locked_until",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "blocked_until",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "retry_after_seconds",
+        "type": "BIGINT"
       }
     ]
   },
@@ -844,6 +906,10 @@
       {
         "name": "client_is_local",
         "type": "BOOLEAN"
+      },
+      {
+        "name": "system_admin",
+        "type": "BOOLEAN"
       }
     ]
   },
@@ -926,6 +992,30 @@
       {
         "name": "is_current",
         "type": "BOOLEAN"
+      },
+      {
+        "name": "last_sign_in_at",
+        "type": "TIMESTAMP WITH TIME ZONE"
+      },
+      {
+        "name": "failed_sign_ins",
+        "type": "BIGINT"
+      },
+      {
+        "name": "password_must_change",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "has_sso_link",
+        "type": "BOOLEAN"
+      },
+      {
+        "name": "idp_issuer",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "idp_subject",
+        "type": "VARCHAR"
       }
     ]
   }

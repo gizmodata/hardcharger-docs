@@ -166,10 +166,10 @@ Here an administrator changes `joe`'s password while joe's script runs:
 
 ```console test profile=rbac
 $ export HARDCHARGER_PASSWORD='change-me'
-$ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "CREATE USER joe WITH PASSWORD 'old-secret'" > /dev/null
+$ hardcharger --host localhost --tls=false --username hardcharger --quiet --command "CREATE USER joe WITH PASSWORD 'old-secret-example'" > /dev/null
 $ { echo "SELECT 1 AS before;"; sleep 2
-    hardcharger --host localhost --tls=false --username hardcharger --quiet --command "ALTER USER joe WITH PASSWORD 'new-secret'" > /dev/null
-    sleep 2; echo "SELECT 2 AS after;"; } | HARDCHARGER_PASSWORD='old-secret' hardcharger --host localhost --tls=false --username joe --csv --quiet; echo "exit status $?"
+    hardcharger --host localhost --tls=false --username hardcharger --quiet --command "ALTER USER joe WITH PASSWORD 'new-secret-example'" > /dev/null
+    sleep 2; echo "SELECT 2 AS after;"; } | HARDCHARGER_PASSWORD='old-secret-example' hardcharger --host localhost --tls=false --username joe --csv --quiet; echo "exit status $?"
 before
 1
 Error: The server no longer accepts this sign-in: the user's password or credentials changed (credentials_changed). Sign in again (.connect).
@@ -186,7 +186,7 @@ $ { echo "SELECT 1 AS before;"; sleep 2
     ID=$(hardcharger --host localhost --tls=false --username hardcharger --quiet --csv \
       --command "SELECT session_id FROM hardcharger_sessions() WHERE username = 'joe' ORDER BY start_time DESC LIMIT 1" | tail -1)
     hardcharger --host localhost --tls=false --username hardcharger --quiet --command "KILL SESSION '$ID'" > /dev/null
-    sleep 1; echo "SELECT 2 AS after;"; echo "SELECT 3 AS again;"; } | HARDCHARGER_PASSWORD='new-secret' hardcharger --host localhost --tls=false --username joe --csv --quiet; echo "exit status $?"
+    sleep 1; echo "SELECT 2 AS after;"; echo "SELECT 3 AS again;"; } | HARDCHARGER_PASSWORD='new-secret-example' hardcharger --host localhost --tls=false --username joe --csv --quiet; echo "exit status $?"
 before
 1
 Warning: the server ended this session: an administrator ended it (killed); a new session is open. Temporary tables and session settings are gone.

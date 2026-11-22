@@ -154,8 +154,21 @@ HARDCHARGER_AUDIT_CHAIN_KEY='audit-key-from-your-secret-store' hardcharger-serve
 
 ```sql test profile=rbac_audit
 CREATE ROLE auditor;
-CREATE USER sam WITH PASSWORD 'sam-secret';
+CREATE USER sam WITH PASSWORD 'sam-secret-example';
 GRANT auditor TO sam;
+```
+
+Each record names who and what (v2.14.0+): `user_id` and `session_id` on every record, the
+statement's Chargewire id (`statement_id`) and the session's `active_role`, and on
+access-control statements the users and roles they are about (`target`, `target_ids`) and the
+privilege, membership or object they change. Account changes also carry what authorized them
+(`authorized_by`) and the account's sanitized state `before` and `after`; acting as
+[System Admin](/guides/access-control/#system-admin-v2140) adds `acting_as`. No record holds a
+password, hash, token or secret.
+
+```console test profile=rbac_audit
+$ jq -c 'select(.statement == "CREATE USER") | {user, target, privilege, authorized_by, after}' hardcharger.log
+{"user":"hardcharger","target":"user sam","privilege":"CREATE USER","authorized_by":"administrator","after":"enabled; password login; roles: none"}
 ```
 
 Check the log with the same key:

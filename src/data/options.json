@@ -101,6 +101,16 @@
       "description": "reverse proxies (CIDRs such as 10.0.0.0/8 or fd00::/8, or single addresses) whose X-Forwarded-For or Forwarded header names the client; from them, the client's address in logs, audit, sessions and the per-address browser sign-in bound is the rightmost forwarded hop that is not itself a trusted proxy. Never used for authentication or TLS. Empty: trust none (the TCP peer is the client)"
     },
     {
+      "name": "trusted_proxy_secret",
+      "group": "Listener",
+      "flag": "--trusted-proxy-secret",
+      "env": "HARDCHARGER_TRUSTED_PROXY_SECRET",
+      "yaml_key": "trusted_proxy_secret",
+      "type": "string",
+      "default": "",
+      "description": "a secret (at least 32 characters) a reverse proxy adds to each request in the X-Hardcharger-Proxy-Secret header: a request carrying it is read as from a trusted proxy (its X-Forwarded-For or Forwarded names the client), whatever its address; for a proxy whose address range other workloads share. Never used for authentication or TLS (prefer the environment variable)"
+    },
+    {
       "name": "tls_cert",
       "group": "TLS",
       "flag": "--tls-cert",
@@ -521,6 +531,126 @@
       "description": "browser sign-ins in progress at once"
     },
     {
+      "name": "login_lockout_threshold",
+      "group": "Browser sign-in",
+      "flag": "--login-lockout-threshold",
+      "env": "HARDCHARGER_LOGIN_LOCKOUT_THRESHOLD",
+      "yaml_key": "login_lockout_threshold",
+      "type": "integer",
+      "default": "5",
+      "description": "failed password sign-ins of one user from one client address that lock that pair for login_lockout_seconds (other addresses still sign in). 0: never lock"
+    },
+    {
+      "name": "login_lockout_seconds",
+      "group": "Browser sign-in",
+      "flag": "--login-lockout-seconds",
+      "env": "HARDCHARGER_LOGIN_LOCKOUT_SECONDS",
+      "yaml_key": "login_lockout_seconds",
+      "type": "integer",
+      "default": "900",
+      "description": "how long a (user, client address) lock lasts"
+    },
+    {
+      "name": "login_failure_window_seconds",
+      "group": "Browser sign-in",
+      "flag": "--login-failure-window-seconds",
+      "env": "HARDCHARGER_LOGIN_FAILURE_WINDOW_SECONDS",
+      "yaml_key": "login_failure_window_seconds",
+      "type": "integer",
+      "default": "900",
+      "description": "a failure count is forgotten once this long has passed since its last failure"
+    },
+    {
+      "name": "login_user_backoff_after",
+      "group": "Browser sign-in",
+      "flag": "--login-user-backoff-after",
+      "env": "HARDCHARGER_LOGIN_USER_BACKOFF_AFTER",
+      "yaml_key": "login_user_backoff_after",
+      "type": "integer",
+      "default": "5",
+      "description": "failed sign-ins of one user (from any address) after which its attempts are spaced by a growing delay, never a lock. 0: no per-user delay"
+    },
+    {
+      "name": "login_address_backoff_after",
+      "group": "Browser sign-in",
+      "flag": "--login-address-backoff-after",
+      "env": "HARDCHARGER_LOGIN_ADDRESS_BACKOFF_AFTER",
+      "yaml_key": "login_address_backoff_after",
+      "type": "integer",
+      "default": "20",
+      "description": "failed sign-ins from one client address (any users) after which its attempts are spaced by a growing delay. 0: no per-address delay"
+    },
+    {
+      "name": "login_backoff_base_seconds",
+      "group": "Browser sign-in",
+      "flag": "--login-backoff-base-seconds",
+      "env": "HARDCHARGER_LOGIN_BACKOFF_BASE_SECONDS",
+      "yaml_key": "login_backoff_base_seconds",
+      "type": "integer",
+      "default": "1",
+      "description": "the first delay; each further failure doubles it"
+    },
+    {
+      "name": "login_backoff_max_seconds",
+      "group": "Browser sign-in",
+      "flag": "--login-backoff-max-seconds",
+      "env": "HARDCHARGER_LOGIN_BACKOFF_MAX_SECONDS",
+      "yaml_key": "login_backoff_max_seconds",
+      "type": "integer",
+      "default": "30",
+      "description": "the longest delay (0: no delays at all)"
+    },
+    {
+      "name": "login_known_address_days",
+      "group": "Browser sign-in",
+      "flag": "--login-known-address-days",
+      "env": "HARDCHARGER_LOGIN_KNOWN_ADDRESS_DAYS",
+      "yaml_key": "login_known_address_days",
+      "type": "integer",
+      "default": "30",
+      "description": "a client address a user signed in from within this many days skips the per-user and per-address delays (not a lock). 0: no address skips them"
+    },
+    {
+      "name": "password_min_length",
+      "group": "Browser sign-in",
+      "flag": "--password-min-length",
+      "env": "HARDCHARGER_PASSWORD_MIN_LENGTH",
+      "yaml_key": "password_min_length",
+      "type": "integer",
+      "default": "12",
+      "description": "characters a password set by CREATE USER or ALTER USER needs (existing passwords keep working)"
+    },
+    {
+      "name": "password_min_character_classes",
+      "group": "Browser sign-in",
+      "flag": "--password-min-character-classes",
+      "env": "HARDCHARGER_PASSWORD_MIN_CHARACTER_CLASSES",
+      "yaml_key": "password_min_character_classes",
+      "type": "integer",
+      "default": "0",
+      "description": "kinds of characters (lowercase, uppercase, digits, others) a new password needs, 0 to 4"
+    },
+    {
+      "name": "password_max_age_days",
+      "group": "Browser sign-in",
+      "flag": "--password-max-age-days",
+      "env": "HARDCHARGER_PASSWORD_MAX_AGE_DAYS",
+      "yaml_key": "password_max_age_days",
+      "type": "integer",
+      "default": "0",
+      "description": "days after which a store user's password must be changed: it still signs in, but its session runs only ALTER USER CURRENT_USER ... REPLACE until it is (0: never; a password set before 2.14 never expires)"
+    },
+    {
+      "name": "password_temporary_max_age_hours",
+      "group": "Browser sign-in",
+      "flag": "--password-temporary-max-age-hours",
+      "env": "HARDCHARGER_PASSWORD_TEMPORARY_MAX_AGE_HOURS",
+      "yaml_key": "password_temporary_max_age_hours",
+      "type": "integer",
+      "default": "72",
+      "description": "hours after which a temporary password (one a help desk or an administrator's EXPIRE set) stops signing in; an administrator then sets a new one (0: no limit)"
+    },
+    {
       "name": "max_sessions",
       "group": "Sessions",
       "flag": "--max-sessions",
@@ -538,7 +668,7 @@
       "yaml_key": "session_idle_timeout",
       "type": "integer",
       "default": "900",
-      "description": "a session is evicted within 5 s after this many seconds without requests (0: never), unless an ingest of it is in progress, a result of it is being read, a request is waiting on a statement of it, or it holds a retained result that hasn't expired (result_retention_seconds); a statement still running is then cancelled and its transaction rolled back, so a client that died mid-write doesn't hold the write's transaction open for as long as it runs. With 0, a dead client's session and its open transaction live until the server restarts (or KILL SESSION)"
+      "description": "a session is evicted within 5 s after this many seconds since its last response ended (0: never), unless an ingest of it is in progress, a result of it is being read, a request is waiting on a statement of it, or it holds a retained result that hasn't expired (result_retention_seconds); a statement still running is then cancelled and its transaction rolled back, so a client that died mid-write doesn't hold the write's transaction open for as long as it runs. With 0, a dead client's session and its open transaction live until the server restarts (or KILL SESSION)"
     },
     {
       "name": "idle_in_transaction_session_timeout",
@@ -569,6 +699,36 @@
       "type": "integer",
       "default": "0",
       "description": "default statement timeout (0: none)"
+    },
+    {
+      "name": "max_sql_nesting",
+      "group": "Statements",
+      "flag": "--max-sql-nesting",
+      "env": "HARDCHARGER_MAX_SQL_NESTING",
+      "yaml_key": "max_sql_nesting",
+      "type": "integer",
+      "default": "0",
+      "description": "the deepest nesting a statement may have (brackets, subqueries, chained operators, dotted names; a FROM clause may name four times as many tables): DuckDB's max_expression_depth is set to it, and no session can raise that setting past it. 0: what the 8 MB stack of the threads that run statements takes, 1000 on every platform"
+    },
+    {
+      "name": "max_joined_tables",
+      "group": "Statements",
+      "flag": "--max-joined-tables",
+      "env": "HARDCHARGER_MAX_JOINED_TABLES",
+      "yaml_key": "max_joined_tables",
+      "type": "integer",
+      "default": "64",
+      "description": "the most tables one FROM clause may join (a derived table or a CTE counts as one; all of a statement's FROM clauses together may join eight times as many); a statement that joins more is refused before DuckDB plans it, naming this option. DuckDB's time to choose a join order grows steeply with the tables (hundreds take minutes) and neither a statement timeout nor a cancel interrupts it. 0: no limit"
+    },
+    {
+      "name": "enable_sql_auto_complete",
+      "group": "Statements",
+      "flag": "--enable-sql-auto-complete",
+      "env": "HARDCHARGER_ENABLE_SQL_AUTO_COMPLETE",
+      "yaml_key": "enable_sql_auto_complete",
+      "type": "boolean",
+      "default": "false",
+      "description": "turn on DuckDB's autocomplete functions (sql_auto_complete, sql_tokenize, check_peg_parser, duckdb_format_sql), for administrators only: their time grows exponentially with the brackets their input leaves open, and nothing interrupts them. Off (the default), they are refused to everyone"
     },
     {
       "name": "print_queries",

@@ -28,7 +28,7 @@ export default defineConfig({
 		starlight({
 			title: 'Hardcharger™',
 			description:
-				'Hardcharger™ is GizmoData’s DuckDB 2.0 server: fast, secure, remote DuckDB over the Chargewire protocol. Every feature included.',
+				'Hardcharger™ is GizmoData’s SQL server: fast, secure, remote DuckDB SQL on Hardcharger Engine, GizmoData’s performance fork of DuckDB, over the Chargewire protocol. Every feature included.',
 			// The Hardcharger lockup (bull head and lettering) replaces the title text; the GizmoData
 			// logo stays in the footer.
 			logo: {

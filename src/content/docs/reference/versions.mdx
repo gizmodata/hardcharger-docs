@@ -6,9 +6,11 @@ description: "Which Hardcharger version these docs describe, how versions and co
 import { version } from '../../../data/server-version.json';
 
 These docs describe **version {version}** of Hardcharger. Every example
-runs against a server of that version in CI. Hardcharger 2.14 runs on Hardcharger Engine v2.0.1,
-GizmoData's performance-tuned fork of DuckDB 2.0.1 (`duckdb_version` in
-`hardcharger_server_info()` says `v2.0.1`).
+runs against a server of that version in CI. Hardcharger 2.14 runs on
+[Hardcharger Engine v2.0.1](https://github.com/gizmodata/hardcharger-engine), GizmoData's
+performance-tuned fork of [DuckDB 2.0.1](https://duckdb.org) (`duckdb_version` in
+`hardcharger_server_info()` says `v2.0.1`). The engine's notes list
+[what the fork changes and what was measured](https://github.com/gizmodata/hardcharger-engine/blob/v2.0.1/docs/optimizations.md).
 
 ## How versions work
 

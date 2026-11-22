@@ -12,7 +12,8 @@
   <a href="https://gizmodata.com"><img src="https://img.shields.io/badge/by-GizmoData-31a8db.svg" alt="GizmoData"></a>
 </p>
 
-<h3 align="center">The documentation for Hardcharger, GizmoData's DuckDB 2.0 server on Chargewire.</h3>
+<h3 align="center">The documentation for Hardcharger: fast, secure, remote DuckDB SQL on Hardcharger Engine, over Chargewire.</h3>
+<p align="center"><a href="https://github.com/gizmodata/hardcharger-engine">Hardcharger Engine</a> is GizmoData's performance fork of <a href="https://duckdb.org">DuckDB</a>.</p>
 
 ---
 

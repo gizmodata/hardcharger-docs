@@ -5,15 +5,18 @@ description: "How Hardcharger moves results fast without trading away correctnes
 
 import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
 
-Hardcharger is fast for two reasons. DuckDB 2.0 runs the query, and on the queries derived from TPC-H[^tpch] it beats
-DuckDB 1.5 in-process before any network is involved. Then the result travels through an
+Hardcharger is fast for two reasons. [Hardcharger Engine 2.0](https://github.com/gizmodata/hardcharger-engine), GizmoData's fork
+of [DuckDB 2.0](https://duckdb.org), runs the query: DuckDB 2.0 beats DuckDB 1.5 in-process on
+the queries derived from TPC-H[^tpch] before any network is involved, and the fork adds targeted
+performance changes on top ([what changed and what was measured](https://github.com/gizmodata/hardcharger-engine/blob/v2.0.1/docs/optimizations.md)).
+Then the result travels through an
 **asynchronous pipeline** in which no stage waits for another unless a queue is full.
 
 ## The result pipeline
 
 ```mermaid
 flowchart LR
-  D[(DuckDB 2.0<br/>parallel execution)] --> P[Produce<br/>Arrow batches,<br/>122,880 rows each]
+  D[(Hardcharger Engine 2.0<br/>parallel execution)] --> P[Produce<br/>Arrow batches,<br/>122,880 rows each]
   P --> Z[Compress<br/>zstd worker pool,<br/>when asked for]
   Z --> T[Encrypt and send<br/>TLS in 1 MiB writes,<br/>overlapped with the next]
   T --> C1[connection 1]

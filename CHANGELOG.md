@@ -7,6 +7,22 @@ the `hardcharger` Python package does. (2.1.1 below predates that rule: it fixed
 
 ## [Unreleased]
 
+## [2.14.0.post1] - 2026-11-22
+
+### Changed
+
+- **Hardcharger Engine.** Hardcharger 2.14 runs on
+  [Hardcharger Engine](https://github.com/gizmodata/hardcharger-engine), GizmoData's performance
+  fork of [DuckDB](https://duckdb.org), and the pages that describe the engine say so: the
+  tagline (**Fast, secure, remote DuckDB SQL on Hardcharger Engine. Every feature included.**),
+  the site and home page descriptions, the home page's banner, engine badge (with a "fork of
+  DuckDB 2.0" badge linking duckdb.org), introduction, pipeline diagram and feature table, the
+  performance and security models, the iOS app guide, Coming from GizmoSQL and the versions page,
+  which link the engine's
+  [changes and measurements](https://github.com/gizmodata/hardcharger-engine/blob/v2.0.1/docs/optimizations.md).
+  DuckDB SQL, DuckDB's extensions and file format, and links to DuckDB's own documentation are
+  unchanged.
+
 ## [2.14.0] - 2026-11-22
 
 ### Added

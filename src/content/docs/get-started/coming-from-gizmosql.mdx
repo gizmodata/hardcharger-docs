@@ -32,8 +32,10 @@ switch, rather than wonder why a setting didn't apply.
 
 ## What stays the same
 
-- **DuckDB SQL.** Hardcharger runs DuckDB 2.0; GizmoSQL 1.x runs DuckDB 1.x. Your SQL is
-  DuckDB's in both. Check DuckDB's release notes for changes between the engine versions.
+- **DuckDB SQL.** Hardcharger runs
+  [Hardcharger Engine 2.0](https://github.com/gizmodata/hardcharger-engine), GizmoData's fork of
+  [DuckDB 2.0](https://duckdb.org); GizmoSQL 1.x runs DuckDB 1.x. Your SQL is DuckDB's in both.
+  Check DuckDB's release notes for changes between the engine versions.
 - **The features.** Everything that was Enterprise in GizmoSQL 1.x is in every Hardcharger
   build, and each still turns on with its own option: access control, instrumentation, catalog
   logging, the statement queue, metrics, SSO, `KILL SESSION`.
@@ -65,7 +67,7 @@ Every option also has a YAML key: the flag without its leading `--`, with `_` fo
 | `TLS_CERT`, `GIZMOSQL_TLS_CERT` | `--tls-cert` | `HARDCHARGER_TLS_CERT` |
 | `TLS_KEY`, `GIZMOSQL_TLS_KEY` | `--tls-key` | `HARDCHARGER_TLS_KEY` |
 | `--mtls-ca-cert-filename`, `-M`, `MTLS_CA_CERT_FILENAME`, `GIZMOSQL_MTLS_CA_CERT_FILENAME` | `--mtls-ca-cert` | `HARDCHARGER_MTLS_CA_CERT` |
-| `-B`, `DATABASE_BACKEND`, `GIZMOSQL_BACKEND` | (none: DuckDB is the only engine) | (none) |
+| `-B`, `DATABASE_BACKEND`, `GIZMOSQL_BACKEND` | (none: Hardcharger Engine, a DuckDB fork, is the only engine) | (none) |
 | `--database-filename`, `-D`, `DATABASE_FILENAME`, `GIZMOSQL_DATABASE_FILENAME` | `--database` | `HARDCHARGER_DATABASE` |
 | `--readonly`, `-O`, `READONLY`, `GIZMOSQL_READONLY` | `--read-only` | `HARDCHARGER_READ_ONLY` |
 | `GIZMOSQL_MEMORY_LIMIT` | `--memory-limit` | `HARDCHARGER_MEMORY_LIMIT` |
@@ -209,7 +211,7 @@ The dot commands and output modes are 1.x's. What behaves differently, and why:
 | `GIZMOSQL_CURRENT_SESSION()`, `_CURRENT_INSTANCE()`, `_CURRENT_CLUSTER()` | `HARDCHARGER_CURRENT_SESSION()`, `_CURRENT_INSTANCE()`, `_CURRENT_CLUSTER()` |
 | `GIZMOSQL_INSTRUMENTATION_ENABLED()`, `_CATALOG()`, `_SCHEMA()` | `HARDCHARGER_INSTRUMENTATION_ENABLED()`, `_CATALOG()`, `_SCHEMA()` |
 | `GIZMOSQL_EDITION()`, `gizmosql.edition` | (none: no editions) |
-| `gizmosql.backend` | (none: DuckDB is the only engine) |
+| `gizmosql.backend` | (none: Hardcharger Engine, a DuckDB fork, is the only engine) |
 | `gizmosql_settings()`, `gizmosql_sessions()`, `gizmosql_metrics()` | `hardcharger_settings()`, `hardcharger_sessions()`, `hardcharger_metrics()` (`hardcharger_settings()` has no `enterprise` column) |
 | `_gizmosql_system` (`gizmosql_index_info`, `gizmosql_view_definition`) | `_hardcharger_system` (`hardcharger_index_info`, `hardcharger_view_definition`) |
 | `_gizmosql_instr` | `_hardcharger_instr` |

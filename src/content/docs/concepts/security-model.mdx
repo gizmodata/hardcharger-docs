@@ -6,7 +6,7 @@ description: "How Hardcharger authenticates clients, authorizes every statement 
 import { Aside } from '@astrojs/starlight/components';
 
 Security in Hardcharger is in the core, not bolted on: every request is authenticated, every
-statement is authorized inside DuckDB against its own plan, and some guards apply to everyone,
+statement is authorized inside the engine against its own plan, and some guards apply to everyone,
 administrators included. This page is the map; the guides have the steps.
 
 ## Layers
@@ -17,7 +17,7 @@ flowchart TB
   A --> H[Handles: sessions and statements bound to their principal]
   H --> Z[Authorization: roles, or access control on each statement's plan]
   Z --> G[Guards for everyone: credential files, secrets, NUL bytes]
-  G --> D[(DuckDB 2.0)]
+  G --> D[(Hardcharger Engine 2.0)]
   Z -. users, roles, grants .-> P[(PostgreSQL or DuckDB-file store)]
   Z -. every decision .-> L[Tamper-evident audit log]
 ```
@@ -75,7 +75,7 @@ write or no access per catalog.
 **With access control** ([`rbac_store_uri`](/guides/access-control/)), users, roles and grants
 live in a PostgreSQL database that every replica shares (or, for development or a server that
 will only ever run one replica, a DuckDB file), and you manage them in SQL. Each
-statement is checked inside DuckDB against its own plan, after binding and again before
+statement is checked inside the engine against its own plan, after binding and again before
 optimizing, so nested SQL, views and macros can't route around a grant. Anything the check can't
 classify is refused. Views read with their owner's rights; [row and masking policies](/guides/row-policies-and-masking/)
 filter and mask what a role sees; tenants keep groups of users apart; an Open Policy Agent
